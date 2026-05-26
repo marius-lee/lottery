@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双色球 - 智能选号</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #1a0a0a 0%, #2d0a0a 50%, #0a0a1a 100%);
+    min-height: 100vh; padding: 20px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; justify-content: center;
+  }
+
+  .container {
+    background: #fff; border-radius: 20px; padding: 24px 28px;
+    box-shadow: 0 20px 60px rgba(255,0,0,0.2), 0 0 100px rgba(0,0,200,0.1);
+    text-align: center; max-width: 760px; width: 96%;
+  }
+
+  h1 { font-size: 26px; color: #c41e3a; letter-spacing: 4px; }
+  .subtitle { color: #888; font-size: 11px; margin: 4px 0 16px 0; }
+
+  /* Settings */
+  .settings {
+    display: flex; gap: 16px; justify-content: center; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .setting { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #666; }
+  .setting select, .setting input[type=checkbox] { cursor: pointer; }
+  .setting select {
+    border: 1px solid #ddd; border-radius: 6px; padding: 4px 10px;
+    font-size: 12px; color: #333; outline: none; font-family: inherit;
+  }
+  .setting input[type=range] { width: 80px; }
+
+  /* Stage */
+  .stage {
+    background: #f8f8f8; border-radius: 16px; padding: 16px 12px;
+    margin-bottom: 12px; min-height: 60px;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .draw-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .draw-label {
+    font-size: 10px; color: #bbb; min-width: 30px; text-align: right;
+    font-weight: bold;
+  }
+
+  .ball {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; color: #fff;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+    transition: transform 0.3s;
+  }
+  .ball.red  { background: radial-gradient(circle at 35% 35%, #ff4444, #c41e3a); }
+  .ball.blue { background: radial-gradient(circle at 35% 35%, #4488ff, #1e3ac4); }
+  .ball.placeholder {
+    background: #e0e0e0; color: #aaa; font-size: 16px;
+    box-shadow: none; border: 2px dashed #ccc;
+  }
+  .ball.rolling { animation: shake 0.12s infinite; }
+  @keyframes shake {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    25%    { transform: translateY(-3px) rotate(-4deg); }
+    75%    { transform: translateY(3px) rotate(4deg); }
+  }
+  .ball.landed { animation: land 0.5s ease-out; }
+  @keyframes land {
+    0%   { transform: scale(1.4); }
+    60%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+
+  /* Consensus & Strategy rows */
+  .consensus-row {
+    border: 2px solid #e8a020; border-radius: 12px; padding: 8px 6px;
+    margin-bottom: 4px; background: #fffdf0;
+  }
+  .consensus-row .label { color: #c88000; font-size: 10px; font-weight: bold; }
+  .ball.conf-high { box-shadow: 0 0 14px rgba(232,160,32,0.9); }
+  .ball.conf-mid  { box-shadow: 0 0 8px rgba(232,160,32,0.5); }
+  .ball.conf-low  { opacity: 0.7; }
+  .strat-row {
+    display: flex; gap: 6px; align-items: center; justify-content: center;
+    margin: 3px 0; font-size: 10px;
+  }
+  .strat-row .sname { color: #999; min-width: 52px; text-align: right; font-size: 10px; }
+  .strat-row .sball {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: bold; color: #fff;
+  }
+  .strat-row .sball.red  { background: radial-gradient(circle at 35% 35%, #ff6666, #c41e3a); }
+  .strat-row .sball.blue { background: radial-gradient(circle at 35% 35%, #6699ff, #1e3ac4); }
+  .strat-weight { color: #c88000; font-size: 8px; }
+
+  /* Backtest row */
+  .backtest-row {
+    border-top: 1px solid #eee; margin-top: 8px; padding-top: 8px;
+    font-size: 10px; color: #666; line-height: 1.8; text-align: left;
+  }
+
+  /* Filter info */
+  .filter-info {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    font-size: 10px; color: #aaa; margin-top: 4px;
+  }
+
+  /* Collapsible panel base */
+  .panel-section { margin: 0 0 10px 0; }
+  .panel-toggle {
+    background: none; border: 1px solid #ddd; color: #666;
+    padding: 6px 14px; border-radius: 20px; font-size: 11px;
+    cursor: pointer; outline: none; font-family: inherit; margin: 2px 4px;
+  }
+  .panel-toggle:hover { border-color: #c41e3a; color: #c41e3a; }
+  .panel-toggle.active { background: #c41e3a; color: #fff; border-color: #c41e3a; }
+  .panel-toggle.help-toggle { border-color: #c41e3a; color: #c41e3a; }
+  .panel-toggle.help-toggle.active { background: #c41e3a; color: #fff; border-color: #c41e3a; }
+  .panel-toggle.help-toggle:hover { border-color: #c41e3a; color: #c41e3a; background: #fff5f5; }
+  .panel-toggle.help-toggle.active:hover { color: #fff; background: #c41e3a; }
+  .panel-content { display: none; margin-top: 10px; }
+  .panel-content.show { display: block; }
+
+  /* Omission panel */
+  .omission-row { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-bottom: 6px; }
+  .omission-row .label { font-size: 10px; color: #999; width: 100%; text-align: center; margin-bottom: 2px; }
+  .omission-cell {
+    width: 27px; height: 34px; border-radius: 5px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: bold; transition: transform 0.2s;
+  }
+  .omission-cell .num { font-size: 11px; line-height: 1; }
+  .omission-cell .gap { font-size: 8px; line-height: 1; opacity: 0.65; }
+  .omission-cell:hover { transform: scale(1.2); z-index: 2; }
+  .omission-cell.hot  { background: #ffe0e0; color: #c41e3a; }
+  .omission-cell.warm { background: #fff3d0; color: #cc8800; }
+  .omission-cell.cool { background: #e0e8ff; color: #3366cc; }
+  .omission-cell.cold { background: #d0d0ff; color: #1a1a99; }
+
+  /* Advanced analysis panel */
+  .analysis-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; text-align: left; font-size: 11px;
+  }
+  @media (max-width: 600px) { .analysis-grid { grid-template-columns: 1fr; } }
+  .analysis-card {
+    background: #fafafa; border-radius: 10px; padding: 10px 14px;
+    border: 1px solid #eee;
+  }
+  .analysis-card h4 {
+    font-size: 12px; color: #c41e3a; margin-bottom: 6px;
+    border-bottom: 1px solid #eee; padding-bottom: 4px;
+  }
+  .analysis-card .stat { display: flex; justify-content: space-between; padding: 2px 0; }
+  .analysis-card .stat .val { font-weight: bold; color: #333; }
+  .analysis-card .bar {
+    height: 6px; border-radius: 3px; margin: 3px 0 8px 0;
+    background: #e0e0e0; overflow: hidden;
+  }
+  .analysis-card .bar-fill { height: 100%; border-radius: 3px; background: #c41e3a; }
+
+  /* Backtest results table */
+  .bt-table {
+    width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 8px;
+  }
+  .bt-table th, .bt-table td {
+    padding: 4px 6px; border-bottom: 1px solid #eee; text-align: center;
+  }
+  .bt-table th { color: #999; font-weight: normal; }
+  .bt-table td { color: #333; }
+  .bt-table .highlight { color: #c41e3a; font-weight: bold; }
+
+  /* Data section */
+  .data-section { margin: 0 0 10px 0; }
+  .data-toggle {
+    background: none; border: 1px solid #eee; color: #bbb;
+    padding: 6px 16px; border-radius: 20px; font-size: 11px;
+    cursor: pointer; outline: none; font-family: inherit; margin: 2px 4px;
+  }
+  .data-toggle:hover { border-color: #999; color: #666; }
+  .data-toggle.fetching { opacity: 0.5; cursor: wait; }
+
+  /* History panels — side by side */
+  .history-wrapper {
+    display: none; gap: 12px; margin-top: 12px;
+  }
+  .history-wrapper.show2 { display: flex; }
+  .history-panel2 {
+    flex: 1; min-width: 0; max-height: 320px; overflow-y: auto;
+    text-align: left; background: #fafafa; border-radius: 10px;
+    padding: 12px 16px; font-size: 11px;
+    font-family: "Courier New", Menlo, monospace; color: #555; line-height: 2;
+  }
+  .history-panel2.history-left { border-left: 3px solid #c41e3a; }
+  .history-panel2.history-right { border-left: 3px solid #3366cc; }
+  .history-panel2 .row { display: flex; gap: 6px; border-bottom: 1px solid #eee; padding: 2px 0; }
+  .history-panel2 .row .pid { color: #c41e3a; font-weight: bold; min-width: 62px; font-size: 10px; }
+  .history-panel2 .row .reds { color: #cc4444; min-width: 115px; font-size: 10px; }
+  .history-panel2 .row .blue { color: #3366cc; font-weight: bold; font-size: 10px; }
+  @media (max-width: 650px) {
+    .history-wrapper { flex-direction: column; }
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #c41e3a, #e8453c);
+    color: #fff; border: none; padding: 12px 44px;
+    font-size: 18px; font-weight: bold; border-radius: 50px;
+    cursor: pointer; letter-spacing: 5px;
+    box-shadow: 0 6px 20px rgba(196,30,58,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+    outline: none; margin: 4px;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(196,30,58,0.5); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-sm {
+    padding: 8px 20px; font-size: 13px; letter-spacing: 1px;
+    background: linear-gradient(135deg, #666, #888);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  .info { color: #bbb; font-size: 10px; margin-top: 12px; }
+  .info a { color: #c41e3a; text-decoration: none; }
+
+  /* Help/Docs panel */
+  .help-panel {
+    display: none; margin-top: 12px; text-align: left;
+    background: #fafafa; border-radius: 12px; padding: 16px 20px;
+    font-size: 12px; color: #555; line-height: 1.9;
+    border: 1px solid #eee; max-height: 500px; overflow-y: auto;
+  }
+  .help-panel.show { display: block; }
+  .help-panel h3 {
+    font-size: 14px; color: #c41e3a; margin: 16px 0 6px 0;
+    padding-bottom: 4px; border-bottom: 2px solid #c41e3a;
+  }
+  .help-panel h3:first-child { margin-top: 0; }
+  .help-panel h4 {
+    font-size: 12px; color: #333; margin: 10px 0 4px 0;
+  }
+  .help-panel code {
+    background: #fff0f0; color: #c41e3a; padding: 1px 5px;
+    border-radius: 3px; font-size: 11px; font-family: "Courier New", Menlo, monospace;
+  }
+  .help-panel .tag {
+    display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 10px;
+    margin: 0 2px; font-weight: bold;
+  }
+  .help-panel .tag-new { background: #ffe0e0; color: #c41e3a; }
+  .help-panel .tag-web { background: #e0e8ff; color: #3366cc; }
+  .help-panel ul { padding-left: 18px; }
+  .help-panel li { margin: 2px 0; }
+  .help-panel table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+  .help-panel td, .help-panel th {
+    border: 1px solid #eee; padding: 4px 8px; font-size: 11px;
+  }
+  .help-panel th { background: #f5f5f5; color: #666; font-weight: normal; }
+
+  .tab-bar { display: flex; gap: 0; justify-content: center; margin-bottom: 10px; }
+  .tab-btn {
+    padding: 5px 14px; border: 1px solid #ddd; background: #fff;
+    font-size: 11px; cursor: pointer; font-family: inherit; outline: none;
+    color: #666;
+  }
+  .tab-btn:first-child { border-radius: 8px 0 0 8px; }
+  .tab-btn:last-child { border-radius: 0 8px 8px 0; }
+  .tab-btn.active { background: #c41e3a; color: #fff; border-color: #c41e3a; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .badge {
+    display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 8px;
+    margin-left: 4px; font-weight: bold;
+  }
+  .badge-gold { background: #fff3d0; color: #c88000; }
+  .badge-green { background: #e0ffe0; color: #33aa33; }
+  .badge-red { background: #ffe0e0; color: #cc3333; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>双 色 球</h1>
+  <div class="subtitle">近100期数据 · 多维加权选号 · 合理性过滤 · 策略共识</div>
+
+  <!-- Settings -->
+  <div class="settings">
+    <div class="setting">
+      生成注数
+      <select id="drawCount" onchange="updateDrawCount()">
+        <option value="1">1 注</option><option value="3">3 注</option><option value="5" selected>5 注</option>
+      </select>
+    </div>
+    <div class="setting">
+      <input type="checkbox" id="filterToggle" checked onchange="updateFilter()">合理性过滤
+    </div>
+    <div class="setting">
+      <input type="checkbox" id="strategyToggle" onchange="updateStrategy()">多策略共识
+    </div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage" id="stage"></div>
+
+  <!-- Panels -->
+  <div class="panel-section">
+    <button class="panel-toggle" id="omissionToggle" onclick="togglePanel('omission')">遗漏分析</button>
+    <button class="panel-toggle" id="analysisToggle" onclick="togglePanel('analysis')">高级分析</button>
+    <button class="panel-toggle" id="backtestToggle" onclick="togglePanel('backtest')">滚动回测</button>
+    <button class="panel-toggle help-toggle" id="helpToggle" onclick="togglePanel('help')">使用说明</button>
+    <div class="panel-content" id="omissionPanel">
+      <div class="omission-row" id="redOmission"></div>
+      <div class="omission-row" id="blueOmission"></div>
+    </div>
+    <div class="panel-content" id="analysisPanel">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchAnalysisTab('indicators', this)">综合指标</button>
+        <button class="tab-btn" onclick="switchAnalysisTab('weights', this)">权重分布</button>
+        <button class="tab-btn" onclick="switchAnalysisTab('similar', this)">相似期匹配</button>
+      </div>
+      <div class="tab-content active" id="tab-indicators">
+        <div class="analysis-grid" id="indicatorsGrid"></div>
+      </div>
+      <div class="tab-content" id="tab-weights">
+        <div class="analysis-grid" id="weightsGrid"></div>
+      </div>
+      <div class="tab-content" id="tab-similar">
+        <div id="similarContent" style="font-size:11px;text-align:left;"></div>
+      </div>
+    </div>
+    <div class="panel-content" id="backtestPanel">
+      <div style="font-size:11px;color:#666;margin-bottom:8px;">
+        窗口期数 <input type="number" id="btWindow" value="30" min="10" max="100" style="width:60px;border:1px solid #ddd;border-radius:4px;padding:3px 6px;font-size:11px;">
+        <button class="panel-toggle" onclick="runRollingBacktest()" style="padding:4px 12px;font-size:11px;">执行回测</button>
+        <span id="btStatus" style="margin-left:8px;color:#999;"></span>
+      </div>
+      <div id="backtestResults"></div>
+    </div>
+    <div class="panel-content help-panel" id="helpPanel">
+<h3>开奖操作</h3>
+<p><b>「开奖」按钮</b> — 点击后根据历史数据智能生成号码，带滚动和落地动画+音效。</p>
+<ul>
+<li><b>生成注数</b>：下拉选择 1 / 3 / 5 注</li>
+<li><b>合理性过滤</b>：勾选后，生成的号码必须通过 9 项硬过滤规则+软评分≥2分。不勾选则纯加权随机。</li>
+<li><b>多策略共识 <span class="tag tag-new">增强</span></b>：勾选后启用 9 种策略独立选号，加权投票产生共识推荐，并附带历史回测。</li>
+</ul>
+
+<h3>数据管理</h3>
+<ul>
+<li><b>更新数据</b>：从中彩网实时拉取最新 100 期开奖数据（含 300 期长期数据），6小时缓存。</li>
+<li><b>历史开奖号码</b>：显示所有已加载的开奖号码原始数据，按期号倒序，方便对照。</li>
+</ul>
+
+<h3>分析面板</h3>
+<p>每个面板点击按钮展开/收起：</p>
+<ul>
+<li><b>遗漏分析</b> — 红球 1-33 + 蓝球 1-16 的遗漏期数热力图（hot/warm/cool/cold 四档），颜色越红表示近期越活跃。</li>
+<li><b>高级分析 <span class="tag tag-new">新增</span></b> — 3 个标签页：
+  <ul>
+    <li>综合指标：AC值、跨度、质数、龙头凤尾、重号/邻号/同尾统计、近期走势</li>
+    <li>权重分布：红球 Top 10 + 蓝球综合权重排名（含进度条）</li>
+    <li>相似期匹配：历史中最相似的 8 期及对应下一期号码</li>
+  </ul>
+</li>
+<li><b>滚动回测 <span class="tag tag-new">新增</span></b> — 滑动窗口回测各策略的历史表现，自动更新策略权重。输入窗口期数点击执行即可。</li>
+</ul>
+
+<h3>选号算法 <span class="tag tag-new">增强版</span></h3>
+<p>号码权重由 <b>7 个维度</b> 加权融合（滑动窗口 短期30期×0.20 + 长期100期×0.15）：</p>
+<table>
+<tr><th>维度</th><th>权重</th><th>说明</th></tr>
+<tr><td>短期频率</td><td>20%</td><td>近30期每个号码的出现次数</td></tr>
+<tr><td>长期频率</td><td>15%</td><td>近100期出现频率</td></tr>
+<tr><td>遗漏值</td><td>15%</td><td>距上次出现已过多少期</td></tr>
+<tr><td>重号(落号)</td><td>15%</td><td>与上期重复的号码有额外加分</td></tr>
+<tr><td>邻号</td><td>15%</td><td>上期号码±1的数字概率偏高</td></tr>
+<tr><td>012路</td><td>10%</td><td>号码除3余数分布均衡性</td></tr>
+<tr><td>同尾号</td><td>10%</td><td>尾号相同号码成对出现概率</td></tr>
+</table>
+
+<h3>合理性过滤规则 <span class="tag tag-new">增强版</span></h3>
+<p><b>硬过滤</b>（必须全部通过，最多重试300次）：</p>
+<table>
+<tr><th>#</th><th>规则</th><th>约束范围</th></tr>
+<tr><td>1</td><td>红球和值</td><td>70 ~ 140</td></tr>
+<tr><td>2</td><td>奇偶比</td><td>2:4 / 3:3 / 4:2</td></tr>
+<tr><td>3</td><td>大小比 (以17为界)</td><td>2:4 / 3:3 / 4:2</td></tr>
+<tr><td>4</td><td>三区分布 (1-11/12-22/23-33)</td><td>每区至少1个</td></tr>
+<tr><td>5</td><td>连号</td><td>至少1组相邻号码</td></tr>
+<tr><td>6</td><td>跨度</td><td>18 ~ 32</td></tr>
+<tr><td>7</td><td>AC值（离散值）</td><td>5 ~ 10</td></tr>
+<tr><td>8</td><td>质数个数</td><td>1 ~ 3 个</td></tr>
+<tr><td>9</td><td>蓝球不重</td><td>不与上期蓝球相同</td></tr>
+</table>
+<p><b>软评分</b>（加分项，阈值≥2/5）：龙头1-9、凤尾28-33、012路均衡、同尾对、和值中心化(95-115)。</p>
+
+<h3>多策略共识系统 <span class="tag tag-new">9策略</span></h3>
+<table>
+<tr><th>策略</th><th>原理</th><th>权重</th></tr>
+<tr><td>频率</td><td>选历史高频号</td><td>动态</td></tr>
+<tr><td>遗漏</td><td>选长期未出的冷号</td><td>动态</td></tr>
+<tr><td>趋势</td><td>对比近30期vs前30期，选升温号码</td><td>动态</td></tr>
+<tr><td>均匀</td><td>将33个红球等分6段各选1个</td><td>动态</td></tr>
+<tr><td>随机</td><td>纯随机选号</td><td>动态</td></tr>
+<tr><td>间隔 <span class="tag tag-new">新</span></td><td>统计号码出现间隔，选接近平均间隔的</td><td>动态</td></tr>
+<tr><td>黄金分割 <span class="tag tag-new">新</span></td><td>按0.618比例在冷热区间分配选号</td><td>动态</td></tr>
+<tr><td>同尾 <span class="tag tag-new">新</span></td><td>优先选同尾号出现率高的号码</td><td>动态</td></tr>
+<tr><td>相似期 <span class="tag tag-new">新</span></td><td>匹配历史相似期，参照其下一期走势</td><td>动态</td></tr>
+</table>
+<p>权重通过<b>滚动回测</b>自动优化——在历史数据上滑动模拟，衡量各策略的命中率，自动调整投票权重。</p>
+
+<h3>Web版 vs macOS版</h3>
+<table>
+<tr><th>功能</th><th>Web版 <span class="tag tag-web">localhost:8520</span></th><th>macOS版 <span class="tag tag-web">原生App</span></th></tr>
+<tr><td>在线拉取数据</td><td>中彩网API+500.com备用</td><td>中彩网API</td></tr>
+<tr><td>本地持久化</td><td>磁盘缓存(6h)</td><td>~/Library/Application Support/双色球/</td></tr>
+<tr><td>300期长期数据</td><td>支持</td><td>支持</td></tr>
+<tr><td>多策略共识</td><td>勾选开关启用</td><td>勾选开关启用</td></tr>
+<tr><td>滚动回测</td><td>手动执行</td><td>手动执行</td></tr>
+<tr><td>所有算法功能</td><td>完全一致</td><td>完全一致（HTML驱动）</td></tr>
+</table>
+<p style="margin-top:12px;color:#999;font-size:10px;"><b>免责声明</b>：彩票是独立随机事件，本工具所有算法仅做统计分析和加权随机，不保证中奖。仅供娱乐参考。</p>
+    </div>
+  </div>
+
+  <!-- Data -->
+  <div class="data-section">
+    <button class="data-toggle" id="dataToggle" onclick="fetchLatestData()">
+      <span id="dataBtnText">更新数据</span><span id="dataSpinner" style="display:none"> ⏳</span>
+    </button>
+    <button class="data-toggle" id="officialHistoryToggle" onclick="toggleOfficialHistory()">官方历史开奖号码</button>
+    <button class="data-toggle" id="userHistoryToggle" onclick="toggleUserHistory()">历史开奖号码</button>
+    <span id="dataMsg" style="font-size:11px;color:#999;margin-left:8px;"></span>
+  </div>
+
+  <!-- History panels wrapper -->
+  <div class="history-wrapper" id="historyWrapper">
+    <div class="history-panel2 history-left" id="officialHistoryPanel"></div>
+    <div class="history-panel2 history-right" id="userHistoryPanel"></div>
+  </div>
+
+  <button class="btn" id="drawBtn" onclick="startDraw()">开　　奖</button>
+  <button class="btn btn-sm" id="saveBtn" onclick="saveCurrentDraw()" disabled style="margin-top:8px;">确定保存</button>
+  <div class="info">
+    数据来源 <a href="https://www.zhcw.com/kjxx/ssq/" target="_blank">中彩网</a>
+    &nbsp;|&nbsp; 仅供娱乐 &nbsp;|&nbsp; 算法增强版
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  DATA LAYER
+// =====================================================================
+var DATA = [];
+var LONG_DATA = []; // Extended data for long-term analysis
+
+function loadDefaultData() {
+  DATA = [
+    [2025001,2,3,17,18,22,33,16],[2025002,9,12,13,15,22,26,11],[2025003,10,19,20,26,28,29,15],
+    [2025004,3,7,17,27,29,32,4],[2025005,10,16,19,27,28,30,9],[2025006,1,7,8,17,20,22,6],
+    [2025007,7,8,14,18,21,27,11],[2025008,9,14,16,17,25,33,11],[2025009,2,4,11,12,23,25,6],
+    [2025010,4,6,7,16,17,21,8],[2025011,6,13,17,22,24,29,11],[2025012,7,11,13,18,27,31,11],
+    [2025013,4,14,16,23,24,30,14],[2025014,6,7,9,13,21,27,5],[2025015,4,11,15,24,25,33,15],
+    [2025016,2,3,12,16,20,29,14],[2025017,4,12,15,18,28,29,5],[2025018,3,9,18,21,28,29,11],
+    [2025019,5,13,17,18,22,23,11],[2025020,4,11,13,16,26,30,15],[2025021,7,8,16,18,25,32,14],
+    [2025022,11,17,18,20,28,30,10],[2025023,9,12,13,24,25,33,7],[2025024,10,11,22,27,30,32,15],
+    [2025025,12,15,21,23,25,30,2],[2025026,9,10,12,14,19,32,7],[2025027,5,7,8,15,16,23,6],
+    [2025028,4,9,14,15,18,25,15],[2025029,5,15,16,25,30,33,16],[2025030,4,6,7,30,31,33,6],
+    [2025031,1,5,6,8,23,28,1],[2025032,3,8,10,14,16,21,3],[2025033,3,5,18,25,26,33,8],
+    [2025034,5,8,13,14,24,26,12],[2025035,1,8,16,18,25,31,1],[2025036,5,11,13,16,19,32,7],
+    [2025037,3,6,11,20,21,31,2],[2025038,6,19,20,23,26,33,9],[2025039,8,10,12,15,17,23,11],
+    [2025040,2,6,8,9,10,24,11],[2025041,6,10,17,19,25,31,6],[2025042,7,13,19,23,27,33,12],
+    [2025043,3,12,16,19,20,32,13],[2025044,2,3,7,8,14,28,11],[2025045,2,14,19,24,29,33,13],
+    [2025046,2,3,10,16,29,33,1],[2025047,1,14,21,22,23,31,12],[2025048,16,21,22,23,27,31,10],
+    [2025049,3,6,19,27,29,33,11],[2025050,9,12,15,18,22,33,16],[2025051,1,2,3,4,17,22,1],
+    [2025052,6,7,10,17,20,26,9],
+    [2024101,8,12,15,17,19,30,8],[2024102,9,15,18,21,22,25,1],[2024103,12,21,23,27,30,32,15],
+    [2024104,5,16,23,24,26,29,3],[2024105,2,5,17,19,29,33,4],[2024106,3,8,11,22,31,33,3],
+    [2024107,1,6,8,13,17,19,13],[2024108,1,8,9,23,24,30,8],[2024109,3,4,24,28,29,33,1],
+    [2024110,4,13,17,23,25,33,14],[2024111,1,4,11,12,22,30,16],[2024112,8,11,16,25,29,32,3],
+    [2024113,4,5,23,24,26,31,4],[2024114,7,11,18,24,27,32,5],[2024115,3,10,11,19,27,28,11],
+    [2024116,1,15,20,22,31,32,12],[2024117,3,11,12,14,16,29,16],[2024118,2,3,4,6,11,15,2],
+    [2024119,2,9,26,27,31,32,1],[2024120,1,5,7,11,18,19,7],[2024121,1,7,10,13,27,33,7],
+    [2024122,5,7,9,16,17,29,2],[2024123,2,15,22,26,30,33,6],[2024124,2,14,15,17,25,30,4],
+    [2024125,1,4,13,18,26,30,2],[2024126,14,18,23,24,26,33,10],[2024127,2,5,13,20,27,32,5],
+    [2024128,1,8,13,18,20,26,16],[2024129,9,10,13,19,24,32,1],[2024130,1,8,12,17,19,24,16],
+    [2024131,4,5,11,15,20,32,13],[2024132,1,4,25,27,28,33,3],[2024133,1,11,15,27,30,33,15],
+    [2024134,2,4,13,16,18,20,16],[2024135,5,11,17,18,31,32,7],[2024136,3,11,15,21,25,26,13],
+    [2024137,4,9,10,19,26,27,12],[2024138,2,7,11,21,27,28,11],[2024139,15,16,20,22,23,29,2],
+    [2024140,4,7,8,17,22,26,15],[2024141,1,2,7,15,24,29,12],[2024142,4,6,13,21,22,25,6],
+    [2024143,2,5,11,22,30,33,11],[2024144,2,9,11,17,20,30,16],[2024145,1,3,16,22,23,30,3],
+    [2024146,2,4,11,22,27,32,1],[2024147,5,11,13,16,21,30,7],[2024148,2,6,15,16,21,23,10],
+    [2024149,3,9,16,17,18,22,15],[2024150,13,14,20,22,26,32,5]
+  ];
+}
+
+function fetchLatestData() {
+  var btn = document.getElementById('dataToggle');
+  var text = document.getElementById('dataBtnText');
+  var msg = document.getElementById('dataMsg');
+  if (btn.classList.contains('fetching')) return;
+  btn.classList.add('fetching');
+  text.textContent = '正在拉取...'; msg.textContent = '';
+
+  // macOS native: use WebKit message handler
+  if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.fetch) {
+    window.webkit.messageHandlers.fetch.postMessage(null);
+    return;
+  }
+
+  // Web version: use fetch API
+  fetch('/api/fetch')
+    .then(function(resp) { return resp.json(); })
+    .then(function(json) {
+      btn.classList.remove('fetching'); text.textContent = '更新数据';
+      if (json.ok) {
+        DATA = json.data;
+        if (json.longData) LONG_DATA = json.longData;
+        msg.textContent = '已更新 ' + json.count + ' 期 (' + json.source + ')';
+        msg.style.color = '#33aa33';
+        renderPlaceholders();
+        if (document.getElementById('omissionPanel').classList.contains('show')) renderOmission();
+        if (document.getElementById('analysisPanel').classList.contains('show')) renderAdvancedAnalysis();
+      } else {
+        msg.textContent = json.msg; msg.style.color = '#cc3333';
+      }
+    })
+    .catch(function(e) {
+      btn.classList.remove('fetching'); text.textContent = '更新数据';
+      msg.textContent = '连接失败，请确认已启动 python3 app.py';
+      msg.style.color = '#cc3333';
+    });
+  setTimeout(function() { msg.textContent = ''; }, 6000);
+}
+
+function onFetchResult(json) {
+  var btn = document.getElementById('dataToggle');
+  var text = document.getElementById('dataBtnText');
+  var msg = document.getElementById('dataMsg');
+  btn.classList.remove('fetching'); text.textContent = '更新数据';
+  if (json.ok) {
+    DATA = json.data;
+    if (json.longData) LONG_DATA = json.longData;
+    msg.textContent = '已更新 ' + json.count + ' 期 (' + json.source + ')';
+    msg.style.color = '#33aa33';
+    renderPlaceholders();
+    if (document.getElementById('omissionPanel').classList.contains('show')) renderOmission();
+    if (document.getElementById('analysisPanel').classList.contains('show')) renderAdvancedAnalysis();
+    if (document.getElementById('officialHistoryPanel').classList.contains('show2')) {
+      document.getElementById('officialHistoryPanel').classList.remove('show2');
+      document.getElementById('historyWrapper').classList.remove('show2');
+      toggleOfficialHistory();
+    }
+  } else {
+    msg.textContent = json.msg; msg.style.color = '#cc3333';
+  }
+  setTimeout(function() { msg.textContent = ''; }, 6000);
+}
+
+loadDefaultData();
+
+// =====================================================================
+//  PRIME NUMBERS
+// =====================================================================
+var PRIMES = {};
+(function() {
+  var p = [2,3,5,7,11,13,17,19,23,29,31];
+  p.forEach(function(n) { PRIMES[n] = true; });
+})();
+function isPrime(n) { return !!PRIMES[n]; }
+
+// =====================================================================
+//  STATISTICAL ANALYSIS FUNCTIONS
+// =====================================================================
+
+function countFreq(range) {
+  var max = range === 'red' ? 33 : 16;
+  var freq = {};
+  for (var i = 1; i <= max; i++) freq[i] = 0;
+  DATA.forEach(function(row) {
+    var s = range === 'red' ? 1 : 7;
+    var e = range === 'red' ? 6 : 7;
+    for (var j = s; j <= e; j++) freq[row[j]]++;
+  });
+  return freq;
+}
+
+function countFreqWindow(range, startIdx, endIdx) {
+  var max = range === 'red' ? 33 : 16;
+  var freq = {};
+  for (var i = 1; i <= max; i++) freq[i] = 0;
+  for (var d = startIdx; d < endIdx; d++) {
+    var row = DATA[d];
+    var s = range === 'red' ? 1 : 7;
+    var e = range === 'red' ? 6 : 7;
+    for (var j = s; j <= e; j++) freq[row[j]]++;
+  }
+  return freq;
+}
+
+function computeOmission(range) {
+  var max = range === 'red' ? 33 : 16;
+  var omission = {};
+  for (var i = 1; i <= max; i++) omission[i] = DATA.length;
+  for (var d = DATA.length - 1; d >= 0; d--) {
+    var row = DATA[d];
+    var s = range === 'red' ? 1 : 7;
+    var e = range === 'red' ? 6 : 7;
+    for (var j = s; j <= e; j++) {
+      var n = row[j];
+      if (omission[n] === DATA.length) omission[n] = DATA.length - 1 - d;
+    }
+  }
+  return omission;
+}
+
+// ---- 重号分析 (Repeat Analysis) ----
+function computeRepeatScores() {
+  var scores = {};
+  for (var i = 1; i <= 33; i++) scores[i] = 0;
+  if (DATA.length < 2) return scores;
+  var totalRepeats = 0, draws = DATA.length - 1;
+  for (var d = 1; d < DATA.length; d++) {
+    var prev = DATA[d-1].slice(1, 7);
+    var curr = DATA[d].slice(1, 7);
+    curr.forEach(function(n) { if (prev.indexOf(n) >= 0) totalRepeats++; });
+  }
+  var avgRepeat = totalRepeats / draws;
+  var lastReds = DATA[DATA.length-1].slice(1, 7);
+  lastReds.forEach(function(n) { scores[n] = avgRepeat / 6; });
+  return { scores: scores, avgRepeat: avgRepeat };
+}
+
+// ---- 邻号分析 (Neighbor Analysis) ----
+function computeNeighborScores() {
+  var scores = {};
+  for (var i = 1; i <= 33; i++) scores[i] = 0;
+  if (DATA.length < 2) return scores;
+  var totalNeighbors = 0, draws = DATA.length - 1;
+  for (var d = 1; d < DATA.length; d++) {
+    var prev = DATA[d-1].slice(1, 7);
+    var curr = DATA[d].slice(1, 7);
+    prev.forEach(function(n) {
+      if (n > 1 && curr.indexOf(n-1) >= 0) totalNeighbors++;
+      if (n < 33 && curr.indexOf(n+1) >= 0) totalNeighbors++;
+    });
+  }
+  var avgNeighbor = totalNeighbors / draws;
+  var lastReds = DATA[DATA.length-1].slice(1, 7);
+  lastReds.forEach(function(n) {
+    if (n > 1) scores[n-1] = (scores[n-1] || 0) + avgNeighbor / 12;
+    if (n < 33) scores[n+1] = (scores[n+1] || 0) + avgNeighbor / 12;
+  });
+  return { scores: scores, avgNeighbor: avgNeighbor };
+}
+
+// ---- 012路 ----
+function computeRoute012Dist() {
+  var dist = [];
+  DATA.forEach(function(row) {
+    var r0 = 0, r1 = 0, r2 = 0;
+    for (var j = 1; j <= 6; j++) {
+      var mod = row[j] % 3;
+      if (mod === 0) r0++;
+      else if (mod === 1) r1++;
+      else r2++;
+    }
+    dist.push([r0, r1, r2]);
+  });
+  // Most common patterns
+  var patternCounts = {};
+  dist.forEach(function(d) {
+    var key = d.join(':');
+    patternCounts[key] = (patternCounts[key] || 0) + 1;
+  });
+  // Expected: 2:2:2 is most common, then 3:2:1
+  var total = dist.length;
+  var routeScores = {};
+  for (var i = 1; i <= 33; i++) {
+    routeScores[i] = dist.filter(function(d) {
+      return d[i%3] >= 2; // each route should appear at least 2 times
+    }).length / total;
+  }
+  return { distribution: dist, routeScores: routeScores, patternCounts: patternCounts };
+}
+
+// ---- AC值 (Arithmetic Complexity) ----
+function computeACValue(reds) {
+  var diffs = {};
+  for (var i = 0; i < reds.length; i++) {
+    for (var j = i + 1; j < reds.length; j++) {
+      diffs[Math.abs(reds[i] - reds[j])] = true;
+    }
+  }
+  return Object.keys(diffs).length - (reds.length - 1);
+}
+
+function computeHistoricalACRange() {
+  var acValues = [];
+  DATA.forEach(function(row) {
+    acValues.push(computeACValue(row.slice(1, 7)));
+  });
+  var sum = acValues.reduce(function(s, v) { return s + v; }, 0);
+  var min = Math.min.apply(null, acValues);
+  var max = Math.max.apply(null, acValues);
+  return { avg: sum / acValues.length, min: min, max: max, all: acValues };
+}
+
+// ---- 跨度 (Span) ----
+function computeSpan(reds) {
+  var s = reds.slice().sort(function(a, b) { return a - b; });
+  return s[5] - s[0];
+}
+
+function computeHistoricalSpanRange() {
+  var spans = [];
+  DATA.forEach(function(row) {
+    spans.push(computeSpan(row.slice(1, 7)));
+  });
+  var sum = spans.reduce(function(s, v) { return s + v; }, 0);
+  return { avg: sum / spans.length, min: Math.min.apply(null, spans), max: Math.max.apply(null, spans) };
+}
+
+// ---- 质数统计 ----
+function countPrimesInReds(reds) {
+  return reds.filter(function(n) { return isPrime(n); }).length;
+}
+
+function computeHistoricalPrimeRange() {
+  var counts = [];
+  DATA.forEach(function(row) {
+    counts.push(countPrimesInReds(row.slice(1, 7)));
+  });
+  var freq = [0,0,0,0,0,0,0];
+  counts.forEach(function(c) { freq[c]++; });
+  var sum = counts.reduce(function(s, v) { return s + v; }, 0);
+  return { avg: sum / counts.length, freq: freq };
+}
+
+// ---- 龙头凤尾 ----
+function computeDragonPhoenix(reds) {
+  var s = reds.slice().sort(function(a, b) { return a - b; });
+  return { dragon: s[0], phoenix: s[5] };
+}
+
+function computeHistoricalDragonPhoenix() {
+  var dragons = {}, phoenixes = {};
+  for (var i = 1; i <= 33; i++) { dragons[i] = 0; phoenixes[i] = 0; }
+  DATA.forEach(function(row) {
+    var dp = computeDragonPhoenix(row.slice(1, 7));
+    dragons[dp.dragon]++;
+    phoenixes[dp.phoenix]++;
+  });
+  return { dragons: dragons, phoenixes: phoenixes };
+}
+
+// ---- 同尾分析 ----
+function computeSameTailScores() {
+  var tailPairCounts = {};
+  for (var t = 0; t <= 9; t++) tailPairCounts[t] = 0;
+  DATA.forEach(function(row) {
+    var tails = {};
+    for (var j = 1; j <= 6; j++) {
+      var tail = row[j] % 10;
+      tails[tail] = (tails[tail] || 0) + 1;
+    }
+    for (var t in tails) {
+      if (tails[t] >= 2) tailPairCounts[t]++;
+    }
+  });
+  var total = DATA.length || 1;
+  var scores = {};
+  for (var i = 1; i <= 33; i++) {
+    scores[i] = tailPairCounts[i % 10] / total;
+  }
+  return { scores: scores, tailPairCounts: tailPairCounts };
+}
+
+// ---- 相似期匹配 ----
+function periodSimilarity(idx1, idx2) {
+  var r1 = DATA[idx1].slice(1, 7);
+  var r2 = DATA[idx2].slice(1, 7);
+  var set = {};
+  r1.forEach(function(n) { set[n] = true; });
+  return r2.filter(function(n) { return set[n]; }).length;
+}
+
+function findSimilarPeriods(count) {
+  if (DATA.length < 3) return [];
+  var lastIdx = DATA.length - 1;
+  var sims = [];
+  for (var i = 0; i < lastIdx; i++) {
+    sims.push({ idx: i, sim: periodSimilarity(i, lastIdx) });
+  }
+  sims.sort(function(a, b) { return b.sim - a.sim; });
+  return sims.slice(0, count).filter(function(s) { return s.idx + 1 < DATA.length; })
+    .map(function(s) {
+      var next = DATA[s.idx + 1];
+      return { similarPeriod: DATA[s.idx], nextPeriod: next, similarity: s.sim };
+    });
+}
+
+// =====================================================================
+//  ENHANCED WEIGHT SYSTEM (with sliding window)
+// =====================================================================
+
+function buildEnhancedWeights(range, excludeSet) {
+  var max = range === 'red' ? 33 : 16;
+  var total = DATA.length || 1;
+  var shortN = Math.min(30, total);
+  var longN = Math.min(100, total);
+
+  // Short-term frequency (last 30 draws)
+  var shortFreq = countFreqWindow(range, total - shortN, total);
+  // Long-term frequency (last 100 draws)
+  var longFreq = countFreqWindow(range, total - longN, total);
+  // Omission
+  var omission = computeOmission(range);
+
+  var extWeight = {};
+  if (range === 'red') {
+    var rep = computeRepeatScores();
+    var nei = computeNeighborScores();
+    var route = computeRoute012Dist();
+    var tail = computeSameTailScores();
+
+    for (var n = 1; n <= 33; n++) {
+      if (excludeSet && excludeSet.has(n)) { extWeight[n] = 0; continue; }
+      extWeight[n] =
+        (shortFreq[n] / shortN) * 0.20 +
+        (longFreq[n] / longN) * 0.15 +
+        (omission[n] / total) * 0.15 +
+        rep.scores[n] * 0.15 +
+        nei.scores[n] * 0.15 +
+        route.routeScores[n] * 0.10 +
+        tail.scores[n] * 0.10 +
+        0.003;
+    }
+  } else {
+    for (var n = 1; n <= 16; n++) {
+      if (excludeSet && excludeSet.has(n)) { extWeight[n] = 0; continue; }
+      extWeight[n] =
+        (shortFreq[n] / shortN) * 0.30 +
+        (longFreq[n] / longN) * 0.25 +
+        (omission[n] / total) * 0.45 +
+        0.005;
+    }
+  }
+  return extWeight;
+}
+
+function pickOne(weights) {
+  var entries = Object.entries(weights).filter(function(e) { return e[1] > 0; });
+  var total = entries.reduce(function(s, e) { return s + e[1]; }, 0);
+  var r = Math.random() * total;
+  for (var i = 0; i < entries.length; i++) {
+    r -= entries[i][1];
+    if (r <= 0) return parseInt(entries[i][0]);
+  }
+  return parseInt(entries[entries.length - 1][0]);
+}
+
+// =====================================================================
+//  FILTER SYSTEM (Hard + Soft)
+// =====================================================================
+
+// Hard filters — must all pass
+function hardFilter(reds, blue) {
+  var R = reds.slice().sort(function(a, b) { return a - b; });
+
+  // 1. Sum 70-140
+  var sum = R.reduce(function(s, n) { return s + n; }, 0);
+  if (sum < 70 || sum > 140) return { pass: false, reason: '和值' };
+
+  // 2. Odd/even 2:4, 3:3, or 4:2
+  var odds = R.filter(function(n) { return n % 2 === 1; }).length;
+  if (odds < 2 || odds > 4) return { pass: false, reason: '奇偶比' };
+
+  // 3. Big/small 2:4, 3:3, 4:2
+  var bigs = R.filter(function(n) { return n >= 17; }).length;
+  if (bigs < 2 || bigs > 4) return { pass: false, reason: '大小比' };
+
+  // 4. Three-zone coverage
+  var z1 = R.filter(function(n) { return n <= 11; }).length;
+  var z2 = R.filter(function(n) { return n >= 12 && n <= 22; }).length;
+  var z3 = R.filter(function(n) { return n >= 23; }).length;
+  if (z1 === 0 || z2 === 0 || z3 === 0) return { pass: false, reason: '三区分布' };
+
+  // 5. At least one consecutive pair
+  var hasConsec = false;
+  for (var i = 0; i < R.length - 1; i++) {
+    if (R[i + 1] - R[i] === 1) { hasConsec = true; break; }
+  }
+  if (!hasConsec) return { pass: false, reason: '连号' };
+
+  // 6. Span 18-32
+  var span = R[5] - R[0];
+  if (span < 18 || span > 32) return { pass: false, reason: '跨度' };
+
+  // 7. AC值 5-10
+  var ac = computeACValue(R);
+  if (ac < 5 || ac > 10) return { pass: false, reason: 'AC值' };
+
+  // 8. Prime count 1-3
+  var primeCount = R.filter(function(n) { return isPrime(n); }).length;
+  if (primeCount < 1 || primeCount > 3) return { pass: false, reason: '质数比' };
+
+  // 9. Blue not same as last
+  if (DATA.length > 0 && blue === DATA[DATA.length - 1][7]) {
+    return { pass: false, reason: '蓝球重号' };
+  }
+
+  return { pass: true };
+}
+
+// Soft filters — scoring only
+function softFilterScore(reds, blue) {
+  var R = reds.slice().sort(function(a, b) { return a - b; });
+
+  // Dragon (1-9 preferred), Phoenix (28-33 preferred)
+  var dragonOk = R[0] >= 1 && R[0] <= 9 ? 1 : 0;
+  var phoenixOk = R[5] >= 28 && R[5] <= 33 ? 1 : 0;
+
+  // 012 route balance (2:2:2 or 3:2:1 preferred)
+  var routes = [0, 0, 0];
+  R.forEach(function(n) { routes[n % 3]++; });
+  var routeScore = (routes[0] >= 1 && routes[1] >= 1 && routes[2] >= 1) ? 1 : 0;
+
+  // Same tail bonus
+  var tails = {};
+  R.forEach(function(n) { var t = n % 10; tails[t] = (tails[t] || 0) + 1; });
+  var hasTailPair = Object.values(tails).some(function(c) { return c >= 2; }) ? 1 : 0;
+
+  // Sum centrality (prefer 95-115)
+  var sum = R.reduce(function(s, n) { return s + n; }, 0);
+  var sumScore = (sum >= 95 && sum <= 115) ? 1 : 0;
+
+  return dragonOk + phoenixOk + routeScore + hasTailPair + sumScore;
+}
+
+function enhancedFilter(reds, blue) {
+  var hard = hardFilter(reds, blue);
+  if (!hard.pass) return { pass: false, reason: hard.reason, score: 0 };
+  var soft = softFilterScore(reds, blue);
+  return { pass: true, score: soft };
+}
+
+// =====================================================================
+//  ENHANCED NUMBER GENERATION
+// =====================================================================
+
+function generateOneEnhanced(useFilter) {
+  for (var attempt = 0; attempt < 300; attempt++) {
+    var reds = new Set();
+    var excluded = new Set();
+    while (reds.size < 6) {
+      var w = buildEnhancedWeights('red', excluded);
+      var n = pickOne(w);
+      reds.add(n);
+      excluded.add(n);
+    }
+    var blueW = buildEnhancedWeights('blue', new Set());
+    var blue = pickOne(blueW);
+
+    if (!useFilter) {
+      return { reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: blue, score: 5 };
+    }
+
+    var result = enhancedFilter(Array.from(reds), blue);
+    if (result.pass && result.score >= 2) {
+      return { reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: blue, score: result.score };
+    }
+  }
+  // Fallback
+  var reds = new Set(), ex = new Set();
+  while (reds.size < 6) {
+    reds.add(pickOne(buildEnhancedWeights('red', ex)));
+    ex.add(Array.from(reds).pop());
+  }
+  return {
+    reds: Array.from(reds).sort(function(a, b) { return a - b; }),
+    blue: pickOne(buildEnhancedWeights('blue', new Set())),
+    score: 0
+  };
+}
+
+// =====================================================================
+//  MULTI-STRATEGY SYSTEM (9 strategies with dynamic weights)
+// =====================================================================
+
+var strategyWeights = {
+  '频率': 1.0, '遗漏': 1.0, '趋势': 1.0, '均匀': 0.8,
+  '随机': 0.4, '间隔': 0.9, '黄金分割': 0.9, '同尾': 0.9, '相似期': 0.9
+};
+
+var strategyPerformance = {}; // tracked by rolling backtest
+for (var k in strategyWeights) { strategyPerformance[k] = { hits: 0, tries: 0 }; }
+
+// --- Frequency strategy ---
+function runFreqStrategy() {
+  var f = countFreq('red'), bf = countFreq('blue'), reds = new Set();
+  while (reds.size < 6) { var w = {}; for (var n = 1; n <= 33; n++) { if (!reds.has(n)) w[n] = f[n]; } reds.add(pickOne(w)); }
+  var bw = {}; for (var n = 1; n <= 16; n++) bw[n] = bf[n];
+  return { name: '频率', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+// --- Omission strategy ---
+function runOmissionStrategy() {
+  var o = computeOmission('red'), bo = computeOmission('blue'), reds = new Set();
+  while (reds.size < 6) { var w = {}; for (var n = 1; n <= 33; n++) { if (!reds.has(n)) w[n] = o[n]; } reds.add(pickOne(w)); }
+  var bw = {}; for (var n = 1; n <= 16; n++) bw[n] = bo[n];
+  return { name: '遗漏', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+// --- Trend strategy ---
+function runTrendStrategy() {
+  var n = Math.min(30, DATA.length), recent = DATA.slice(-n), older = DATA.slice(-2 * n, -n);
+  var rf = {}, of = {};
+  for (var i = 1; i <= 33; i++) { rf[i] = 0; of[i] = 0; }
+  recent.forEach(function(r) { for (var j = 1; j <= 6; j++) rf[r[j]]++; });
+  older.forEach(function(r) { for (var j = 1; j <= 6; j++) of[r[j]]++; });
+  var w = {}, reds = new Set();
+  for (var i = 1; i <= 33; i++) w[i] = Math.max(1, (rf[i] - of[i]) * 2 + Math.floor(Math.random() * 4) + 1);
+  while (reds.size < 6) { var picks = {}; for (var i = 1; i <= 33; i++) { if (!reds.has(i)) picks[i] = w[i]; } reds.add(pickOne(picks)); }
+  var rb = {}, ob = {}, bw = {};
+  for (var i = 1; i <= 16; i++) { rb[i] = 0; ob[i] = 0; }
+  recent.forEach(function(r) { rb[r[7]]++; });
+  older.forEach(function(r) { ob[r[7]]++; });
+  for (var i = 1; i <= 16; i++) bw[i] = Math.max(1, (rb[i] - ob[i]) * 2 + Math.floor(Math.random() * 3) + 1);
+  return { name: '趋势', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+// --- Uniform strategy ---
+function runUniformStrategy() {
+  var reds = [], segments = [[1, 5], [6, 11], [12, 16], [17, 22], [23, 27], [28, 33]];
+  segments.forEach(function(seg) {
+    var pool = [];
+    for (var i = seg[0]; i <= seg[1]; i++) pool.push(i);
+    reds.push(pool[Math.floor(Math.random() * pool.length)]);
+  });
+  return { name: '均匀', reds: reds.sort(function(a, b) { return a - b; }), blue: Math.floor(Math.random() * 16) + 1 };
+}
+
+// --- Random strategy ---
+function runRandomStrategy() {
+  var pool = [], reds = [];
+  for (var i = 1; i <= 33; i++) pool.push(i);
+  while (reds.length < 6) {
+    var idx = Math.floor(Math.random() * pool.length);
+    reds.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  return { name: '随机', reds: reds.sort(function(a, b) { return a - b; }), blue: Math.floor(Math.random() * 16) + 1 };
+}
+
+// --- Interval strategy (间隔策略) ---
+function runIntervalStrategy() {
+  var intervals = {};
+  for (var n = 1; n <= 33; n++) intervals[n] = [];
+  for (var d = 0; d < DATA.length; d++) {
+    var row = DATA[d];
+    for (var j = 1; j <= 6; j++) { intervals[row[j]].push(d); }
+  }
+  // For each number, compute the average interval and variance
+  var avgIntervals = {};
+  for (var n = 1; n <= 33; n++) {
+    if (intervals[n].length < 2) { avgIntervals[n] = DATA.length; continue; }
+    var sum = 0;
+    for (var k = 1; k < intervals[n].length; k++) { sum += intervals[n][k] - intervals[n][k - 1]; }
+    avgIntervals[n] = sum / (intervals[n].length - 1);
+  }
+  // Numbers whose last interval is close to their average are "due"
+  var lastIdx = DATA.length - 1;
+  var w = {};
+  for (var n = 1; n <= 33; n++) {
+    var lastAppear = intervals[n].length > 0 ? intervals[n][intervals[n].length - 1] : -1;
+    var gap = lastIdx - lastAppear;
+    var avg = avgIntervals[n] || gap + 1;
+    w[n] = Math.max(1, gap / Math.max(avg, 1) * 10);
+  }
+  var reds = new Set();
+  while (reds.size < 6) {
+    var picks = {};
+    for (var n = 1; n <= 33; n++) { if (!reds.has(n)) picks[n] = w[n]; }
+    reds.add(pickOne(picks));
+  }
+
+  var bIntervals = {};
+  for (var n = 1; n <= 16; n++) bIntervals[n] = [];
+  for (var d = 0; d < DATA.length; d++) { bIntervals[DATA[d][7]].push(d); }
+  var bw = {};
+  for (var n = 1; n <= 16; n++) {
+    var lastB = bIntervals[n].length > 0 ? bIntervals[n][bIntervals[n].length - 1] : -1;
+    bw[n] = Math.max(1, (lastIdx - lastB));
+  }
+  return { name: '间隔', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+// --- Golden Ratio strategy (黄金分割策略) ---
+function runGoldenRatioStrategy() {
+  var phi = 0.618;
+  var o = computeOmission('red'), f = countFreq('red');
+  var total = DATA.length;
+  var hotThreshold = total * 0.03;
+  var coldThreshold = total * 0.20;
+
+  var hotNums = [], midNums = [], coldNums = [];
+  for (var n = 1; n <= 33; n++) {
+    if (o[n] <= hotThreshold) hotNums.push(n);
+    else if (o[n] >= coldThreshold) coldNums.push(n);
+    else midNums.push(n);
+  }
+
+  // Pick golden ratio: 62% from warm/cold (value zone), 38% from hot
+  var fromValueZone = Math.round(6 * phi); // ~4
+  var fromHot = 6 - fromValueZone; // ~2
+
+  var reds = new Set();
+  var valuePool = midNums.concat(coldNums);
+
+  while (reds.size < fromHot && hotNums.length > 0) {
+    var idx = Math.floor(Math.random() * hotNums.length);
+    reds.add(hotNums[idx]);
+    hotNums.splice(idx, 1);
+  }
+
+  while (reds.size < 6 && valuePool.length > 0) {
+    var w2 = {};
+    valuePool.forEach(function(n) { if (!reds.has(n)) w2[n] = (o[n] / total) * 100; });
+    if (Object.keys(w2).length === 0) break;
+    reds.add(pickOne(w2));
+  }
+
+  // Fill remaining randomly if needed
+  while (reds.size < 6) {
+    var n = Math.floor(Math.random() * 33) + 1;
+    if (!reds.has(n)) reds.add(n);
+  }
+
+  var bo = computeOmission('blue');
+  var bw = {};
+  for (var n = 1; n <= 16; n++) {
+    if (bo[n] >= coldThreshold) bw[n] = bo[n] * 3;
+    else bw[n] = bo[n];
+  }
+  return { name: '黄金分割', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+// --- Same Tail strategy (同尾策略) ---
+function runSameTailStrategy() {
+  var tail = computeSameTailScores();
+  var f = countFreq('red'), o = computeOmission('red');
+  var total = DATA.length;
+
+  // Pick 2 tail groups that historically appear as pairs, then fill remaining
+  var tailScores = tail.tailPairCounts;
+  var tailEntries = [];
+  for (var t = 0; t <= 9; t++) { tailEntries.push([t, tailScores[t]]); }
+  tailEntries.sort(function(a, b) { return b[1] - a[1]; });
+
+  // Weight numbers with strong tail pair history
+  var w = {};
+  for (var n = 1; n <= 33; n++) {
+    w[n] = (f[n] / total) * 0.3 + (o[n] / total) * 0.3 + tail.scores[n] * 0.4 + 0.01;
+  }
+
+  var reds = new Set();
+  while (reds.size < 6) {
+    var picks = {};
+    for (var n = 1; n <= 33; n++) { if (!reds.has(n)) picks[n] = w[n]; }
+    reds.add(pickOne(picks));
+  }
+
+  var bw = {};
+  for (var n = 1; n <= 16; n++) { bw[n] = (f[n] || 0) / total + 0.01; }
+  return { name: '同尾', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+// --- Similar Period strategy (相似期策略) ---
+function runSimilarPeriodStrategy() {
+  var similar = findSimilarPeriods(10);
+  if (similar.length === 0) return runFreqStrategy();
+
+  // Weight numbers that appeared in the "next" period after similar patterns
+  var w = {}, bw = {};
+  for (var n = 1; n <= 33; n++) w[n] = 1;
+  for (var n = 1; n <= 16; n++) bw[n] = 1;
+
+  similar.forEach(function(s) {
+    var nextReds = s.nextPeriod.slice(1, 7);
+    nextReds.forEach(function(n) { w[n] += s.similarity * 2; });
+    bw[s.nextPeriod[7]] += s.similarity * 2;
+  });
+
+  var reds = new Set();
+  while (reds.size < 6) {
+    var picks = {};
+    for (var n = 1; n <= 33; n++) { if (!reds.has(n)) picks[n] = w[n]; }
+    reds.add(pickOne(picks));
+  }
+  return { name: '相似期', reds: Array.from(reds).sort(function(a, b) { return a - b; }), blue: pickOne(bw) };
+}
+
+function runAllStrategies() {
+  return [
+    runFreqStrategy(), runOmissionStrategy(), runTrendStrategy(),
+    runUniformStrategy(), runRandomStrategy(), runIntervalStrategy(),
+    runGoldenRatioStrategy(), runSameTailStrategy(), runSimilarPeriodStrategy()
+  ];
+}
+
+function computeConsensus(strategies) {
+  var rCount = {}, bCount = {};
+  for (var i = 1; i <= 33; i++) rCount[i] = 0;
+  for (var i = 1; i <= 16; i++) bCount[i] = 0;
+
+  strategies.forEach(function(s) {
+    var sw = strategyWeights[s.name] || 1.0;
+    s.reds.forEach(function(n) { rCount[n] += sw; });
+    bCount[s.blue] += sw;
+  });
+
+  var rEntries = [];
+  for (var i = 1; i <= 33; i++) rEntries.push([i, rCount[i]]);
+  rEntries.sort(function(a, b) { return b[1] - a[1] || a[0] - b[0]; });
+  var consReds = rEntries.slice(0, 6).map(function(e) { return e[0]; }).sort(function(a, b) { return a - b; });
+
+  var bEntries = [];
+  for (var i = 1; i <= 16; i++) bEntries.push([i, bCount[i]]);
+  bEntries.sort(function(a, b) { return b[1] - a[1]; });
+  var consBlue = bEntries[0][0];
+
+  var totalWeight = strategies.reduce(function(s, st) { return s + (strategyWeights[st.name] || 1.0); }, 0);
+  return { reds: consReds, blue: consBlue, confidences: rCount, blueConf: bCount[consBlue], totalWeight: totalWeight };
+}
+
+// =====================================================================
+//  ROLLING BACKTEST
+// =====================================================================
+
+function runRollingBacktest() {
+  var windowSize = parseInt(document.getElementById('btWindow').value) || 30;
+  var status = document.getElementById('btStatus');
+  var resultsDiv = document.getElementById('backtestResults');
+  status.textContent = '回测中...';
+  status.style.color = '#c88000';
+
+  setTimeout(function() {
+    var strategies = [
+      { name: '频率', fn: runFreqStrategy },
+      { name: '遗漏', fn: runOmissionStrategy },
+      { name: '趋势', fn: runTrendStrategy },
+      { name: '间隔', fn: runIntervalStrategy },
+      { name: '黄金分割', fn: runGoldenRatioStrategy },
+      { name: '同尾', fn: runSameTailStrategy },
+      { name: '相似期', fn: runSimilarPeriodStrategy },
+    ];
+
+    var origData = DATA.slice();
+    var results = {};
+    strategies.forEach(function(s) { results[s.name] = { redHits: [], blueHits: 0, totalTests: 0 }; });
+
+    // For each historical window, simulate what we would have predicted
+    var testStart = Math.max(windowSize, 30);
+    var testCount = Math.min(50, DATA.length - testStart - 1);
+
+    for (var t = 0; t < testCount; t++) {
+      var cutoff = DATA.length - windowSize - t - 1;
+      if (cutoff < 10) break;
+
+      DATA = origData.slice(0, cutoff);
+      var actual = origData[cutoff]; // The "next" draw we're predicting
+      if (!actual) continue;
+
+      strategies.forEach(function(strat) {
+        try {
+          var pred = strat.fn();
+          var actualReds = actual.slice(1, 7);
+          var hits = pred.reds.filter(function(n) { return actualReds.indexOf(n) >= 0; }).length;
+          results[strat.name].redHits.push(hits);
+          if (pred.blue === actual[7]) results[strat.name].blueHits++;
+          results[strat.name].totalTests++;
+        } catch (e) { /* skip */ }
+      });
+    }
+
+    DATA = origData; // Restore
+
+    // Render results
+    var html = '<table class="bt-table"><thead><tr><th>策略</th><th>测试期数</th><th>场均红球命中</th><th>蓝球命中率</th><th>最高命中</th><th>推荐权重</th></tr></thead><tbody>';
+
+    var allAvgs = [];
+    strategies.forEach(function(s) {
+      var r = results[s.name];
+      if (r.totalTests === 0) return;
+      var avgRed = (r.redHits.reduce(function(a, b) { return a + b; }, 0) / r.totalTests).toFixed(2);
+      var blueRate = (r.blueHits / r.totalTests * 100).toFixed(1);
+      var maxHit = Math.max.apply(null, r.redHits);
+      allAvgs.push({ name: s.name, avg: parseFloat(avgRed) });
+      html += '<tr><td>' + s.name + '</td><td>' + r.totalTests + '</td><td class="highlight">' + avgRed + '</td><td>' + blueRate + '%</td><td>' + maxHit + '</td><td>—</td></tr>';
+    });
+
+    // Calculate recommended weights based on performance
+    if (allAvgs.length > 0) {
+      var maxAvg = Math.max.apply(null, allAvgs.map(function(a) { return a.avg; }));
+      var baseline = 1.5; // random expectation is ~1.1
+
+      // Update strategy weights
+      allAvgs.forEach(function(a) {
+        var perf = a.avg / baseline;
+        strategyWeights[a.name] = Math.max(0.3, Math.min(2.0, Math.round(perf * 10) / 10));
+      });
+
+      // Re-render with weights
+      html = '<table class="bt-table"><thead><tr><th>策略</th><th>测试期数</th><th>场均红球命中</th><th>蓝球命中率</th><th>最高命中</th><th>推荐权重</th></tr></thead><tbody>';
+      strategies.forEach(function(s) {
+        var r = results[s.name];
+        if (r.totalTests === 0) return;
+        var avgRed = (r.redHits.reduce(function(a, b) { return a + b; }, 0) / r.totalTests).toFixed(2);
+        var blueRate = (r.blueHits / r.totalTests * 100).toFixed(1);
+        var maxHit = Math.max.apply(null, r.redHits);
+        var sw = strategyWeights[s.name];
+        html += '<tr><td>' + s.name + '</td><td>' + r.totalTests + '</td><td class="highlight">' + avgRed + '</td><td>' + blueRate + '%</td><td>' + maxHit + '</td><td><span class="badge ' + (sw >= 1.2 ? 'badge-green' : sw >= 0.8 ? 'badge-gold' : 'badge-red') + '">' + sw.toFixed(1) + '</span></td></tr>';
+      });
+    }
+
+    html += '</tbody></table>';
+    html += '<div style="font-size:10px;color:#999;margin-top:6px;">基于近' + windowSize + '期滑动窗口，回测' + testCount + '个历史节点。权重已自动更新。</div>';
+    resultsDiv.innerHTML = html;
+    status.textContent = '完成';
+    status.style.color = '#33aa33';
+  }, 100);
+}
+
+// =====================================================================
+//  ADVANCED ANALYSIS UI
+// =====================================================================
+
+function renderIndicators() {
+  var total = DATA.length;
+  if (total === 0) return '';
+
+  var acRange = computeHistoricalACRange();
+  var spanRange = computeHistoricalSpanRange();
+  var primeRange = computeHistoricalPrimeRange();
+  var rep = computeRepeatScores();
+  var nei = computeNeighborScores();
+  var dp = computeHistoricalDragonPhoenix();
+
+  // Most common dragon/phoenix
+  var dragonTop = [];
+  for (var i = 1; i <= 33; i++) dragonTop.push([i, dp.dragons[i]]);
+  dragonTop.sort(function(a, b) { return b[1] - a[1]; });
+  var phoenixTop = [];
+  for (var i = 1; i <= 33; i++) phoenixTop.push([i, dp.phoenixes[i]]);
+  phoenixTop.sort(function(a, b) { return b[1] - a[1]; });
+
+  var html = '<div class="analysis-card"><h4>红球统计特征</h4>';
+  html += '<div class="stat"><span>AC值范围</span><span class="val">' + acRange.min + ' – ' + acRange.max + ' (均值' + acRange.avg.toFixed(1) + ')</span></div>';
+  html += '<div class="stat"><span>跨度范围</span><span class="val">' + spanRange.min + ' – ' + spanRange.max + ' (均值' + spanRange.avg.toFixed(1) + ')</span></div>';
+  html += '<div class="stat"><span>质数/期</span><span class="val">均值 ' + primeRange.avg.toFixed(1) + ' (分布: 0:' + primeRange.freq[0] + ' 1:' + primeRange.freq[1] + ' 2:' + primeRange.freq[2] + ' 3:' + primeRange.freq[3] + ')</span></div>';
+  html += '<div class="stat"><span>龙头热门</span><span class="val">' + dragonTop.slice(0, 3).map(function(e) { return e[0]; }).join(', ') + '</span></div>';
+  html += '<div class="stat"><span>凤尾热门</span><span class="val">' + phoenixTop.slice(-3).map(function(e) { return e[0]; }).join(', ') + '</span></div>';
+  html += '</div>';
+
+  html += '<div class="analysis-card"><h4>关联性分析</h4>';
+  html += '<div class="stat"><span>均重号数/期</span><span class="val">' + rep.avgRepeat.toFixed(2) + ' 个</span></div>';
+  html += '<div class="stat"><span>均邻号数/期</span><span class="val">' + nei.avgNeighbor.toFixed(2) + ' 个</span></div>';
+
+  var tail = computeSameTailScores();
+  var topTails = [];
+  for (var t = 0; t <= 9; t++) topTails.push([t, tail.tailPairCounts[t]]);
+  topTails.sort(function(a, b) { return b[1] - a[1]; });
+  html += '<div class="stat"><span>常见同尾</span><span class="val">尾号 ' + topTails.slice(0, 3).map(function(e) { return e[0]; }).join(', ') + '</span></div>';
+  html += '</div>';
+
+  // 012 route distribution
+  var route = computeRoute012Dist();
+  html += '<div class="analysis-card"><h4>012路分布</h4>';
+  var topPatterns = [];
+  for (var k in route.patternCounts) topPatterns.push([k, route.patternCounts[k]]);
+  topPatterns.sort(function(a, b) { return b[1] - a[1]; });
+  topPatterns.slice(0, 4).forEach(function(p) {
+    html += '<div class="stat"><span>' + p[0] + ' (0路:1路:2路)</span><span class="val">' + p[1] + '期 (' + (p[1] / total * 100).toFixed(0) + '%)</span></div>';
+  });
+  html += '</div>';
+
+  // Recent trends
+  html += '<div class="analysis-card"><h4>近期走势</h4>';
+  var recentN = Math.min(10, total);
+  var recentSpan = [];
+  var recentSum = [];
+  var recentOdd = [];
+  for (var d = total - recentN; d < total; d++) {
+    var reds = DATA[d].slice(1, 7).sort(function(a, b) { return a - b; });
+    recentSpan.push(reds[5] - reds[0]);
+    recentSum.push(reds.reduce(function(s, n) { return s + n; }, 0));
+    recentOdd.push(reds.filter(function(n) { return n % 2 === 1; }).length);
+  }
+  html += '<div class="stat"><span>近' + recentN + '期跨度</span><span class="val">' + recentSpan.join(', ') + '</span></div>';
+  html += '<div class="stat"><span>近' + recentN + '期和值</span><span class="val">' + recentSum.join(', ') + '</span></div>';
+  html += '<div class="stat"><span>近' + recentN + '期奇偶(奇数个)</span><span class="val">' + recentOdd.join(', ') + '</span></div>';
+  html += '</div>';
+
+  return html;
+}
+
+function renderWeightsAnalysis() {
+  var total = DATA.length;
+  if (total === 0) return '';
+
+  var f = countFreq('red');
+  var o = computeOmission('red');
+  var rep = computeRepeatScores();
+  var nei = computeNeighborScores();
+  var tail = computeSameTailScores();
+  var route = computeRoute012Dist();
+
+  // Show top/bottom weighted numbers
+  var allW = {};
+  for (var n = 1; n <= 33; n++) {
+    allW[n] = (f[n] / total) * 0.20 + (o[n] / total) * 0.15 + rep.scores[n] * 0.15 + nei.scores[n] * 0.15 + route.routeScores[n] * 0.10 + tail.scores[n] * 0.10;
+  }
+  var sorted = [];
+  for (var n = 1; n <= 33; n++) sorted.push([n, allW[n]]);
+  sorted.sort(function(a, b) { return b[1] - a[1]; });
+
+  var html = '<div class="analysis-card"><h4>红球综合权重排名 Top 10</h4>';
+  sorted.slice(0, 10).forEach(function(e, i) {
+    html += '<div class="stat"><span>#' + (i + 1) + ' 号码 ' + e[0] + '</span><span class="val">' + (e[1] * 100).toFixed(1) + '</span></div>';
+    html += '<div class="bar"><div class="bar-fill" style="width:' + (e[1] / sorted[0][1] * 100).toFixed(0) + '%"></div></div>';
+  });
+  html += '</div>';
+
+  // Blue ball weights
+  var bf = countFreq('blue');
+  var bo = computeOmission('blue');
+  var sortedB = [];
+  for (var n = 1; n <= 16; n++) sortedB.push([n, (bf[n] / total) * 0.30 + (bo[n] / total) * 0.45 + 0.005]);
+  sortedB.sort(function(a, b) { return b[1] - a[1]; });
+
+  html += '<div class="analysis-card"><h4>蓝球综合权重排名</h4>';
+  sortedB.forEach(function(e, i) {
+    html += '<div class="stat"><span>#' + (i + 1) + ' 蓝球 ' + String(e[0]).padStart(2, '0') + '</span><span class="val">' + (e[1] * 100).toFixed(1) + '</span></div>';
+    html += '<div class="bar"><div class="bar-fill" style="width:' + (e[1] / sortedB[0][1] * 100).toFixed(0) + '%"></div></div>';
+  });
+  html += '</div>';
+
+  return html;
+}
+
+function renderSimilarAnalysis() {
+  var similar = findSimilarPeriods(8);
+  if (similar.length === 0) return '<div style="padding:12px;color:#999;">数据不足，需要更多历史数据</div>';
+
+  var html = '<div style="font-size:11px;color:#666;margin-bottom:8px;">与最近一期最相似的历史期数及其下一期号码：</div>';
+  html += '<table class="bt-table"><thead><tr><th>相似度</th><th>相似期号码</th><th>下一期号码</th></tr></thead><tbody>';
+
+  similar.forEach(function(s) {
+    var simReds = s.similarPeriod.slice(1, 7).map(function(n) { return String(n).padStart(2, '0'); }).join(' ');
+    var simBlue = String(s.similarPeriod[7]).padStart(2, '0');
+    var nextReds = s.nextPeriod.slice(1, 7).map(function(n) { return String(n).padStart(2, '0'); }).join(' ');
+    var nextBlue = String(s.nextPeriod[7]).padStart(2, '0');
+
+    html += '<tr>';
+    html += '<td>' + s.similarity + '/6</td>';
+    html += '<td style="font-family:monospace;font-size:10px;"><span style="color:#cc4444;">' + simReds + '</span> <span style="color:#3366cc;">' + simBlue + '</span></td>';
+    html += '<td style="font-family:monospace;font-size:10px;"><span style="color:#cc4444;">' + nextReds + '</span> <span style="color:#3366cc;">' + nextBlue + '</span></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  html += '<div style="font-size:10px;color:#999;margin-top:6px;">相似期匹配可用于推测号码走势。匹配度越高，参考价值越大。</div>';
+  return html;
+}
+
+function renderAdvancedAnalysis() {
+  document.getElementById('indicatorsGrid').innerHTML = renderIndicators();
+  document.getElementById('weightsGrid').innerHTML = renderWeightsAnalysis();
+  document.getElementById('similarContent').innerHTML = renderSimilarAnalysis();
+}
+
+function switchAnalysisTab(tab, el) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'similar') document.getElementById('similarContent').innerHTML = renderSimilarAnalysis();
+}
+
+// =====================================================================
+//  FILTER DESCRIPTION (Enhanced)
+// =====================================================================
+
+function describeFilterEnhanced(reds, blue) {
+  var R = reds.slice().sort(function(a, b) { return a - b; });
+  var sum = R.reduce(function(s, n) { return s + n; }, 0);
+  var odds = R.filter(function(n) { return n % 2 === 1; }).length;
+  var bigs = R.filter(function(n) { return n >= 17; }).length;
+  var z1 = R.filter(function(n) { return n <= 11; }).length;
+  var z2 = R.filter(function(n) { return n >= 12 && n <= 22; }).length;
+  var z3 = R.filter(function(n) { return n >= 23; }).length;
+  var span = R[5] - R[0];
+  var ac = computeACValue(R);
+  var primes = R.filter(function(n) { return isPrime(n); }).length;
+
+  var hasConsec = false, consecPair = '';
+  for (var i = 0; i < R.length - 1; i++) {
+    if (R[i + 1] - R[i] === 1) { hasConsec = true; consecPair = R[i] + '-' + R[i + 1]; break; }
+  }
+
+  var parts = [
+    '和值 ' + sum,
+    '奇偶 ' + odds + ':' + (6 - odds),
+    '大小 ' + bigs + ':' + (6 - bigs),
+    '三区 ' + z1 + '-' + z2 + '-' + z3,
+    '跨度 ' + span,
+    'AC ' + ac,
+    '质数 ' + primes,
+    '连号 ' + (consecPair || '无'),
+  ];
+  return parts.join(' &nbsp;|&nbsp; ');
+}
+
+// =====================================================================
+//  BACKTEST RESULT (single draw backtest against history)
+// =====================================================================
+
+function runBacktest(reds, blue) {
+  var total = Math.min(100, DATA.length);
+  var hits = [], maxHit = 0, minHit = 6, sumHit = 0, dist = [0, 0, 0, 0, 0, 0, 0];
+
+  DATA.slice(-total).forEach(function(r) {
+    var realReds = r.slice(1, 7), match = 0;
+    reds.forEach(function(n) { if (realReds.indexOf(n) >= 0) match++; });
+    hits.push(match); sumHit += match;
+    if (match > maxHit) maxHit = match;
+    if (match < minHit) minHit = match;
+    dist[match]++;
+  });
+
+  var blueHits = DATA.slice(-total).filter(function(r) { return r[7] === blue; }).length;
+  return {
+    avg: (sumHit / hits.length).toFixed(2),
+    max: maxHit, min: minHit, dist: dist, total: total, blueHits: blueHits
+  };
+}
+
+// =====================================================================
+//  OMISSION UI
+// =====================================================================
+
+function omissionClass(gap, total) {
+  var r = gap / (total || 1);
+  if (r < 0.03) return 'hot';
+  if (r < 0.10) return 'warm';
+  if (r < 0.20) return 'cool';
+  return 'cold';
+}
+
+function renderOmission() {
+  var ro = computeOmission('red'), bo = computeOmission('blue'), t = DATA.length;
+  var rr = document.getElementById('redOmission');
+  var br = document.getElementById('blueOmission');
+  rr.innerHTML = '<span class="label">红球 1-33（遗漏期数）</span>';
+  for (var n = 1; n <= 33; n++) {
+    rr.innerHTML += '<div class="omission-cell ' + omissionClass(ro[n], t) + '"><span class="num">' + String(n).padStart(2, '0') + '</span><span class="gap">' + ro[n] + '</span></div>';
+  }
+  br.innerHTML = '<span class="label">蓝球 1-16（遗漏期数）</span>';
+  for (var n = 1; n <= 16; n++) {
+    br.innerHTML += '<div class="omission-cell ' + omissionClass(bo[n], t) + '"><span class="num">' + String(n).padStart(2, '0') + '</span><span class="gap">' + bo[n] + '</span></div>';
+  }
+}
+
+// =====================================================================
+//  PANEL TOGGLE
+// =====================================================================
+
+function togglePanel(name) {
+  var panel = document.getElementById(name + 'Panel');
+  var btn = document.getElementById(name + 'Toggle');
+  if (panel.classList.contains('show')) {
+    panel.classList.remove('show');
+    btn.classList.remove('active');
+  } else {
+    if (name === 'omission') renderOmission();
+    if (name === 'analysis') renderAdvancedAnalysis();
+    panel.classList.add('show');
+    btn.classList.add('active');
+    if (name === 'help') panel.scrollTop = 0;
+  }
+}
+
+// =====================================================================
+//  MAIN DRAW
+// =====================================================================
+
+var drawCount = 5;
+var useFilter = true;
+var useStrategy = false;
+var lastDrawResults = null;
+var stage = document.getElementById('stage');
+var drawBtn = document.getElementById('drawBtn');
+var saveBtn = document.getElementById('saveBtn');
+
+function updateDrawCount() { drawCount = parseInt(document.getElementById('drawCount').value); renderPlaceholders(); }
+function updateFilter() { useFilter = document.getElementById('filterToggle').checked; }
+function updateStrategy() { useStrategy = document.getElementById('strategyToggle').checked; }
+
+function createBall(num, type, cls) {
+  var el = document.createElement('div');
+  el.className = 'ball ' + type + ' ' + (cls || '');
+  el.textContent = String(num).padStart(2, '0');
+  return el;
+}
+
+function createPlaceholder() {
+  var el = document.createElement('div');
+  el.className = 'ball placeholder'; el.textContent = '?';
+  return el;
+}
+
+function renderPlaceholders() {
+  stage.innerHTML = '';
+  for (var d = 0; d < drawCount; d++) {
+    var row = document.createElement('div');
+    row.className = 'draw-row'; row.id = 'row-' + d;
+    var label = document.createElement('span');
+    label.className = 'draw-label'; label.textContent = '#' + (d + 1);
+    row.appendChild(label);
+    for (var i = 0; i < 6; i++) row.appendChild(createPlaceholder());
+    row.appendChild(createPlaceholder());
+    stage.appendChild(row);
+  }
+}
+
+function startDraw() {
+  drawBtn.disabled = true;
+  saveBtn.disabled = true;
+  lastDrawResults = null;
+  renderPlaceholders();
+
+  if (useStrategy) {
+    drawWithStrategy();
+    return;
+  }
+
+  var results = [];
+  for (var d = 0; d < drawCount; d++) {
+    results.push(generateOneEnhanced(useFilter));
+  }
+
+  animateResults(results);
+}
+
+function drawWithStrategy() {
+  var strats = runAllStrategies();
+  var cons = computeConsensus(strats);
+  var bt = runBacktest(cons.reds, cons.blue);
+
+  // Store consensus as the single result
+  lastDrawResults = [{ reds: cons.reds, blue: cons.blue, score: 5 }];
+
+  stage.innerHTML = '';
+
+  // Consensus row
+  var crow = document.createElement('div');
+  crow.className = 'draw-row consensus-row';
+  var clabel = document.createElement('span');
+  clabel.style.cssText = 'font-size:11px;color:#c88000;font-weight:bold;margin-right:6px;';
+  clabel.textContent = '共识推荐';
+  crow.appendChild(clabel);
+
+  cons.reds.forEach(function(n) {
+    var b = document.createElement('div');
+    b.className = 'ball red landed';
+    var cf = cons.confidences[n] / cons.totalWeight * 9; // normalize
+    if (cf >= 0.45) b.classList.add('conf-high');
+    else if (cf >= 0.3) b.classList.add('conf-mid');
+    else b.classList.add('conf-low');
+    b.textContent = String(n).padStart(2, '0');
+    var badge = document.createElement('span');
+    badge.style.cssText = 'font-size:8px;color:#c88000;margin-top:2px;';
+    badge.textContent = (cf * 9).toFixed(1);
+    var wrap = document.createElement('span');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+    wrap.appendChild(b); wrap.appendChild(badge); crow.appendChild(wrap);
+  });
+
+  var bb = document.createElement('div');
+  bb.className = 'ball blue landed';
+  var bcf = cons.blueConf / cons.totalWeight * 9;
+  if (bcf >= 0.45) bb.classList.add('conf-high');
+  else if (bcf >= 0.3) bb.classList.add('conf-mid');
+  else bb.classList.add('conf-low');
+  bb.textContent = String(cons.blue).padStart(2, '0');
+  crow.appendChild(bb);
+  stage.appendChild(crow);
+
+  // Strategy rows
+  strats.forEach(function(s) {
+    var row = document.createElement('div');
+    row.className = 'strat-row';
+    var nm = document.createElement('span');
+    nm.className = 'sname';
+    nm.textContent = s.name;
+    row.appendChild(nm);
+    s.reds.forEach(function(n) {
+      var b = document.createElement('div');
+      b.className = 'sball red';
+      b.textContent = String(n).padStart(2, '0');
+      row.appendChild(b);
+    });
+    var b = document.createElement('div');
+    b.className = 'sball blue';
+    b.textContent = String(s.blue).padStart(2, '0');
+    row.appendChild(b);
+    var sw = document.createElement('span');
+    sw.className = 'strat-weight';
+    sw.textContent = 'w:' + (strategyWeights[s.name] || 1.0).toFixed(1);
+    row.appendChild(sw);
+    stage.appendChild(row);
+  });
+
+  // Backtest row
+  var btrow = document.createElement('div');
+  btrow.className = 'backtest-row';
+  btrow.innerHTML = '<b>历史回测（近' + bt.total + '期）</b><br>场均命中红球: <b style="color:#c41e3a">' + bt.avg + '</b> 个 &nbsp; 最高: <b style="color:#c41e3a">' + bt.max + '</b> 个 &nbsp; 命中蓝球: <b style="color:#3366cc">' + bt.blueHits + '</b> 次<br>分布: ' + bt.dist.map(function(v, i) { return i + '红:' + v + '期'; }).join(' ');
+  stage.appendChild(btrow);
+
+  drawBtn.disabled = false;
+  saveBtn.disabled = false;
+  setTimeout(function() { playTick(0); playTick(1); playTick(2); playTick(3); playTick(4); playTick(5); playTick(6); }, 100);
+}
+
+function animateResults(results) {
+  lastDrawResults = results;
+  var allBalls = [];
+  for (var d = 0; d < drawCount; d++) {
+    var row = document.getElementById('row-' + d);
+    var balls = row.querySelectorAll('.ball');
+    allBalls.push(balls);
+  }
+
+  allBalls.forEach(function(row) { row.forEach(function(b) { b.classList.add('rolling'); }); });
+
+  setTimeout(function() {
+    allBalls.forEach(function(row) { row.forEach(function(b) { b.classList.remove('rolling'); }); });
+
+    function reveal(d, i) {
+      if (d >= drawCount) {
+        drawBtn.disabled = false;
+        saveBtn.disabled = false;
+        var old = document.getElementById('filterInfo');
+        if (old) old.remove();
+        if (useFilter) {
+          var info = document.createElement('div');
+          info.className = 'filter-info';
+          info.id = 'filterInfo';
+          info.innerHTML = results.map(function(r, idx) {
+            return '<span>#' + (idx + 1) + ' (' + r.score + '/5分): ' + describeFilterEnhanced(r.reds, r.blue) + '</span>';
+          }).join('<br>');
+          stage.appendChild(info);
+        }
+        return;
+      }
+      if (i >= 7) { setTimeout(function() { reveal(d + 1, 0); }, 150); return; }
+
+      var r = results[d];
+      var num = i < 6 ? r.reds[i] : r.blue;
+      var type = i < 6 ? 'red' : 'blue';
+      var el = createBall(num, type, 'landed');
+      allBalls[d][i].replaceWith(el);
+      allBalls[d][i] = el;
+      playTick(i);
+
+      setTimeout(function() { reveal(d, i + 1); }, 200);
+    }
+    reveal(0, 0);
+  }, 1000);
+}
+
+// =====================================================================
+//  HISTORY PANEL
+// =====================================================================
+
+function updateHistoryWrapper() {
+  var wrapper = document.getElementById('historyWrapper');
+  var off = document.getElementById('officialHistoryPanel').classList.contains('show2');
+  var usr = document.getElementById('userHistoryPanel').classList.contains('show2');
+  if (off || usr) {
+    wrapper.classList.add('show2');
+  } else {
+    wrapper.classList.remove('show2');
+  }
+}
+
+function toggleOfficialHistory() {
+  var p = document.getElementById('officialHistoryPanel');
+  var b = document.getElementById('officialHistoryToggle');
+  if (p.classList.contains('show2')) {
+    p.classList.remove('show2');
+    b.classList.remove('active');
+    b.textContent = '官方历史开奖号码';
+    updateHistoryWrapper();
+    return;
+  }
+  var rows = '';
+  DATA.slice().reverse().forEach(function(r) {
+    var pid = r[0];
+    var reds = r.slice(1, 7).map(function(n) { return String(n).padStart(2, '0'); }).join(' ');
+    var blue = String(r[7]).padStart(2, '0');
+    rows += '<div class="row"><span class="pid">' + pid + '</span><span class="reds">' + reds + '</span><span class="blue">' + blue + '</span></div>';
+  });
+  if (DATA.length === 0) {
+    rows = '<div style="color:#999;text-align:center;padding:12px;">暂无数据，请点击「更新数据」</div>';
+  }
+  p.innerHTML = '<div style="font-weight:bold;color:#c41e3a;margin-bottom:6px;font-family:-apple-system,sans-serif;">官方开奖数据 近 ' + DATA.length + ' 期</div>' + rows;
+  p.classList.add('show2');
+  b.classList.add('active');
+  b.textContent = '隐藏官方历史';
+  p.scrollTop = 0;
+  updateHistoryWrapper();
+}
+
+function toggleUserHistory() {
+  var p = document.getElementById('userHistoryPanel');
+  var b = document.getElementById('userHistoryToggle');
+  if (p.classList.contains('show2')) {
+    p.classList.remove('show2');
+    b.classList.remove('active');
+    b.textContent = '历史开奖号码';
+    updateHistoryWrapper();
+    return;
+  }
+
+  p.innerHTML = '<div style="color:#999;text-align:center;padding:12px;">加载中...</div>';
+  p.classList.add('show2');
+  b.classList.add('active');
+  updateHistoryWrapper();
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/user-picks', true);
+  xhr.onload = function() {
+    if (xhr.status !== 200) { return; }
+    try {
+      var result = JSON.parse(xhr.responseText);
+      var picks = (result && result.picks) ? result.picks : [];
+      var rows = '';
+      if (picks.length === 0) {
+        rows = '<div style="color:#999;text-align:center;padding:12px;">暂无保存的号码，点击「确定保存」后出现</div>';
+      } else {
+        picks.forEach(function(r) {
+          var pid = r.period;
+          var reds = [r.r1, r.r2, r.r3, r.r4, r.r5, r.r6].map(function(n) { return String(n).padStart(2, '0'); }).join(' ');
+          var blue = String(r.blue).padStart(2, '0');
+          var strat = r.strategy ? ' <span style="font-size:9px;color:#999;">(' + r.strategy + ')</span>' : '';
+          rows += '<div class="row"><span class="pid">' + pid + '</span><span class="reds">' + reds + '</span><span class="blue">' + blue + '</span>' + strat + '</div>';
+        });
+      }
+      p.innerHTML = '<div style="font-weight:bold;color:#3366cc;margin-bottom:6px;font-family:-apple-system,sans-serif;">用户保存号码 共 ' + picks.length + ' 注</div>' + rows;
+    } catch(e) {}
+  };
+  xhr.send();
+}
+
+// =====================================================================
+//  SAVE CURRENT DRAW
+// =====================================================================
+
+function saveCurrentDraw() {
+  if (!lastDrawResults) return;
+
+  // Period = 最新官方期号 + 1，同一批生成不累加
+  var maxPeriod = 0;
+  DATA.forEach(function(r) { if (r[0] > maxPeriod) maxPeriod = r[0]; });
+  var period = maxPeriod + 1;
+
+  var year = Math.floor(period / 1000);
+  var seq = period % 1000;
+  if (seq > 153) { year += 1; seq = 1; period = year * 1000 + seq; }
+
+  var picks = [];
+  lastDrawResults.forEach(function(r) {
+    picks.push({
+      period: period,
+      reds: r.reds,
+      blue: r.blue,
+      strategy: useStrategy ? 'consensus' : 'enhanced',
+      score: r.score || 0
+    });
+  });
+
+  // Save to server
+  if (!(window.webkit && window.webkit.messageHandlers)) {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/save', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({ picks: picks }));
+    } catch (e) {}
+  }
+
+  // macOS native
+  if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.save) {
+    window.webkit.messageHandlers.save.postMessage(JSON.stringify({ picks: picks }));
+  }
+
+  var msg = document.getElementById('dataMsg');
+  msg.textContent = '已保存 ' + picks.length + ' 注 (期号 ' + period + ')';
+  msg.style.color = '#33aa33';
+  saveBtn.disabled = true;
+
+  if (document.getElementById('officialHistoryPanel').classList.contains('show2')) {
+    document.getElementById('officialHistoryPanel').classList.remove('show2');
+    toggleOfficialHistory();
+  }
+  setTimeout(function() { msg.textContent = ''; }, 5000);
+}
+
+// =====================================================================
+//  AUDIO
+// =====================================================================
+
+var actx = null;
+function getCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  return actx;
+}
+function playTick(i) {
+  var c = getCtx();
+  var t = c.currentTime;
+  var o = c.createOscillator();
+  var g = c.createGain();
+  o.connect(g); g.connect(c.destination);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(i < 6 ? 600 + i * 80 : 300, t);
+  g.gain.setValueAtTime(0.07, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+  o.start(t); o.stop(t + 0.16);
+}
+
+// =====================================================================
+//  INIT
+// =====================================================================
+
+renderPlaceholders();
+</script>
+</body>
+</html>

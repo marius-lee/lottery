@@ -1,0 +1,17 @@
+# 数据库和缓存（含个人数据）
+.cache/
+
+# macOS
+双色球.app
+*.dSYM
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
