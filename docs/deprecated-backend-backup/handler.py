@@ -105,6 +105,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
             db.flush_cache()
             return self._json({"ok": True, "msg": "缓存标记已清除"})
 
+        # 已注释: /api/strategy-weights — 策略已废弃
+
+        # 已注释: 策略权重重算 — 策略已废弃
+        # /api/strategy-weights/recalculate
+
+        # 已注释: 回测历史+策略排名 — 策略已废弃
+        # /api/backtest-history, /api/strategy-ranking
+
+        # ===== 已注释: ML预测端点 — 全部对中一等奖无提升 =====
+        # /api/ml/train, /api/ml/train/lstm
+        # /api/ml/predict/xgb, /api/ml/predict/lstm, /api/ml/predict/ensemble
+        # /api/ml/predict/copula~rmt, /api/ml/predict/advanced
+        # /api/ml/status
+        # /api/analysis/bias, /api/analysis/chaos
+        # /api/hmm/status, /api/hmm/predict
+
+        # 已注释: Sobol智能选号 — 依赖HMM (无预测力)
+        # /api/sobol
+
+        # 已注释: /api/negative — 负选择对个人彩民无实用价值
+
+        # 已注释: /api/arbitrage — Mandel覆盖对个人彩民无实用价值
+
+        # 已注释: 显著性检验 — 对选号无帮助
+        # /api/experiment/significance
+
         if self.path.startswith("/api/evaluate/prizes"):
             all_data = db.load_draws()
             parsed = urllib.parse.urlparse(self.path)
@@ -118,6 +144,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             result["ok"] = True
             return self._json(result)
 
+        # 已注释: OOT验证 — 无预测力
+        # /api/ml/validate, /api/ml/validate/gpt
+
         # 保留: 覆盖设计 (Mandel — 数学有效)
         if self.path.startswith("/api/covering/generate"):
             parsed = urllib.parse.urlparse(self.path)
@@ -125,6 +154,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             v = int(params.get("v", ["15"])[0])
             t = int(params.get("t", ["4"])[0])
             return self._json(self.ml_bridge.generate_covering(v=v, t=t))
+
+        # 已注释: Sirius投资组合 — 依赖已废弃ML概率
+        # /api/sirius/portfolio
 
         if self.path == "/api/rules/status":
             return self._json({"ok": True, **self.ml_bridge.get_rule_status()})
@@ -141,6 +173,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             luck_raw = params.get("luck", ["0"])[0]
             luck_mode = {'0': 'off', '1': 'blend', '2': 'pure'}.get(luck_raw, 'off')
             return self._json(self.ml_bridge.micro_3_tickets(n=n, soft=soft, luck_mode=luck_mode))
+
+        # 已注释: Thompson/Lasso/GPT/自训练 — 无预测力
+        # /api/thompson/*, /api/lasso/*, /api/ml/train/gpt
+        # /api/ml/predict/gpt, /api/generate
+        # /api/training/status, /api/training/best, /api/training/log
+
+        # =========================
 
         if self.path == "/api/recommend":
             result = recommend.generate_recommendations()
@@ -209,6 +248,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     strategy=p.get("strategy", ""), score=p.get("score", 0),
                 )
             return self._json({"ok": True, "saved": len(picks)})
+
+        # 已注释: /api/strategy-picks — 策略已废弃
+
+        # 已注释: 策略权重+回测 POST — 策略已废弃
+        # /api/strategy-weights, /api/backtest-results, /api/strategy-picks
+        # /api/ml/backtest-result, /api/ml/backtest/advanced
 
         if self.path == "/api/compare":
             payload = self._parse_body()
@@ -332,6 +377,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if recalculated:
                 resp["recalculatedWeights"] = recalculated
             return self._json(resp)
+
+        # 已注释: ML回测 POST + 高级模型回测 GET — 无预测力
+        # /api/ml/backtest-result, /api/ml/backtest/advanced
 
         if self.path == "/api/prediction-log":
             payload = self._parse_body()
