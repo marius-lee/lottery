@@ -71,6 +71,8 @@ h1 { font-size: 20px; font-weight: 700; color: #E2E8F0; letter-spacing: 0.04em; 
 .btn-save:hover:enabled { background: #059669; }
 .btn-luck { background: #D97706; color: #FFFFFF; box-shadow: 0 0 12px rgba(217,119,6,0.35); }
 .btn-luck:hover:enabled { background: #B45309; box-shadow: 0 0 20px rgba(217,119,6,0.5); transform: translateY(-1px); }
+.btn-cover { background: #059669; color: #FFFFFF; box-shadow: 0 0 12px rgba(5,150,105,0.4); }
+.btn-cover:hover:enabled { background: #047857; box-shadow: 0 0 20px rgba(5,150,105,0.6); transform: translateY(-1px); }
 
 /* ── Data toggle ── */
 .data-toggle {

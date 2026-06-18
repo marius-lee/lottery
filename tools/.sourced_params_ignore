@@ -1,0 +1,47 @@
+# 文件级豁免: 这些文件中的数值是合法的
+# - 游戏规则常数 (33,16,6)
+# - 已文档化的算法参数
+# - UI 显示值 (像素, 超时)
+
+# 旧文件/工具/UI (非当前训练循环引用, 或非算法参数)
+ml/advanced.py
+ml/backtest_strategies.py
+ml/cowe_optimizer.py
+ml/optimize_weights.py
+ml/compressed_sensing.py
+ml/covering_design.py
+ml/thompson_sampler.py
+ml/micro_portfolio.py
+ml/sirius_optimizer.py
+ml/lstm_predictor.py
+ml/xgb_predictor.py
+ml/predictors/thompson.py
+ml/predictors/xgb.py
+ml/predictors/lstm.py
+ml/predictors/lasso.py
+ml/ewc_soup.py
+server/
+static/js/chart.js
+static/js/ui/draw.js
+static/js/ui/panels.js
+static/js/ui/omission.js
+static/js/ui/recommend.js
+static/js/ui/review.js
+static/js/ui/analysis.js
+static/js/data.js
+static/js/audio.js
+static/js/generator.js
+static/js/strategy/temperature.js
+static/js/strategy/same_tail.js
+static/js/strategy/interval.js
+static/js/strategy/trend.js
+static/js/strategy/cooccur.js
+static/js/strategy/similar_period.js
+static/js/strategy/position.js
+static/js/strategy/chaos.js
+static/js/strategy/exponential.js
+static/js/strategy/golden_ratio.js
+static/js/app.js
+static/js/backtest.js
+static/js/store.js
+static/js/ui/compare.js

@@ -82,15 +82,47 @@ export function updateLuck() {
   store.useLuck = document.getElementById('luckToggle').checked;
 }
 
+export function updateDiversity() {
+  store.useDiversity = document.getElementById('diversityToggle').checked;
+}
+
+export function updateGreedy() {
+  store.useGreedy = document.getElementById('greedyToggle').checked;
+  // 贪心模式自动启用分散红球
+  if (store.useGreedy) {
+    document.getElementById('diversityToggle').checked = true;
+    store.useDiversity = true;
+  }
+}
+
+export function updateFivePeriod() {
+  store.useFivePeriod = document.getElementById('fivePeriodToggle').checked;
+}
+
+export function updateBacktest() {
+  store.useBacktest = document.getElementById('backtestToggle').checked;
+}
+
+export function updateParamFilter() {
+  store.useParamFilter = document.getElementById('paramFilterToggle').checked;
+}
+
 // ============ API 调用 ============
 
 async function drawTickets(luckMode) {
   // luckMode: '' (无), '&luck=1' (blend), '&luck=2' (pure)
   updateProgress('生成中...', 20);
   const soft = store.useSoft && luckMode !== '&luck=2' ? '&soft=1' : '';
+  const diversity = store.useGreedy && luckMode !== '&luck=2'
+    ? '&max_overlap=2&div=1'
+    : (store.useDiversity && luckMode !== '&luck=2' ? '&max_overlap=2' : '');
+  const fivePeriod = store.useFivePeriod && luckMode !== '&luck=2' ? '&five_period=1' : '';
+  const backtest = store.useBacktest && luckMode !== '&luck=2' ? '&backtest=1' : '';
+  const paramF = store.useParamFilter && luckMode !== '&luck=2' ? '&param=1' : '';
+  const bundle = store.bundledPair ? `&bundle_a=${store.bundledPair[0]}&bundle_b=${store.bundledPair[1]}` : '';
   let data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + soft + luckMode);
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + soft + diversity + fivePeriod + backtest + paramF + bundle + luckMode);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';
@@ -194,4 +226,75 @@ export function proceedWithLuckDraw() {
   }, 30000);
 
   drawTickets('&luck=2').finally(() => clearTimeout(safety));
+}
+
+// ============ 覆盖设计 (Tier 3) ============
+
+export async function startCoveringDraw() {
+  disableButtons();
+  store.lastDrawResults = null;
+  renderPlaceholders();
+  updateProgress('覆盖设计优化中...', 10);
+
+  const safety = setTimeout(() => {
+    restoreButtons();
+    clearProgress();
+  }, 60000);
+
+  let data;
+  try {
+    const n = store.drawCount >= 3 ? store.drawCount : 3;
+    const r = await fetch('/api/covering-diverse?v=15&t=4&n=' + n);
+    data = await r.json();
+  } catch (e) {
+    stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">覆盖设计生成失败，请重试</div>';
+    clearProgress();
+    restoreButtons();
+    clearTimeout(safety);
+    return;
+  }
+
+  if (!data || !data.ok || !data.tickets) {
+    stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">' +
+      (data?.msg || '覆盖设计生成失败') + '</div>';
+    clearProgress();
+    restoreButtons();
+    clearTimeout(safety);
+    return;
+  }
+
+  const results = data.tickets.map(t => ({ reds: t.reds, blue: t.blue, score: 5, fails: {} }));
+  store.lastDrawResults = results;
+  const stage = stageEl();
+  stage.innerHTML = '';
+
+  // 覆盖元数据栏
+  const infoRow = document.createElement('div');
+  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;background:rgba(34,197,94,0.1);color:#4ade80;';
+  if (data.covering) {
+    const cov = data.covering;
+    infoRow.innerHTML = `覆盖设计(v=${cov.v},t=${cov.t}) · 覆盖率≥${(cov.estimated_coverage_pct||0).toFixed(0)}% · ${cov.guarantee || ''}`;
+  } else {
+    infoRow.textContent = '覆盖设计';
+  }
+  stage.appendChild(infoRow);
+
+  // 票面
+  for (let d = 0; d < results.length; d++) {
+    const row = document.createElement('div');
+    row.className = 'draw-row';
+    const label = document.createElement('span');
+    label.className = 'draw-label';
+    label.textContent = '#' + (d + 1);
+    row.appendChild(label);
+    results[d].reds.forEach(n => row.appendChild(createBall(n, 'red', 'landed')));
+    row.appendChild(createBall(results[d].blue, 'blue', 'landed'));
+    stage.appendChild(row);
+  }
+
+  updateProgress('完成', 100);
+  await delay(300);
+  clearProgress();
+  restoreButtons();
+  clearTimeout(safety);
 }

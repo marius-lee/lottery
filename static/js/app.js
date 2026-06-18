@@ -5,7 +5,7 @@
  */
 import { store, subscribe } from './store.js';
 import { loadFromServer, fetchLatestData } from './data.js';
-import { renderPlaceholders, proceedWithDraw, proceedWithLuckDraw, updateSoft } from './ui/draw.js';
+import { renderPlaceholders, proceedWithDraw, proceedWithLuckDraw, startCoveringDraw, updateSoft, updateDiversity, updateGreedy, updateFivePeriod, updateBacktest, updateParamFilter } from './ui/draw.js';
 import { togglePanel, resetHistoryPanels, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw } from './ui/panels.js';
 import { switchAnalysisTab } from './ui/analysis.js';
 import { switchChart } from './chart.js';
@@ -48,7 +48,8 @@ function init() {
   });
 
   Object.assign(window, {
-    startDraw, startLuckDraw, updateDrawCount, updateSoft,
+    startDraw, startLuckDraw, startCoveringDraw,
+    updateDrawCount, updateSoft, updateDiversity, updateGreedy, updateFivePeriod, updateBacktest, updateParamFilter,
     togglePanel, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw,
     runAutoCompare, fetchLatestData,
     switchAnalysisTab, switchChart, refreshRecommend, refreshReviewPanel,

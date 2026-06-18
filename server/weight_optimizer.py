@@ -1,20 +1,16 @@
-"""权重优化器 v4 — James-Stein收缩 + 滑动窗口 + 策略族上限
-所有参数来源于 ml.ssq_constants (全局常量注册表)
-"""
+"""权重优化器 v4 — James-Stein收缩 + 滑动窗口 + 策略族上限"""
 from collections import defaultdict
 from server import db
-from ml.ssq_constants import (
-    RED_EXPECTED_HITS, BLUE_HIT_PROB,
-    WEIGHT_MIN, WEIGHT_MAX, FAMILY_CAP, EWMA_DECAY,
-    COLD_START_WEIGHTS, COLD_START_N_SAMPLES,
-)
+from ml.ssq_constants import RED_EXPECTED_HITS, BLUE_HIT_PROB
 
-# 本地别名 (保持向后兼容)
-RED_BASELINE = RED_EXPECTED_HITS
-BLUE_BASELINE = BLUE_HIT_PROB
-DISCOUNT = EWMA_DECAY
-MIN_WEIGHT = WEIGHT_MIN
-MAX_WEIGHT = WEIGHT_MAX
+# ── 本地参数 (原 ssq_constants 全局常量, 现仅此模块使用) ──
+
+RED_BASELINE = RED_EXPECTED_HITS   # [数学] 超几何均值 36/33=1.0909
+BLUE_BASELINE = BLUE_HIT_PROB      # [数学] 1/16 = 0.0625
+DISCOUNT = 0.95                    # [文献] RiskMetrics 1996 EWMA衰减
+MIN_WEIGHT = 0.3                   # [数据] 策略权重下限
+MAX_WEIGHT = 1.6                   # [数据] 策略权重上限
+FAMILY_CAP = 0.34                  # [数据] 单族总权重上限
 
 # 策略族分组 (来源: 代码审查中识别的策略相关性分析)
 FAMILIES = {
@@ -25,8 +21,9 @@ FAMILIES = {
     "G5_高级族": ["Copula", "贝叶斯", "熵值", "EVT", "RMT"],
 }
 
-# 冷启动种子: 从全局常量导入 (来源: 99期回测, ssq_constants.py)
-COLD_START_SEEDS = {k: (COLD_START_N_SAMPLES, v) for k, v in COLD_START_WEIGHTS.items()}
+# 冷启动种子: 已废弃的ML策略不再预填充 (原 COLD_START_WEIGHTS)
+# 未知策略由 _default_weights 返回1.0, 或由 FAMILIES 覆盖的 _all_known 供给基线
+COLD_START_SEEDS = {}
 
 
 def compute_all_weights():

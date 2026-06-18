@@ -41,11 +41,20 @@ def generate_covering(v=15, t=4):
 
 # ============ 微投资组合 (3注优化) ============
 
-def micro_3_tickets(n=3, soft=False, luck_mode='off'):
+def micro_3_tickets(n=3, soft=False, luck_mode='off', max_overlap=None, diversity_mode=None, five_period=False, backtest_rank=False, param_filter=False, bundle_a=None, bundle_b=None):
     """从号码池不放回随机采样 n 注。soft=True 加位置软过滤。
-    luck_mode: 'off' (无), 'blend' (池采样+偏置), 'pure' (位置运气)."""
+    luck_mode: 'off' (无), 'blend' (池采样+偏置), 'pure' (位置运气).
+    max_overlap: 注间最大共享红球数, None=不限制.
+    diversity_mode: None=随机采样, 'greedy'=贪心max-min Jaccard.
+    five_period: 五期断蓝法加权 (刘大军, 2011).
+    backtest_rank: 回测排名选注 (蒋加林, 2001).
+    param_filter: 奇偶比/和值过滤 (蒋加林, 2001).
+    bundle_a/bundle_b: 捆绑投注对 (蒋加林, 2001 第三绝招)."""
     from ml.micro_portfolio import generate_tickets
-    return generate_tickets(n=n, soft=soft, luck_mode=luck_mode)
+    return generate_tickets(n=n, soft=soft, luck_mode=luck_mode,
+                            max_overlap=max_overlap, diversity_mode=diversity_mode,
+                            five_period=five_period, backtest_rank=backtest_rank,
+                            param_filter=param_filter, bundle_a=bundle_a, bundle_b=bundle_b)
 
 
 def get_rule_status():
@@ -68,3 +77,24 @@ def evaluate_prizes(tickets, backtest_red_hits=None, backtest_blue_hits=None):
     if backtest_blue_hits is None:
         backtest_blue_hits = [BLUE_HIT_PROB]
     return evaluate_strategy_tickets(tickets, backtest_red_hits, backtest_blue_hits)
+
+
+# ============ 覆盖设计多样化 (Tier 3) ============
+
+def generate_covering_diverse(v=15, t=4, n=6, max_overlap=None, five_period=False):
+    """覆盖设计 + 蓝球分配, 一步生成完整票集。
+
+    GET /api/covering-diverse?v=15&t=4&n=6&five_period=1
+    """
+    from ml.micro_portfolio import generate_tickets_covering
+    from ml.covering_design import generate_candidate_set
+
+    all_data = db.load_draws()
+    total = len(all_data) or 1
+    ml_red = {}
+    for num in range(1, 34):
+        cnt = sum(1 for r in all_data if num in r[1:7])
+        ml_red[num] = cnt / total
+    hot = generate_candidate_set(ml_red, size=v)
+
+    return generate_tickets_covering(n=n, hot_numbers=hot, t=t, max_overlap=max_overlap, five_period=five_period)

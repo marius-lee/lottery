@@ -9,6 +9,12 @@ export const store = {
   drawCount: 3,
   useSoft: false,
   useLuck: false,
+  useDiversity: false,
+  useGreedy: false,
+  useFivePeriod: false,
+  useBacktest: false,
+  useParamFilter: false,
+  bundledPair: null,  // [a, b] or null
   lastDrawResults: null,
 };
 

@@ -54,8 +54,38 @@
       </div>
       <div class="setting">
         <label class="checkbox-label">
+          <input type="checkbox" id="diversityToggle" onchange="updateDiversity()">
+          <span class="checkbox-text">分散红球</span>
+        </label>
+      </div>
+      <div class="setting">
+        <label class="checkbox-label">
+          <input type="checkbox" id="greedyToggle" onchange="updateGreedy()">
+          <span class="checkbox-text">贪心优化</span>
+        </label>
+      </div>
+      <div class="setting">
+        <label class="checkbox-label">
           <input type="checkbox" id="luckToggle" onchange="updateLuck()">
           <span class="checkbox-text">运气规则</span>
+        </label>
+      </div>
+      <div class="setting">
+        <label class="checkbox-label">
+          <input type="checkbox" id="fivePeriodToggle" onchange="updateFivePeriod()">
+          <span class="checkbox-text">五期断蓝</span>
+        </label>
+      </div>
+      <div class="setting">
+        <label class="checkbox-label">
+          <input type="checkbox" id="backtestToggle" onchange="updateBacktest()">
+          <span class="checkbox-text">回测排名</span>
+        </label>
+      </div>
+      <div class="setting">
+        <label class="checkbox-label">
+          <input type="checkbox" id="paramFilterToggle" onchange="updateParamFilter()">
+          <span class="checkbox-text">奇偶/和值</span>
         </label>
       </div>
     </div>
@@ -81,6 +111,14 @@
           <path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z"/>
         </svg>
         幸运开奖
+      </button>
+      <button class="btn btn-cover" id="coverBtn" onclick="startCoveringDraw()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="6"/>
+          <circle cx="12" cy="12" r="2"/>
+        </svg>
+        覆盖设计
       </button>
     </div>
 
@@ -115,11 +153,13 @@
       <button class="tab-btn active" onclick="switchAnalysisTab('indicators', this)">统计指标</button>
       <button class="tab-btn" onclick="switchAnalysisTab('weights', this)">综合权重</button>
       <button class="tab-btn" onclick="switchAnalysisTab('similar', this)">相似期</button>
+      <button class="tab-btn" onclick="switchAnalysisTab('correlation', this)">号码相关</button>
       <button class="tab-btn" onclick="switchAnalysisTab('charts', this)">走势图</button>
     </div>
     <div class="tab-content active" id="tab-indicators"><div id="indicatorsGrid"></div></div>
     <div class="tab-content" id="tab-weights"><div id="weightsGrid"></div></div>
     <div class="tab-content" id="tab-similar"><div id="similarContent"></div></div>
+    <div class="tab-content" id="tab-correlation"><div id="correlationContent"></div></div>
     <div class="tab-content" id="tab-charts">
       <div class="chart-controls">
         <button class="panel-toggle active" onclick="switchChart('sum', this)">和值</button>

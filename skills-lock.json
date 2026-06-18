@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "skills-discovery": {
+      "source": "Kamalnrf/claude-plugins",
+      "sourceType": "github",
+      "skillPath": "skills/skills-discovery/SKILL.md",
+      "computedHash": "34a85ac5069bdc615146ba0904fcd80a1c9bd29ae5b551b8c06e5a0053cc533d"
+    }
+  }
+}

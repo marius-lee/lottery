@@ -32,11 +32,19 @@ class TestImports(unittest.TestCase):
         self.assertIsNotNone(weight_optimizer)
 
     def test_deprecated_import(self):
-        """已归档模块仍可通过 _deprecated 导入"""
-        from ml._deprecated import advanced, xgb_predictor, lstm_predictor
-        self.assertIsNotNone(advanced)
-        self.assertIsNotNone(xgb_predictor)
-        self.assertIsNotNone(lstm_predictor)
+        """已归档模块文件仍存在，可通过 importlib 直接加载"""
+        import importlib.util
+        from pathlib import Path
+        deprecated_dir = Path(__file__).parent.parent / "ml" / "_deprecated"
+        for name in ("advanced", "xgb_predictor", "lstm_predictor"):
+            spec = importlib.util.spec_from_file_location(
+                f"ml._deprecated.{name}",
+                deprecated_dir / f"{name}.py"
+            )
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = mod
+            spec.loader.exec_module(mod)
+            self.assertIsNotNone(mod)
 
     def test_ml_bridge_active_functions(self):
         """ml_bridge 剩余活跃函数可正常导入"""
