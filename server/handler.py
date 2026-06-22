@@ -5,33 +5,31 @@ import urllib.parse
 from pathlib import Path
 
 from server import db, fetcher, recommend
-# ml_bridge 延迟导入 — 只在调用 ML 端点时加载
 
 ROOT = Path(__file__).parent.parent
 HTML_PATH = ROOT / "index.html"
 
 
+def _parse_query_params(path):
+    """Parse URL query string into a dict of lists."""
+    return urllib.parse.parse_qs(urllib.parse.urlparse(path).query)
+
+
 def _parse_query_int(path, key, default):
     """从 URL 查询字符串提取整数参数，缺省返回 default。"""
-    parsed = urllib.parse.urlparse(path)
-    params = urllib.parse.parse_qs(parsed.query)
-    vals = params.get(key, [])
+    vals = _parse_query_params(path).get(key, [])
     return int(vals[0]) if vals else default
 
 
 def _parse_query_str(path, key, default):
     """从 URL 查询字符串提取字符串参数。"""
-    parsed = urllib.parse.urlparse(path)
-    params = urllib.parse.parse_qs(parsed.query)
-    vals = params.get(key, [])
+    vals = _parse_query_params(path).get(key, [])
     return vals[0] if vals else default
 
 
 def _parse_int_list(path, key):
     """从 URL 查询字符串提取逗号分隔的整数列表. e.g. numbers=1,5,9,13,18,26"""
-    parsed = urllib.parse.urlparse(path)
-    params = urllib.parse.parse_qs(parsed.query)
-    vals = params.get(key, [])
+    vals = _parse_query_params(path).get(key, [])
     if not vals:
         return []
     return [int(x.strip()) for x in vals[0].split(",") if x.strip()]
@@ -66,7 +64,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # ============ GET ============
 
-    # [Registry] 前缀路由: 统一分发到子处理方法
     _ROUTES = {
         "/api/micro/": "_handle_micro_get",
         "/api/zhang/": "_handle_zhang_get",
@@ -91,6 +88,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "/":
             return self._html()
 
+        clean_path = p.split("?")[0]
+
         # Exact-match endpoints
         handlers = {
             "/api/data": lambda: self._json({"ok": True, "source": "本地数据库",
@@ -105,14 +104,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/zone-break/data": lambda: self._json(self.ml_bridge.get_zone_break_data()),
             "/api/weier/conditions": lambda: self._json(self.ml_bridge.get_weier_conditions()),
         }
-        if p.split("?")[0] in handlers:
-            return handlers[p.split("?")[0]]()
+        if clean_path in handlers:
+            return handlers[clean_path]()
 
         # Prefix-match routes
         for prefix, handler_name in self._ROUTES.items():
             if p.startswith(prefix):
-                h = getattr(self, handler_name)
-                return h(p) if handler_name.startswith("_handle_") else h()
+                handler = getattr(self, handler_name)
+                return handler(p) if handler_name.startswith("_handle_") else handler()
 
         self.send_response(404)
         self.end_headers()
@@ -202,9 +201,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self.ml_bridge.micro_3_tickets(n=3))
         n = _parse_query_int(path, "n", 3)
         # 合并参数: 高级过滤 = 位置软过滤 + 奇偶/和值
-        advanced_filter = _parse_query_int(path, "adv_filter", 0) == 1 or _parse_query_int(path, "soft", 0) == 1
-        soft = advanced_filter
-        param_filter = advanced_filter
+        soft = _parse_query_int(path, "adv_filter", 0) == 1 or _parse_query_int(path, "soft", 0) == 1
         # 蓝球策略 — 按作者分组, 可多选
         liu_blue = _parse_query_int(path, "liu_blue", 0) == 1
         cailele_blue = _parse_query_int(path, "cailele_blue", 0) == 1
@@ -233,7 +230,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             n=n, soft=soft, luck_mode=luck_mode,
             max_overlap=max_overlap, diversity_mode=diversity_mode,
             five_period=five_period, backtest_rank=backtest_rank,
-            param_filter=param_filter, pattern_rules=pattern_rules,
+            param_filter=soft, pattern_rules=pattern_rules,
             liu_blue=liu_blue, cailele_blue=cailele_blue,
             gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
             color_filter=color_filter, block9_filter=block9_filter,
@@ -243,7 +240,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── 子路由: 张委铭算法 ──
 
     def _handle_zhang_get(self, path):
-        clean = path.split("?")[0]  # 去掉查询参数
+        clean = path.split("?")[0]
         n = _parse_query_int(path, "n", 3)
         dan_raw = _parse_query_str(path, "dan", "")
         dan = [int(x) for x in dan_raw.split(",") if x.strip().isdigit()] if dan_raw else None
@@ -303,13 +300,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _handle_red_get(self, path):
         n = _parse_query_int(path, "n", 3)
         soft = _parse_query_int(path, "soft", 0) == 1 or _parse_query_int(path, "adv_filter", 0) == 1
-        param_filter = soft
         color_filter = _parse_query_int(path, "color_filter", 0) == 1
         block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
         spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
         ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
         return self._json(self.ml_bridge.red_pick(
-            n=n, soft=soft, param_filter=param_filter,
+            n=n, soft=soft, param_filter=soft,
             color_filter=color_filter, block9_filter=block9_filter,
             spread_filter=spread_filter, ac_filter=ac_filter))
 
@@ -343,7 +339,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # ── 子路由: 对比 ──
 
-    def _handle_compare_get(self, path=None):
+    def _handle_compare_get(self, path):
         conn = db.get_db()
         ready = conn.execute("""
             SELECT DISTINCT up.period FROM user_picks up
@@ -356,8 +352,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── 子路由: 预测日志 ──
 
     def _handle_prediction_log_get(self, path):
-        stats_only = _parse_query_int(path, "stats", 0) in (1, None) and "stats=1" in path
-        if stats_only:
+        if _parse_query_int(path, "stats", 0) == 1:
             return self._json({"ok": True, "stats": db.prediction_log_stats()})
         limit = _parse_query_int(path, "limit", 100)
         period = _parse_query_int(path, "period", 0) or None

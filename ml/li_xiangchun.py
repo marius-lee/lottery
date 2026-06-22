@@ -20,7 +20,7 @@
 """
 
 import math
-from collections import Counter, defaultdict
+import random
 from typing import List, Tuple, Dict, Optional
 
 
@@ -191,13 +191,10 @@ def dhr_predict(current_numbers: List[int],
 
     [文献] dhr_threshold=6.0基于原书p77: 平均DHR≈6:1
     """
-    repeat_candidates = []
-    for num in current_numbers:
-        dhr = compute_dhr(history, num)
-        if dhr < dhr_threshold:
-            repeat_candidates.append(num)
+    dhr_vals = {num: compute_dhr(history, num) for num in current_numbers}
+    repeat_candidates = [num for num in current_numbers if dhr_vals[num] < dhr_threshold]
     # 按DHR升序 (越低的越可能重复)
-    repeat_candidates.sort(key=lambda n: compute_dhr(history, n))
+    repeat_candidates.sort(key=lambda n: dhr_vals[n])
     return repeat_candidates
 
 
@@ -418,29 +415,21 @@ def compute_hot_cold_stats(history: List[List[int]],
     [文献] hot_threshold=4, 总间隔均值=30 来自原书p52-53
     """
     # 计算每个号码最近一次间隔
-    last_seen = {}
-    current_intervals = {}
+    intervals = {}
 
     for num in range(1, pool_size + 1):
         # 从最近往前找
         found = False
         for i in range(len(history) - 1, -1, -1):
             if num in history[i]:
-                last_seen[num] = len(history) - 1 - i
+                intervals[num] = len(history) - 1 - i
                 found = True
                 break
         if not found:
-            last_seen[num] = len(history)  # 从未出现
+            intervals[num] = len(history)  # 从未出现
 
-    # 计算当前间隔
-    for num in range(1, pool_size + 1):
-        if num in history[-1] if history else False:
-            current_intervals[num] = 0
-        else:
-            current_intervals[num] = last_seen.get(num, len(history))
-
-    hot_count = sum(1 for v in current_intervals.values() if v < hot_threshold)
-    total_interval = sum(current_intervals.values())
+    hot_count = sum(1 for v in intervals.values() if v < hot_threshold)
+    total_interval = sum(intervals.values())
 
     return {
         'hot_count': hot_count,
@@ -448,7 +437,7 @@ def compute_hot_cold_stats(history: List[List[int]],
         'hot_threshold': hot_threshold,
         'expected_hot_count': 4,       # [文献] 原书p53
         'expected_total_interval': 30,  # [文献] 原书p53 (36选7)
-        'intervals': current_intervals,
+        'intervals': intervals,
     }
 
 
@@ -587,8 +576,7 @@ def generate_tickets(history: List[List[int]],
         'stats': {}
     }
 
-    # 1. 冷热+三浪预筛选
-    hot_cold = compute_hot_cold_stats(history, pool_size)
+    # 1. 三浪预筛选
     sanlang = sanlang_predict(history, pool_size)
 
     avoid_nums = set(sanlang['sheng'])
@@ -603,7 +591,6 @@ def generate_tickets(history: List[List[int]],
     results['stats']['candidate_pool_size'] = len(candidates)
 
     # 3. 生成红球 (简化版: 非旋转矩阵)
-    import random
     rng = random.Random()
     # [工程] 用最后期号作为种子增加可复现性
     seed = len(history) * 1000 + sum(history[-1]) if history else 42

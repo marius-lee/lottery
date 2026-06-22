@@ -20,13 +20,10 @@ import math
 TOTAL_RED = 33          # 红球总数
 TOTAL_BLUE = 16         # 蓝球总数
 PICK_RED = 6            # 每注选红球数
-PICK_BLUE = 1           # 每注选蓝球数
 TICKET_PRICE = 2        # 每注价格 (元)
 
-TOTAL_COMBOS_RED = math.comb(33, 6)  # C(33,6) = 1,107,568
-TOTAL_COMBOS = TOTAL_COMBOS_RED * 16 # 17,721,088
-
-BIG_THRESHOLD = 17      # 大小比分界
+TOTAL_COMBOS_RED = math.comb(TOTAL_RED, PICK_RED)  # C(33,6) = 1,107,568
+TOTAL_COMBOS = TOTAL_COMBOS_RED * TOTAL_BLUE       # 17,721,088
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 奖金 [官方] cwl.gov.cn 固定奖金; 一等/二等为浮动 (保守估计)
@@ -54,7 +51,7 @@ PROB_6TH = 1043640 / TOTAL_COMBOS                                               
 RANDOM_SINGLE_EV = PROB_3RD*PRIZE_3RD + PROB_4TH*PRIZE_4TH + PROB_5TH*PRIZE_5TH + PROB_6TH*PRIZE_6TH
 
 # 红球/蓝球统计期望 [数学]
-RED_PER_DRAW = 6
+RED_PER_DRAW = PICK_RED  # 每期开出红球个数（同每注选红球数）
 RED_EXPECTED_HITS = RED_PER_DRAW * RED_PER_DRAW / TOTAL_RED  # 超几何均值 36/33=1.0909
 BLUE_HIT_PROB = 1 / TOTAL_BLUE                                # 1/16 = 0.0625
 

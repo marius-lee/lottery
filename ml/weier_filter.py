@@ -76,76 +76,38 @@ def _select_by_hwc(omissions_for_pair):
     selected = set()
     reason = ''
 
-    # 规则1: 大冷必选 (原书 p.101: 2冷达到47期→必选)
-    # [校准] 45≈47-2: 略降阈值防漏, 47是原书精确值
+    # 规则1-7: each sets selected and reason, single return at end
     if n_cold >= 1 and cold_sum >= 45:
         selected = set(cold.keys())
         if len(selected) < 2:
             selected.update(set(hot.keys()))
         reason = f'大冷必选(cold_sum={cold_sum})'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
-
-    # 规则2: 打破格局 (原书 p.109: 温+冷≥80且热≤15→选冷)
-    # [原书] 80/15均来自原书精确阈值
-    if warm_cold_sum >= 80 and hot_sum <= 15 and n_cold >= 1:
+    elif warm_cold_sum >= 80 and hot_sum <= 15 and n_cold >= 1:
         selected = set(cold.keys())
         if len(selected) < 2:
             selected.update(set(hot.keys()))
         reason = f'打破格局(warm_cold={warm_cold_sum},hot={hot_sum})'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
-
-    # 规则3: 热温转换 (原书 p.100: 热≈25,温≈25时排除热选温)
-    # [校准] 原书"≈25", 使用20为敏感度阈值(≥20即视为接近25)
-    # abs≤5: 热温差距不超过5才视为"均衡转换"
-    if n_hot >= 2 and n_warm >= 1 and hot_sum >= 20 and warm_sum >= 20 and abs(hot_sum - warm_sum) <= 5:
+    elif n_hot >= 2 and n_warm >= 1 and hot_sum >= 20 and warm_sum >= 20 and abs(hot_sum - warm_sum) <= 5:
         selected = set(warm.keys())
         if len(selected) < 2:
             selected.update(set(hot.keys()))
         reason = f'热温转换(hot={hot_sum},warm={warm_sum})'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
-
-    # 规则4: 跳过不选 (原书 p.102, 0温或不够温/冷)
-    if n_warm == 0 and n_cold <= 1:
+    elif n_warm == 0 and n_cold <= 1:
         reason = '跳过(温为0,不确定)'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
-
-    if n_warm <= 1 and n_cold == 0:
-        reason = f'跳过(无冷,温不够)'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
-
-    # 规则5: 保留热温, 排除冷 (原书 p.102: 冷不够冷→删冷)
-    # [原书] 冷和<30视为"不够冷", 保留热温排除冷
-    if n_cold >= 1 and cold_sum < 30 and n_warm >= 1:
+    elif n_warm <= 1 and n_cold == 0:
+        reason = '跳过(无冷,温不够)'
+    elif n_cold >= 1 and cold_sum < 30 and n_warm >= 1:
         selected = set(hot.keys()) | set(warm.keys())
         reason = f'冷不够冷(cold={cold_sum}),保留热温'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
-
-    # 规则6: 只选热 (原书 p.110: 温+冷<40→均为中等,只选热)
-    # [原书] 40为原书精确阈值
-    if warm_cold_sum < 40:
+    elif warm_cold_sum < 40:
         selected = set(hot.keys())
         reason = f'标准选择(只选热,warm_cold={warm_cold_sum})'
-        return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
-                          'cold': list(cold.keys()), 'reason': reason,
-                          'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
+    else:
+        selected = set(hot.keys())
+        if not selected and warm:
+            selected = set(warm.keys())
+        reason = '默认选热'
 
-    # 规则7: 默认 — 选热为主
-    selected = set(hot.keys())
-    if not selected and warm:
-        selected = set(warm.keys())
-    reason = f'默认选热'
     return selected, {'hot': list(hot.keys()), 'warm': list(warm.keys()),
                       'cold': list(cold.keys()), 'reason': reason,
                       'hot_sum': hot_sum, 'warm_sum': warm_sum, 'cold_sum': cold_sum}
@@ -524,6 +486,54 @@ def _step78_filter(pool, n, value_fn, data):
     return result, new_n, report
 
 
+def _manual_filter_step(pool, n, step_conditions, step_key, col_names, value_fn, report):
+    """Filter pool by manual conditions for a single step (4-8)."""
+    conditions = step_conditions.get(step_key, {})
+    active = {col_names[k]: {int(vv) for vv in v} for k, v in conditions.items() if k in col_names}
+    if not active:
+        return pool, n
+    result = []
+    for idx in range(n):
+        base = idx * 6
+        reds = tuple(pool[base:base + 6])
+        for col, allowed in active.items():
+            if value_fn(reds, col) not in allowed:
+                break
+        else:
+            result.extend(reds)
+    pool = result
+    n = len(pool) // 6
+    report[step_key] = f'{n}'
+    return pool, n
+
+
+def _ensure_pool(data):
+    """Ensure valid_reds is built, return (valid_reds, n_combos) or None."""
+    import ml.micro_portfolio as mp
+    try:
+        if mp._valid_reds is None or len(data) != mp._past_count:
+            mp._build_pool()
+    except Exception:
+        mp._build_pool()
+    valid_reds = mp._valid_reds
+    if valid_reds is None or len(valid_reds) < 6:
+        return None
+    return valid_reds, len(valid_reds) // 6
+
+
+def _build_tickets(pool, n):
+    """Build tickets with blue ball assignment."""
+    from ml.micro_portfolio import _blue_freq_weights, _pick_blue
+    blue_weights = _blue_freq_weights()
+    tickets = []
+    for idx in range(n):
+        base = idx * 6
+        reds = list(pool[base:base + 6])
+        blue = _pick_blue(blue_weights)
+        tickets.append({"reds": reds, "blue": blue})
+    return tickets
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 主入口
 # ═══════════════════════════════════════════════════════════════════════════
@@ -541,24 +551,17 @@ def generate_tickets_weier():
       7. 全量导出
     """
     from server.db import load_draws
-    import ml.micro_portfolio as mp
 
     data = load_draws()
     if len(data) < 20:  # [工程] 微尔自动生成最少需要20期数据做遗漏统计
         return {"ok": False, "msg": "数据不足(需≥20期)"}
 
     # 确保_valid_reds已构建
-    try:
-        if mp._valid_reds is None or len(data) != mp._past_count:
-            mp._build_pool()
-    except Exception:
-        mp._build_pool()
-
-    valid_reds = mp._valid_reds
-    if valid_reds is None or len(valid_reds) < 6:
+    pool_result = _ensure_pool(data)
+    if pool_result is None:
         return {"ok": False, "msg": "有效池未构建"}
+    valid_reds, n_combos = pool_result
 
-    n_combos = len(valid_reds) // 6
     pool_size_exact = f"C(33,6)-h2(93)-h3({len(data)})={n_combos}"
     report = {}
 
@@ -590,14 +593,7 @@ def generate_tickets_weier():
     report['step8'] = rep
 
     # ── 蓝球 ──
-    from ml.micro_portfolio import _blue_freq_weights, _pick_blue
-    blue_weights = _blue_freq_weights()
-    tickets = []
-    for idx in range(n):
-        base = idx * 6
-        reds = list(pool[base:base + 6])
-        blue = _pick_blue(blue_weights)
-        tickets.append({"reds": reds, "blue": blue})
+    tickets = _build_tickets(pool, n)
 
     return {
         "ok": True,
@@ -631,23 +627,15 @@ def generate_tickets_weier_manual(step_conditions):
         未指定的步骤/列 = 全量通过
     """
     from server.db import load_draws
-    import ml.micro_portfolio as mp
 
     data = load_draws()
     if len(data) < 5:
         return {"ok": False, "msg": "数据不足"}
 
-    try:
-        if mp._valid_reds is None or len(data) != mp._past_count:
-            mp._build_pool()
-    except Exception:
-        mp._build_pool()
-
-    valid_reds = mp._valid_reds
-    if valid_reds is None or len(valid_reds) < 6:
+    pool_result = _ensure_pool(data)
+    if pool_result is None:
         return {"ok": False, "msg": "有效池未构建"}
-
-    n_combos = len(valid_reds) // 6
+    valid_reds, n_combos = pool_result
     pool = valid_reds
     n = n_combos
     report = {}
@@ -688,114 +676,27 @@ def generate_tickets_weier_manual(step_conditions):
             report['step1'] = f'{n_combos}→{n}'
 
     # ── 第4步: 高尾 ──
-    step4 = step_conditions.get("step4", {})
-    col_names_4 = {"12位": 0, "34位": 1, "56位": 2, "25位": 3, "16位": 4}
-    active_4 = {col_names_4[k]: {int(vv) for vv in v} for k, v in step4.items() if k in col_names_4}
-    if active_4:
-        result = []
-        for idx in range(n):
-            base = idx * 6
-            reds = tuple(pool[base:base + 6])
-            keep = True
-            for col, allowed in active_4.items():
-                if _step4_col_value(reds, col) not in allowed:
-                    keep = False
-                    break
-            if keep:
-                result.extend(reds)
-        pool = result
-        n = len(pool) // 6
-        report['step4'] = f'{n}'
+    pool, n = _manual_filter_step(pool, n, step_conditions, "step4",
+        {"12位": 0, "34位": 1, "56位": 2, "25位": 3, "16位": 4}, _step4_col_value, report)
 
     # ── 第5步: 位间距 ──
-    step5 = step_conditions.get("step5", {})
-    col_names_5 = {"12位距": 0, "34位距": 1, "56位距": 2}
-    active_5 = {col_names_5[k]: {int(vv) for vv in v} for k, v in step5.items() if k in col_names_5}
-    if active_5:
-        result = []
-        for idx in range(n):
-            base = idx * 6
-            reds = tuple(pool[base:base + 6])
-            keep = True
-            for col, allowed in active_5.items():
-                if _step5_col_value(reds, col) not in allowed:
-                    keep = False
-                    break
-            if keep:
-                result.extend(reds)
-        pool = result
-        n = len(pool) // 6
-        report['step5'] = f'{n}'
+    pool, n = _manual_filter_step(pool, n, step_conditions, "step5",
+        {"12位距": 0, "34位距": 1, "56位距": 2}, _step5_col_value, report)
 
     # ── 第6步: 大小和值 ──
-    step6 = step_conditions.get("step6", {})
-    col_names_6 = {"大和值": 0, "小和值": 1}
-    active_6 = {col_names_6[k]: {int(vv) for vv in v} for k, v in step6.items() if k in col_names_6}
-    if active_6:
-        result = []
-        for idx in range(n):
-            base = idx * 6
-            reds = tuple(pool[base:base + 6])
-            keep = True
-            for col, allowed in active_6.items():
-                if _step6_col_value(reds, col) not in allowed:
-                    keep = False
-                    break
-            if keep:
-                result.extend(reds)
-        pool = result
-        n = len(pool) // 6
-        report['step6'] = f'{n}'
+    pool, n = _manual_filter_step(pool, n, step_conditions, "step6",
+        {"大和值": 0, "小和值": 1}, _step6_col_value, report)
 
     # ── 第7步: 首尾和/差/尾数和 ──
-    step7 = step_conditions.get("step7", {})
-    col_names_7 = {"首尾和": 0, "首尾差": 1, "尾数和": 2}
-    active_7 = {col_names_7[k]: {int(vv) for vv in v} for k, v in step7.items() if k in col_names_7}
-    if active_7:
-        result = []
-        for idx in range(n):
-            base = idx * 6
-            reds = tuple(pool[base:base + 6])
-            keep = True
-            for col, allowed in active_7.items():
-                if _step7_value(reds, col) not in allowed:
-                    keep = False
-                    break
-            if keep:
-                result.extend(reds)
-        pool = result
-        n = len(pool) // 6
-        report['step7'] = f'{n}'
+    pool, n = _manual_filter_step(pool, n, step_conditions, "step7",
+        {"首尾和": 0, "首尾差": 1, "尾数和": 2}, _step7_value, report)
 
     # ── 第8步: 位尾数和 ──
-    step8 = step_conditions.get("step8", {})
-    col_names_8 = {"12位尾和": 0, "34位尾和": 1, "56位尾和": 2}
-    active_8 = {col_names_8[k]: {int(vv) for vv in v} for k, v in step8.items() if k in col_names_8}
-    if active_8:
-        result = []
-        for idx in range(n):
-            base = idx * 6
-            reds = tuple(pool[base:base + 6])
-            keep = True
-            for col, allowed in active_8.items():
-                if _step8_value(reds, col) not in allowed:
-                    keep = False
-                    break
-            if keep:
-                result.extend(reds)
-        pool = result
-        n = len(pool) // 6
-        report['step8'] = f'{n}'
+    pool, n = _manual_filter_step(pool, n, step_conditions, "step8",
+        {"12位尾和": 0, "34位尾和": 1, "56位尾和": 2}, _step8_value, report)
 
     # ── 蓝球 ──
-    from ml.micro_portfolio import _blue_freq_weights, _pick_blue
-    blue_weights = _blue_freq_weights()
-    tickets = []
-    for idx in range(n):
-        base = idx * 6
-        reds = list(pool[base:base + 6])
-        blue = _pick_blue(blue_weights)
-        tickets.append({"reds": reds, "blue": blue})
+    tickets = _build_tickets(pool, n)
 
     return {
         "ok": True,

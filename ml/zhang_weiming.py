@@ -15,6 +15,7 @@
   连续出错≤1次后下期正确率>52%.
 """
 from ml.ssq_constants import TICKET_PRICE
+import random
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -142,7 +143,6 @@ def generate_weihao(data, n_tickets=3, locked_dans=None):
         return {"ok": False, "msg": f"候选池太小({len(candidates)}个号码), 无法选号"}
 
     # 位置策略选号 (原书六、具体运用 p232-233)
-    import random
     rng = random.Random(data[-1][0])  # 用最近期号做种子, 可复现
 
     # 候选池的前8个 (原书: "最好从胜率最低的18种杀号方法每期所杀的号码里面前8个号码中...")
@@ -299,12 +299,10 @@ def _compute_weihao_blue_values(data):
     blue = last[7]
 
     # 所有方法仅需当期数据, 无上期依赖
-    prev_reds = None
-
     kills = []
     method_details = {}
     for name, fn in _BLUE_KILL_METHODS_10:
-        killed = fn(reds, blue, prev_reds)
+        killed = fn(reds, blue, None)
         kills.append(killed)
         method_details[name] = killed
 
@@ -361,7 +359,6 @@ def generate_weihao_blue(data, n_tickets=3):
         use_recommendation = "强烈建议使用 (连续错≥4次,概率<5%)"
 
     # 蓝球分配: 从候选池中随机选
-    import random
     rng = random.Random(data[-1][0])
 
     tickets = []
@@ -644,11 +641,7 @@ def _auto_detect_grid_breaks(data):
     n_rows = len(break_rows)
     n_cols = len(break_cols)
 
-    # 计算剩余号码数
-    excluded = set()
-    for r in break_rows:
-        excluded.update(ROW_3x11[r])
-    # 断行和断列的排除可能有重叠, 要正确处理
+    # 计算剩余号码数 (断行和断列的排除可能有重叠, 要正确处理)
     all_excluded = set()
     for r in break_rows:
         all_excluded.update(ROW_3x11[r])
@@ -710,7 +703,6 @@ def generate_grid_selection(data, n_tickets=3):
             remaining_numbers = list(range(1, 34))
 
     # 从剩余号码中采样
-    import random
     rng = random.Random(data[-1][0])
 
     tickets = []
@@ -735,10 +727,8 @@ def generate_grid_selection(data, n_tickets=3):
     # 蓝球分配
     from ml.micro_portfolio import _blue_freq_weights, _pick_blue
     bw = _blue_freq_weights()
-    used_blues = set()
     for t in tickets:
         t["blue"] = _pick_blue(bw)
-        used_blues.add(t["blue"])
 
     return {
         "ok": True,

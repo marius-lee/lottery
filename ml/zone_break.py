@@ -25,15 +25,16 @@ ALL_3D_CODES = [
 
 def get_zone_break_history(data, window=30):
     """计算最近window期的断行/断列3D号码历史。
-    window=30: [工程] 30期≈5个月, 足够覆盖断区变化周期
-    """
 
-    Returns: {
-        "periods": ["2013144", ...],
-        "break_rows": ["045", ...],  # 每期的断行3D号
-        "break_cols": ["024", ...],  # 每期的断列3D号
-        "distribution": [[row_data], ...],  # 6×6表格: 每格=最近N期出现次数
-    }
+    window=30: [工程] 30期≈5个月, 足够覆盖断区变化周期
+
+    Returns:
+        dict: {
+            "periods": ["2013144", ...],
+            "break_rows": ["045", ...],   # 每期的断行3D号
+            "break_cols": ["024", ...],   # 每期的断列3D号
+            "distribution": [[row_data], ...],  # 6×6表格: 每格=最近N期出现次数
+        }
     """
     recent = data[-window:] if len(data) >= window else data
 
@@ -148,13 +149,11 @@ def filter_zone_break(break_rows_code, break_cols_code):
     # 蓝球分配
     from ml.micro_portfolio import _blue_freq_weights, _pick_blue
     blue_weights = _blue_freq_weights()
-    used_blues = set()
     tickets = []
     for idx in range(n):
         base = idx * 6
         reds = list(filtered[base:base+6])
         blue = _pick_blue(blue_weights)
-        used_blues.add(blue)
         tickets.append({"reds": reds, "blue": blue})
 
     return {

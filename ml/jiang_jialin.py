@@ -10,7 +10,7 @@
   6. 蓝球斜边码+同尾码 (Ch9, p335-339)
 """
 import random
-from ml.ssq_constants import TOTAL_RED, TOTAL_BLUE, PICK_RED, PICK_BLUE
+from server.db import load_draws
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -130,9 +130,7 @@ def pattern_filter(candidates, data, pattern_type='oddeven'):
     if len(data) < 2:
         return candidates
 
-    last = data[-1]
     prev = data[-2]
-    last_reds = sorted(last[1:7])
     prev_reds = sorted(prev[1:7])
 
     if pattern_type == 'oddeven':
@@ -148,7 +146,6 @@ def pattern_filter(candidates, data, pattern_type='oddeven'):
         bp_range = (3, 5)   # 原书 p223
         rp_range = (1, 3)   # 原书 p223
 
-    last_pat = pattern_fn(last_reds)
     prev_pat = pattern_fn(prev_reds)
 
     filtered = []
@@ -206,7 +203,6 @@ def blue_mod3_candidates():
 
     原书 p333-335.
     """
-    from server.db import load_draws
     data = load_draws()
     if len(data) < 6:
         return list(range(1, 17))
@@ -243,7 +239,6 @@ def blue_diagonal_candidates():
 
     原书 p335-336.
     """
-    from server.db import load_draws
     data = load_draws()
     if len(data) < 2:
         return list(range(1, 17))
@@ -264,7 +259,6 @@ def blue_sametail_candidates():
 
     原书 p337-339.
     """
-    from server.db import load_draws
     data = load_draws()
     if len(data) < 2:
         return list(range(1, 17))

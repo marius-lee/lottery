@@ -91,8 +91,7 @@ def evaluate_prizes(tickets, backtest_red_hits=None, backtest_blue_hits=None):
 def get_zone_break_data():
     """返回行列分布表+断区3D历史。GET /api/zone-break/data"""
     from ml.zone_break import get_zone_break_history
-    from server.db import load_draws
-    return get_zone_break_history(load_draws())
+    return get_zone_break_history(db.load_draws())
 
 
 def filter_zone_break(break_rows, break_cols):
@@ -124,8 +123,7 @@ def get_weier_conditions():
     GET /api/weier/conditions
     """
     from ml.weier_filter import _compute_omissions, ALL_PAIRS
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     if len(data) < 5:
         return {"ok": False, "msg": "数据不足"}
 
@@ -176,14 +174,11 @@ def generate_eight_value(n=3):
     GET /api/zhang/eight-value
     """
     from ml.zhang_weiming import generate_weihao_blue
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     result = generate_weihao_blue(data, n_tickets=n)
     # 分配红球 (Laplace加权随机, 每注不同)
     if result.get("ok") and result.get("tickets"):
-        from ml.micro_portfolio import _blue_freq_weights
         import random
-        all_data = data
         valid_reds = None
         try:
             import ml.micro_portfolio as mp
@@ -215,8 +210,7 @@ def generate_zhang_combined(n=3, dan=None):
     GET /api/zhang/combined?n=3&dan=12,5
     """
     from ml.zhang_weiming import generate_combined
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     dan_list = dan if isinstance(dan, list) else ([dan] if dan else None)
     return generate_combined(data, n_tickets=n, locked_dans=dan_list)
 
@@ -227,8 +221,7 @@ def generate_grid_selection(n=3):
     GET /api/zhang/grid
     """
     from ml.zhang_weiming import generate_grid_selection
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     return generate_grid_selection(data, n_tickets=n)
 
 
@@ -238,8 +231,7 @@ def generate_dan1():
     GET /api/zhang/dan1
     """
     from ml.zhang_weiming import generate_dan1_alternating
-    from server.db import load_draws
-    return generate_dan1_alternating(load_draws())
+    return generate_dan1_alternating(db.load_draws())
 
 
 def generate_dan2():
@@ -248,8 +240,7 @@ def generate_dan2():
     GET /api/zhang/dan2
     """
     from ml.zhang_weiming import generate_dan2_optimal
-    from server.db import load_draws
-    return generate_dan2_optimal(load_draws())
+    return generate_dan2_optimal(db.load_draws())
 
 
 # ============ 李志林算法 (Li, 2012) ============
@@ -260,7 +251,6 @@ def generate_li_zhilin(n=3, **kwargs):
     GET /api/lizhilin/tickets?n=3&dan8=1&dan3=1&trans=1&kill=1&btail=1&bten=0&bperiod=0
     """
     from ml.li_zhilin import generate_tickets
-    from server.db import load_draws
     flags = {
         "use_dan8": kwargs.get("dan8", 1) == 1,
         "use_dan3": kwargs.get("dan3", 1) == 1,
@@ -270,7 +260,7 @@ def generate_li_zhilin(n=3, **kwargs):
         "use_blue_ten": kwargs.get("bten", 0) == 1,
         "use_blue_period": kwargs.get("bperiod", 0) == 1,
     }
-    return generate_tickets(load_draws(), n_tickets=n, **flags)
+    return generate_tickets(db.load_draws(), n_tickets=n, **flags)
 
 
 # ============ 彭浩算法 (Peng, 2010) ============
@@ -281,8 +271,7 @@ def peng_channel_all_positions():
     GET /api/peng/channel
     """
     from ml.peng_hao import compute_all_channels
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     if len(data) < 19:
         return {"ok": False, "msg": f"数据不足, 需要至少19期, 当前{len(data)}期"}
     channels = compute_all_channels(data)
@@ -295,8 +284,7 @@ def peng_direction_all_positions():
     GET /api/peng/direction
     """
     from ml.peng_hao import direction_transition_matrix, classify_9_direction
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     if len(data) < 3:
         return {"ok": False, "msg": "数据不足"}
     result = {}
@@ -323,8 +311,7 @@ def peng_extreme_rules():
     GET /api/peng/extreme
     """
     from ml.peng_hao import extreme_rules
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     if len(data) < 2:
         return {"ok": False, "msg": "数据不足"}
     return extreme_rules(data)
@@ -336,8 +323,7 @@ def peng_generate_tickets(n=3, use_channel=True, use_direction=True, use_extreme
     GET /api/peng/tickets?n=3&channel=1&direction=1&extreme=1
     """
     from ml.peng_hao import generate_tickets
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     return generate_tickets(data, n=n, use_channel=use_channel,
                            use_direction=use_direction, use_extreme=use_extreme)
 
@@ -348,8 +334,7 @@ def peng_blue_prediction():
     GET /api/peng/blue
     """
     from ml.peng_hao import compute_channel, classify_9_direction
-    from server.db import load_draws
-    data = load_draws()
+    data = db.load_draws()
     if len(data) < 19:
         return {"ok": False, "msg": "数据不足"}
     ch = compute_channel(data, position=6)
@@ -366,8 +351,7 @@ def wuming_extreme_dan():
     GET /api/wuming/extreme-dan
     """
     from ml.micro_portfolio import _extreme_value_dan
-    from server.db import load_draws
-    return _extreme_value_dan(load_draws())
+    return _extreme_value_dan(db.load_draws())
 
 
 def wuming_sum_compound():
@@ -413,8 +397,7 @@ def wuming_repeat_analysis():
     GET /api/wuming/repeats
     """
     from ml.micro_portfolio import _repeat_method
-    from server.db import load_draws
-    return _repeat_method(load_draws())
+    return _repeat_method(db.load_draws())
 
 
 def wuming_period5():
@@ -489,7 +472,6 @@ def blue_pick(liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue
         return {"ok": True, "candidates": [], "mode": "none"}
 
     inter = set(range(1, 17))
-    methods_used = []
     for fn in active:
         cands = fn()
         if cands:
@@ -507,8 +489,8 @@ def generate_jiang_jialin(n=3, use_gap=True, use_span=True,
     GET /api/jiangjialin/tickets?n=3
     """
     from ml.jiang_jialin import generate_tickets
-    from server.db import load_draws
-    return generate_tickets(load_draws(), n=n,
+    data = db.load_draws()
+    return generate_tickets(data, n=n,
                             use_gap=use_gap, use_span=use_span,
                             use_pattern=use_pattern, use_shrink=use_shrink,
                             blue_mode=blue_mode)

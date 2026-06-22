@@ -12,6 +12,14 @@ import math
 import itertools
 import random
 
+from ml.ssq_constants import (
+    COVERING_OPTIMAL_BOUNDS, SA_T_START, SA_T_END, SA_ITERATIONS, SA_ROUNDS,
+    TOTAL_RED, TICKET_PRICE, BLUE_HIT_PROB,
+    PRIZE_3RD, PRIZE_4TH, PRIZE_5TH, PRIZE_6TH,
+    RANDOM_SINGLE_EV,
+)
+KNOWN_OPTIMAL = COVERING_OPTIMAL_BOUNDS
+
 
 def generate_candidate_set(red_probs, size=15):
     """[工程] 默认15: C(33,6)=1.1M, C(15,6)=5005, 搜索空间可管理.
@@ -33,9 +41,9 @@ def _popcount(x):
 
 
 def simanneal_covering(v_numbers, n_tickets, t=4, iterations=None):
+    """位掩码 + 增量求值 + 稀疏覆盖 — v=15 时 ~5000 iter/s"""
     if iterations is None:
         iterations = SA_ITERATIONS
-    """位掩码 + 增量求值 + 稀疏覆盖 — v=15 时 ~5000 iter/s"""
     v = len(v_numbers)
     k = 6
     numbers_list = list(v_numbers)
@@ -64,7 +72,6 @@ def simanneal_covering(v_numbers, n_tickets, t=4, iterations=None):
 
     uncovered = sum(1 for c in covered_count if c == 0)
     best_masks = list(ticket_masks)
-    best_coverage = list(ticket_coverage)
     best_uncovered = uncovered
 
     T_start, T_end = SA_T_START, SA_T_END
@@ -112,7 +119,6 @@ def simanneal_covering(v_numbers, n_tickets, t=4, iterations=None):
             if uncovered < best_uncovered:
                 best_uncovered = uncovered
                 best_masks = list(ticket_masks)
-                best_coverage = list(ticket_coverage)
         else:
             # 回退
             for ri in new_cov:
@@ -207,18 +213,8 @@ def _estimate_required(v, t):
         return max(12, int(math.ceil(lower_bound * 2.0)))
 
 
-# 从全局常量导入已知最优界
-from ml.ssq_constants import COVERING_OPTIMAL_BOUNDS, SA_T_START, SA_T_END, SA_ITERATIONS, SA_ROUNDS
-KNOWN_OPTIMAL = COVERING_OPTIMAL_BOUNDS
-
-
 def lottery_ev_calculator(tickets, hot_numbers, blue_probs, coverage_pct):
     """覆盖设计期望价值 — 所有金额/概率来源于 cwl.gov.cn 官方规则"""
-    from ml.ssq_constants import (
-        TOTAL_RED, TOTAL_BLUE, TICKET_PRICE, BLUE_HIT_PROB,
-        PRIZE_3RD, PRIZE_4TH, PRIZE_5TH, PRIZE_6TH,
-        RANDOM_SINGLE_EV,
-    )
     v = len(hot_numbers)
     prob_all = math.comb(v, 6) / math.comb(TOTAL_RED, 6)
     prob_5 = math.comb(v, 5) * math.comb(TOTAL_RED - v, 1) / math.comb(TOTAL_RED, 6)

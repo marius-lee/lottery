@@ -5,7 +5,6 @@
 """
 import math
 import numpy as np
-from collections import Counter
 from ml.ssq_constants import (
     TOTAL_RED, TOTAL_BLUE, PICK_RED,
     RED_EXPECTED_HITS, BLUE_HIT_PROB,
@@ -75,7 +74,7 @@ def evaluate_strategy_tickets(tickets, backtest_red_hits, backtest_blue_hits):
     # 多少注包含 ≥k 个与开奖号码匹配的红球？
     # 使用超几何分布估计: P(hit=k) = C(6,k)*C(27,6-k)/C(33,6)
     # 策略提升: 将均值从1.0909提升到实际avg_red, 重新分配概率质量
-    red_probs_random = _hypergeometric_red_probs()
+    red_probs_random = _HYPERGEOMETRIC_RED_PROBS
     red_probs_strat = _shift_probs_to_mean(red_probs_random, avg_red)
 
     # ── 蓝球覆盖率 ──
@@ -86,7 +85,7 @@ def evaluate_strategy_tickets(tickets, backtest_red_hits, backtest_blue_hits):
     # P(一等奖|策略) = P(6红) * P(蓝球中)
     # 其中 P(6红) 由 backtest 直方图估计 (若数据充足) 或 shift后的超几何
     prize_probs_strat = _compute_prize_probs(red_probs_strat, blue_rate)
-    prize_probs_random = _compute_prize_probs(red_probs_random, BLUE_HIT_PROB)
+    prize_probs_random = _RANDOM_PRIZE_PROBS
 
     # ── EV计算 ──
     ev_strat_per_ticket = sum(
@@ -140,6 +139,10 @@ def _hypergeometric_red_probs():
     return probs
 
 
+# 缓存常量：超几何分布在33选6下是确定的数学常数，只需计算一次
+_HYPERGEOMETRIC_RED_PROBS = _hypergeometric_red_probs()
+
+
 def _shift_probs_to_mean(base_probs, target_mean):
     """调整概率分布使期望命中数从1.0909偏移到target_mean。
 
@@ -157,10 +160,7 @@ def _shift_probs_to_mean(base_probs, target_mean):
     # 向k>mean的区间转移概率
     weight = {}
     for k in range(7):
-        if delta > 0:
-            weight[k] = 1.0 + delta * (k - current_mean) * 0.5
-        else:
-            weight[k] = 1.0 + delta * (k - current_mean) * 0.5
+        weight[k] = 1.0 + delta * (k - current_mean) * 0.5
         weight[k] = max(0.01, weight[k])
 
     total_w = sum(weight[k] * base_probs[k] for k in range(7))
@@ -193,7 +193,10 @@ def _compute_prize_probs(red_probs, blue_rate):
     p_fourth = red_probs.get(5, 0) * p_no_blue + red_probs.get(4, 0) * p_blue
     p_fifth = red_probs.get(4, 0) * p_no_blue + red_probs.get(3, 0) * p_blue
     # 六等奖 = 蓝球中 减去 蓝球中且中更高奖
-    p_sixth_blue = p_blue - (p_first + p_third + red_probs.get(4, 0) * p_blue + red_probs.get(3, 0) * p_blue)
+    # 更高奖等涉及蓝球: 一等奖(6+1), 三等奖(5+1), 四等奖(4+1部分), 五等奖(3+1部分)
+    p_sixth_blue = p_blue * (1 - (red_probs.get(6, 0) + red_probs.get(5, 0) +
+                                  red_probs.get(4, 0) + red_probs.get(3, 0)))
+    p_sixth = max(0, p_sixth_blue)
 
     return {
         "first": p_first,
@@ -201,6 +204,10 @@ def _compute_prize_probs(red_probs, blue_rate):
         "third": p_third,
         "fourth": p_fourth,
         "fifth": p_fifth,
-        "sixth": max(0, p_sixth_blue),
-        "any": p_first + p_second + p_third + p_fourth + p_fifth + max(0, p_sixth_blue),
+        "sixth": p_sixth,
+        "any": p_first + p_second + p_third + p_fourth + p_fifth + p_sixth,
     }
+
+
+# 缓存常量：随机基线的奖等概率（超几何分布 × 蓝球命中率1/16）
+_RANDOM_PRIZE_PROBS = _compute_prize_probs(_HYPERGEOMETRIC_RED_PROBS, BLUE_HIT_PROB)
