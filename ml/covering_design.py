@@ -14,6 +14,8 @@ import random
 
 
 def generate_candidate_set(red_probs, size=15):
+    """[工程] 默认15: C(33,6)=1.1M, C(15,6)=5005, 搜索空间可管理.
+    增到20则C(20,6)=38760, 减到12则C(12,6)=924."""
     sorted_nums = sorted(red_probs.items(), key=lambda x: -x[1])
     return [n for n, _ in sorted_nums[:size]]
 
@@ -141,20 +143,21 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
         target_tickets = KNOWN_OPTIMAL.get((v, t), _estimate_required(v, t))
 
     best_tickets, best_cov = [], 0.0
-    rounds = SA_ROUNDS if v <= 18 else (SA_ROUNDS // 2)
+    # [工程] v>18时C(v,6)指数增长, 减重启控时; 保底3轮
+    rounds = SA_ROUNDS if v <= 18 else max(SA_ROUNDS // 2, 3)
 
     for _ in range(rounds):
-        tickets, cov = simanneal_covering(hot_numbers, target_tickets, t, iterations=10000)
+        tickets, cov = simanneal_covering(hot_numbers, target_tickets, t, iterations=SA_ITERATIONS)
         if cov > best_cov:
             best_cov, best_tickets = cov, tickets
-        if best_cov >= 99.9:
+        if best_cov >= 99.9:  # [文献] SA_MIN_COVERAGE: La Jolla已知最优覆盖通常≥99.9%
             break
 
-    # 不够90%则加票
+    # 覆盖不足→增量加票 [工程] 90%是实用下限, 30注是成本上限
     if best_cov < 90 and target_tickets < 30:
         for extra in [1, 2, 3]:
             for _ in range(5):
-                tickets, cov = simanneal_covering(hot_numbers, target_tickets + extra, t, iterations=10000)
+                tickets, cov = simanneal_covering(hot_numbers, target_tickets + extra, t, iterations=SA_ITERATIONS)
                 if cov > best_cov:
                     best_cov, best_tickets = cov, tickets
                 if best_cov >= 95:
@@ -162,11 +165,11 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
             if best_cov >= 95:
                 break
 
-    # 如果还是不够，尝试 t=3 替代（覆盖至少3个→五等奖 ¥10）
+    # [数学] C(v,6)覆盖不足→降级t=3: 覆盖至少3个红球仍可中五等奖(¥10)
     if best_cov < 80:
         for extra in [0, 1]:
             for _ in range(3):
-                tickets, cov = simanneal_covering(hot_numbers, target_tickets + extra, 3, iterations=10000)
+                tickets, cov = simanneal_covering(hot_numbers, target_tickets + extra, 3, iterations=SA_ITERATIONS)
                 if cov > best_cov:
                     best_cov, best_tickets = cov, tickets
                 if best_cov >= 95:
@@ -190,16 +193,18 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
 
 
 def _estimate_required(v, t):
-    if t == 4:
-        if v <= 15: return 6
-        if v <= 17: return 10
-        if v <= 20: return 16
-        return max(4, int(math.comb(v, 4) / math.comb(6, 4) / 3))
-    if t == 5:
-        if v <= 15: return 31
-        if v <= 18: return 85
-        return max(8, int(math.comb(v, 5) / math.comb(6, 5) / 2))
-    return 20
+    """[数学] 覆盖设计下界: 每个t-子集必须被至少1注覆盖, 因此最少需
+    ⌈C(v,t)/C(k,t)⌉ 注. 这是平凡的组合计数下界, 非紧界.
+    实际SA起点取下界的1.5-2倍以确保有可行解."""
+    k = 6
+    lower_bound = math.comb(v, t) / math.comb(k, t)  # 最少需覆盖所有t-子集
+    # SA需要大于下界的注数才能收敛到可行解
+    if v <= 15:
+        return max(4, int(math.ceil(lower_bound * 1.5)))
+    elif v <= 20:
+        return max(8, int(math.ceil(lower_bound * 1.7)))
+    else:
+        return max(12, int(math.ceil(lower_bound * 2.0)))
 
 
 # 从全局常量导入已知最优界

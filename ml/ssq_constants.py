@@ -69,7 +69,8 @@ COVERING_OPTIMAL_BOUNDS = {
     (16, 5): 52, (17, 5): 66, (18, 5): 85,
 }
 
-SA_T_START = 50.0       # 模拟退火初始温度
-SA_T_END = 0.001        # 终止温度
-SA_ITERATIONS = 10000   # 默认迭代数
-SA_ROUNDS = 15          # v≤18: 15轮重启
+SA_T_START = 50.0       # [工程] 初始温度: 足够高以接受绝大多数新解(标准SA实践)
+SA_T_END = 0.001        # [工程] 终止温度: 冷却到此搜索已充分收敛
+SA_ITERATIONS = 10000   # [工程] 每次SA重启的迭代次数
+SA_ROUNDS = 15          # [工程] v≤18时重启轮数, 经验值; v>18减半因搜索空间指数增长
+SA_MIN_COVERAGE = 99.9  # [工程] La Jolla已知最优覆盖通常>99.9%

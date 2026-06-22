@@ -19,6 +19,24 @@ def _parse_query_int(path, key, default):
     return int(vals[0]) if vals else default
 
 
+def _parse_query_str(path, key, default):
+    """从 URL 查询字符串提取字符串参数。"""
+    parsed = urllib.parse.urlparse(path)
+    params = urllib.parse.parse_qs(parsed.query)
+    vals = params.get(key, [])
+    return vals[0] if vals else default
+
+
+def _parse_int_list(path, key):
+    """从 URL 查询字符串提取逗号分隔的整数列表. e.g. numbers=1,5,9,13,18,26"""
+    parsed = urllib.parse.urlparse(path)
+    params = urllib.parse.parse_qs(parsed.query)
+    vals = params.get(key, [])
+    if not vals:
+        return []
+    return [int(x.strip()) for x in vals[0].split(",") if x.strip()]
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     _ml_bridge = None  # 惰性加载
 
@@ -48,80 +66,134 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # ============ GET ============
 
+    # [Registry] 前缀路由: 统一分发到子处理方法
+    _ROUTES = {
+        "/api/micro/": "_handle_micro_get",
+        "/api/zhang/": "_handle_zhang_get",
+        "/api/peng/": "_handle_peng_get",
+        "/api/wuming/": "_handle_wuming_get",
+        "/api/jiangjialin/": "_handle_jiangjialin_get",
+        "/api/lizhilin/": "_handle_lizhilin_get",
+        "/api/covering/": "_handle_covering_get",
+        "/api/covering-diverse": "_handle_covering_diverse",
+        "/api/evaluate/": "_handle_evaluate_get",
+        "/api/compare/": "_handle_compare_get",
+        "/api/prediction-log": "_handle_prediction_log_get",
+        "/api/blue/": "_handle_blue_get",
+        "/api/red/": "_handle_red_get",
+        "/api/weier/": "_handle_weier_get",
+        "/api/lixiangchun/": "_handle_lixiangchun_get",
+        "/static/": "_serve_static",
+    }
+
     def do_GET(self):
         p = self.path
-
         if p == "/":
             return self._html()
 
-        # ── 数据端点 ──
-        if p == "/api/data":
-            all_data = db.load_draws()
-            short_data = all_data[-300:] if len(all_data) > 300 else all_data
-            return self._json({
-                "ok": True, "source": "本地数据库",
-                "count": len(short_data), "total": len(all_data),
-                "data": short_data,
-            })
+        # Exact-match endpoints
+        handlers = {
+            "/api/data": lambda: self._json({"ok": True, "source": "本地数据库",
+                "count": min(len(db.load_draws()), 300), "total": len(db.load_draws()),
+                "data": db.load_draws()[-300:]}),
+            "/api/fetch": lambda: self._json(self._handle_fetch(p)),
+            "/api/user-picks": lambda: self._json({"ok": True, "picks": db.load_user_picks()}),
+            "/api/stats": self._handle_stats,
+            "/api/flush-cache": lambda: self._json({"ok": True, "msg": "缓存标记已清除"}),
+            "/api/recommend": self._handle_recommend,
+            "/api/rules/status": lambda: self._json({"ok": True, **self.ml_bridge.get_rule_status()}),
+            "/api/zone-break/data": lambda: self._json(self.ml_bridge.get_zone_break_data()),
+            "/api/weier/conditions": lambda: self._json(self.ml_bridge.get_weier_conditions()),
+        }
+        if p.split("?")[0] in handlers:
+            return handlers[p.split("?")[0]]()
 
-        if p.startswith("/api/fetch"):
-            force = "force=1" in p or "force=true" in p
-            source_name, short_data, new_count = fetcher.fetch_data(force=force)
-            if short_data:
-                resp = {
-                    "ok": True, "source": source_name, "count": len(short_data),
-                    "newCount": new_count, "data": short_data,
-                }
-                user_picks = db.load_user_picks()
-                if user_picks:
-                    resp["userPicks"] = user_picks
-            else:
-                resp = {"ok": False, "msg": "所有数据源均失败，请检查网络连接"}
-            return self._json(resp)
-
-        if p == "/api/user-picks":
-            return self._json({"ok": True, "picks": db.load_user_picks()})
-
-        if p == "/api/stats":
-            return self._handle_stats()
-
-        if p == "/api/flush-cache":
-            db.flush_cache()
-            return self._json({"ok": True, "msg": "缓存标记已清除"})
-
-        if p == "/api/recommend":
-            return self._handle_recommend()
-
-        if p == "/api/rules/status":
-            return self._json({"ok": True, **self.ml_bridge.get_rule_status()})
-
-        # ── 微投资组合 ──
-        if p.startswith("/api/micro/"):
-            return self._handle_micro_get(p)
-
-        # ── 覆盖设计 ──
-        if p.startswith("/api/covering-diverse"):
-            return self._handle_covering_diverse(p)
-
-        if p.startswith("/api/covering/"):
-            return self._handle_covering_get(p)
-
-        # ── 奖项评估 ──
-        if p.startswith("/api/evaluate/"):
-            return self._handle_evaluate_get(p)
-
-        # ── 对比 + 预测日志 ──
-        if p.startswith("/api/compare/"):
-            return self._handle_compare_get()
-        if p.startswith("/api/prediction-log"):
-            return self._handle_prediction_log_get(p)
-
-        # ── 静态文件 ──
-        if p.startswith("/static/"):
-            return self._serve_static()
+        # Prefix-match routes
+        for prefix, handler_name in self._ROUTES.items():
+            if p.startswith(prefix):
+                h = getattr(self, handler_name)
+                return h(p) if handler_name.startswith("_handle_") else h()
 
         self.send_response(404)
         self.end_headers()
+
+    # ── 子路由 ──
+
+    def _handle_fetch(self, path):
+        force = "force=1" in path or "force=true" in path
+        source_name, short_data, new_count = fetcher.fetch_data(force=force)
+        if short_data:
+            resp = {"ok": True, "source": source_name, "count": len(short_data),
+                    "newCount": new_count, "data": short_data}
+            picks = db.load_user_picks()
+            if picks: resp["userPicks"] = picks
+        else:
+            resp = {"ok": False, "msg": "所有数据源均失败"}
+        return resp
+
+    def _handle_wuming_get(self, path):
+        clean = path.split("?")[0]
+        dispatch = {
+            "/api/wuming/blue-alert": self.ml_bridge.wuming_blue_extreme_alert,
+            "/api/wuming/oscillation": self.ml_bridge.wuming_cyclic_oscillation,
+            "/api/wuming/period5": self.ml_bridge.wuming_period5,
+            "/api/wuming/cold9": self.ml_bridge.wuming_cold9,
+            "/api/wuming/zone6": self.ml_bridge.wuming_zone6,
+            "/api/wuming/positions": self.ml_bridge.wuming_position_filter,
+            "/api/wuming/repeats": self.ml_bridge.wuming_repeat_analysis,
+            "/api/wuming/extreme-dan": self.ml_bridge.wuming_extreme_dan,
+            "/api/wuming/sum-compound": self.ml_bridge.wuming_sum_compound,
+            "/api/wuming/sub4-add4": self.ml_bridge.xia_sub4_add4_blue,
+            "/api/wuming/compute-reds": self.ml_bridge.xia_compute_reds,
+        }
+        fn = dispatch.get(clean)
+        return self._json(fn() if fn else {"ok": False, "msg": "未知端点"})
+
+    def _handle_jiangjialin_get(self, path):
+        n = _parse_query_int(path, "n", 3)
+        return self._json(self.ml_bridge.generate_jiang_jialin(
+            n=n, use_gap=_parse_query_int(path,"gap",1)==1,
+            use_span=_parse_query_int(path,"span",1)==1,
+            use_pattern=_parse_query_int(path,"pattern",1)==1,
+            use_shrink=_parse_query_int(path,"shrink",1)==1,
+            blue_mode=_parse_query_str(path,"blue","mod3")))
+
+    def _handle_lizhilin_get(self, path):
+        n = _parse_query_int(path, "n", 3)
+        kwargs = {k: _parse_query_int(path, k, 1) for k in
+                  ["dan8","dan3","trans","kill","btail"]}
+        kwargs["bten"] = _parse_query_int(path, "bten", 0)
+        kwargs["bperiod"] = _parse_query_int(path, "bperiod", 0)
+        return self._json(self.ml_bridge.generate_li_zhilin(n=n, **kwargs))
+
+    def _handle_weier_get(self, path):
+        return self._json(self.ml_bridge.generate_weier())
+
+    def _handle_lixiangchun_get(self, path):
+        clean = path.split("?")[0]
+        if clean == "/api/lixiangchun/spread":
+            nums = _parse_int_list(path, "numbers")
+            return self._json(self.ml_bridge.lixiangchun_spread(nums))
+        if clean == "/api/lixiangchun/skewness":
+            curr = _parse_int_list(path, "current")
+            prev = _parse_int_list(path, "previous")
+            return self._json(self.ml_bridge.lixiangchun_skewness(curr, prev))
+        if clean == "/api/lixiangchun/ac":
+            nums = _parse_int_list(path, "numbers")
+            return self._json(self.ml_bridge.lixiangchun_ac_value(nums))
+        if clean == "/api/lixiangchun/sanlang":
+            return self._json(self.ml_bridge.lixiangchun_sanlang())
+        if clean == "/api/lixiangchun/dhr":
+            num = _parse_query_int(path, "num", 1)
+            return self._json(self.ml_bridge.lixiangchun_dhr(num))
+        if clean == "/api/lixiangchun/trend-score":
+            reds = _parse_int_list(path, "reds")
+            blue = _parse_query_int(path, "blue", None)
+            return self._json(self.ml_bridge.lixiangchun_trend_score(reds, blue))
+        if clean == "/api/lixiangchun/generate":
+            n = _parse_query_int(path, "n", 3)
+            return self._json(self.ml_bridge.lixiangchun_generate(n))
+        return self._json({"ok": False, "msg": "unknown endpoint"})
 
     # ── 子路由: 微投资组合 ──
 
@@ -129,25 +201,117 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/micro/3tickets":
             return self._json(self.ml_bridge.micro_3_tickets(n=3))
         n = _parse_query_int(path, "n", 3)
-        soft = _parse_query_int(path, "soft", 0) in (1, None) and "soft=1" in path
+        # 合并参数: 高级过滤 = 位置软过滤 + 奇偶/和值
+        advanced_filter = _parse_query_int(path, "adv_filter", 0) == 1 or _parse_query_int(path, "soft", 0) == 1
+        soft = advanced_filter
+        param_filter = advanced_filter
+        # 蓝球策略 — 按作者分组, 可多选
+        liu_blue = _parse_query_int(path, "liu_blue", 0) == 1
+        cailele_blue = _parse_query_int(path, "cailele_blue", 0) == 1
+        gongyi_blue = _parse_query_int(path, "gongyi_blue", 0) == 1
+        wuming_blue = _parse_query_int(path, "wuming_blue", 0) == 1
+        # 向后兼容: old params map to all authors
+        if _parse_query_int(path, "smart_blue", 0) == 1 or _parse_query_int(path, "pattern", 0) == 1:
+            liu_blue = cailele_blue = gongyi_blue = wuming_blue = True
+        five_period = liu_blue
+        pattern_rules = (liu_blue and cailele_blue and gongyi_blue and wuming_blue)
+        # 独立参数
         luck_raw = _parse_query_int(path, "luck", 0)
-        luck_mode = {0: 'off', 1: 'blend', 2: 'pure'}.get(luck_raw, 'off')
+        luck_mode = {0: 'off', 2: 'pure'}.get(luck_raw, 'off')  # blend已移除
         mo = _parse_query_int(path, "max_overlap", -1)
         max_overlap = None if mo < 0 else mo
         div_raw = _parse_query_int(path, "div", 0)
         diversity_mode = {0: None, 1: 'greedy'}.get(div_raw, None)
-        five_period = _parse_query_int(path, "five_period", 0) == 1
         backtest_rank = _parse_query_int(path, "backtest", 0) == 1
-        param_filter = _parse_query_int(path, "param", 0) == 1
-        ba = _parse_query_int(path, "bundle_a", 0) or None
-        bb = _parse_query_int(path, "bundle_b", 0) or None
-        bundle_a = ba if ba and 1 <= ba <= 33 else None
-        bundle_b = bb if bb and 1 <= bb <= 33 else None
+        color_filter = _parse_query_int(path, "color_filter", 0) == 1
+        block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
+        spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
+        ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
+        wuming_clockwise = _parse_query_int(path, "wuming_clockwise", 0) == 1
+        wuming_bsd = _parse_query_int(path, "wuming_bsd", 0) == 1
         return self._json(self.ml_bridge.micro_3_tickets(
             n=n, soft=soft, luck_mode=luck_mode,
             max_overlap=max_overlap, diversity_mode=diversity_mode,
             five_period=five_period, backtest_rank=backtest_rank,
-            param_filter=param_filter, bundle_a=bundle_a, bundle_b=bundle_b))
+            param_filter=param_filter, pattern_rules=pattern_rules,
+            liu_blue=liu_blue, cailele_blue=cailele_blue,
+            gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
+            color_filter=color_filter, block9_filter=block9_filter,
+            spread_filter=spread_filter, ac_filter=ac_filter,
+            wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd))
+
+    # ── 子路由: 张委铭算法 ──
+
+    def _handle_zhang_get(self, path):
+        clean = path.split("?")[0]  # 去掉查询参数
+        n = _parse_query_int(path, "n", 3)
+        dan_raw = _parse_query_str(path, "dan", "")
+        dan = [int(x) for x in dan_raw.split(",") if x.strip().isdigit()] if dan_raw else None
+        if clean == "/api/zhang/twelve-value":
+            return self._json(self.ml_bridge.generate_twelve_value(n=n, dan=dan))
+        elif clean == "/api/zhang/eight-value":
+            return self._json(self.ml_bridge.generate_eight_value(n=n))
+        elif clean == "/api/zhang/combined":
+            return self._json(self.ml_bridge.generate_zhang_combined(n=n, dan=dan))
+        elif clean == "/api/zhang/grid":
+            return self._json(self.ml_bridge.generate_grid_selection(n=n))
+        elif clean == "/api/zhang/dan1":
+            return self._json(self.ml_bridge.generate_dan1())
+        elif clean == "/api/zhang/dan2":
+            return self._json(self.ml_bridge.generate_dan2())
+        return self._json({"ok": False, "msg": "未知端点"})
+
+    # ── 子路由: 彭浩算法 ──
+
+    def _handle_peng_get(self, path):
+        clean = path.split("?")[0]
+        if clean == "/api/peng/channel":
+            return self._json(self.ml_bridge.peng_channel_all_positions())
+        elif clean == "/api/peng/direction":
+            return self._json(self.ml_bridge.peng_direction_all_positions())
+        elif clean == "/api/peng/extreme":
+            return self._json(self.ml_bridge.peng_extreme_rules())
+        elif clean == "/api/peng/tickets":
+            n = _parse_query_int(path, "n", 3)
+            use_channel = _parse_query_int(path, "channel", 1) == 1
+            use_direction = _parse_query_int(path, "direction", 1) == 1
+            use_extreme = _parse_query_int(path, "extreme", 1) == 1
+            return self._json(self.ml_bridge.peng_generate_tickets(
+                n=n, use_channel=use_channel, use_direction=use_direction,
+                use_extreme=use_extreme))
+        elif clean == "/api/peng/blue":
+            return self._json(self.ml_bridge.peng_blue_prediction())
+        return self._json({"ok": False, "msg": "未知端点"})
+
+    # ── 子路由: 蓝球独立出号 ──
+
+    def _handle_blue_get(self, path):
+        liu = _parse_query_int(path, "liu_blue", 0) == 1
+        cailele = _parse_query_int(path, "cailele_blue", 0) == 1
+        gongyi = _parse_query_int(path, "gongyi_blue", 0) == 1
+        wuming = _parse_query_int(path, "wuming_blue", 0) == 1
+        clockwise = _parse_query_int(path, "wuming_clockwise", 0) == 1
+        bsd = _parse_query_int(path, "wuming_bsd", 0) == 1
+        xia = _parse_query_int(path, "xia_blue", 0) == 1
+        return self._json(self.ml_bridge.blue_pick(
+            liu_blue=liu, cailele_blue=cailele, gongyi_blue=gongyi,
+            wuming_blue=wuming, wuming_clockwise=clockwise, wuming_bsd=bsd,
+            xia_blue=xia))
+
+    # ── 子路由: 红球独立出号 ──
+
+    def _handle_red_get(self, path):
+        n = _parse_query_int(path, "n", 3)
+        soft = _parse_query_int(path, "soft", 0) == 1 or _parse_query_int(path, "adv_filter", 0) == 1
+        param_filter = soft
+        color_filter = _parse_query_int(path, "color_filter", 0) == 1
+        block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
+        spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
+        ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
+        return self._json(self.ml_bridge.red_pick(
+            n=n, soft=soft, param_filter=param_filter,
+            color_filter=color_filter, block9_filter=block9_filter,
+            spread_filter=spread_filter, ac_filter=ac_filter))
 
     # ── 子路由: 覆盖设计 ──
 
@@ -179,7 +343,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # ── 子路由: 对比 ──
 
-    def _handle_compare_get(self):
+    def _handle_compare_get(self, path=None):
         conn = db.get_db()
         ready = conn.execute("""
             SELECT DISTINCT up.period FROM user_picks up
@@ -269,6 +433,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if p == "/api/compare":
             return self._handle_compare_post()
+
+        if p == "/api/zone-break/filter":
+            payload = self._parse_body()
+            if not payload:
+                return
+            return self._json(self.ml_bridge.filter_zone_break(
+                payload.get("break_rows", "000"),
+                payload.get("break_cols", "000")))
+
+        if p == "/api/weier/manual":
+            payload = self._parse_body()
+            if not payload:
+                return
+            return self._json(self.ml_bridge.generate_weier_manual(payload))
 
         if p == "/api/prediction-log":
             return self._handle_prediction_log_post()

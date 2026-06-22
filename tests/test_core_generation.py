@@ -223,11 +223,11 @@ class TestFivePeriod(unittest.TestCase):
         self.assertEqual(len(boost), 16)
 
     def test_five_period_boost_values(self):
-        """五期均值±4范围内=1.5, 范围外=1.0"""
+        """五期均值±4范围内=1.0, 范围外≈0(排除)"""
         from ml.micro_portfolio import _five_period_boost
         boost = _five_period_boost()
-        self.assertIn(1.5, boost)  # 至少有一些被boost
-        self.assertIn(1.0, boost)  # 至少有一些不变
+        self.assertIn(1.0, boost)    # 范围内保留
+        self.assertIn(0.01, boost)   # 范围外排除
 
     def test_five_period_off_by_default(self):
         """five_period=False: 行为不变(向后兼容)"""
@@ -247,28 +247,33 @@ class TestFivePeriod(unittest.TestCase):
             self.assertLessEqual(t["blue"], 16)
 
 
-class TestBundle(unittest.TestCase):
-    """捆绑投注 (蒋加林, 2001)"""
+class TestPatternRules(unittest.TestCase):
+    """图形规律 (刘大军 Ch3-4, 2011)"""
 
     @classmethod
     def setUpClass(cls):
         sys.path.insert(0, PROJECT_ROOT)
 
-    def test_bundle_enforced(self):
-        """bundle_a/bundle_b: 至少一注包含该对"""
-        from ml.micro_portfolio import generate_tickets
-        result = generate_tickets(n=3, bundle_a=3, bundle_b=7)
-        self.assertTrue(result["ok"])
-        bundle_set = {3, 7}
-        self.assertTrue(any(bundle_set.issubset(set(t["reds"])) for t in result["tickets"]),
-                        "至少一注应包含捆绑对 (3,7)")
+    def test_pattern_boost_returns_16(self):
+        """_pattern_blue_boost 返回16个元素"""
+        from ml.micro_portfolio import _pattern_blue_boost
+        boost = _pattern_blue_boost()
+        self.assertEqual(len(boost), 16)
 
-    def test_bundle_none_by_default(self):
-        """bundle_a/bundle_b=None: 行为不变"""
+    def test_pattern_runs(self):
+        """pattern_rules=True 正常生成"""
         from ml.micro_portfolio import generate_tickets
-        result = generate_tickets(n=3)
+        result = generate_tickets(n=3, pattern_rules=True)
         self.assertTrue(result["ok"])
-        self.assertEqual(len(result["tickets"]), 3)
+        for t in result["tickets"]:
+            self.assertGreaterEqual(t["blue"], 1)
+            self.assertLessEqual(t["blue"], 16)
+
+    def test_pattern_off_by_default(self):
+        """pattern_rules=False: 向后兼容"""
+        from ml.micro_portfolio import generate_tickets
+        result = generate_tickets(n=3, pattern_rules=False)
+        self.assertTrue(result["ok"])
 
 
 class TestBuildPool(unittest.TestCase):

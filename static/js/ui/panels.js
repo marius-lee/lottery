@@ -104,7 +104,8 @@ export function toggleUserHistory() {
 }
 
 export function saveCurrentDraw() {
-  if (!store.lastDrawResults) return;
+  var merged = window._lastMergeResult;
+  if (!merged || !merged.reds || !merged.blues) return;
 
   let maxPeriod = 0;
   store.DATA.forEach(r => { if (r[0] > maxPeriod) maxPeriod = r[0]; });
@@ -117,13 +118,14 @@ export function saveCurrentDraw() {
   const seq = period % 1000;
   if (seq > 153) period = (year + 1) * 1000 + 1;
 
-  const picks = store.lastDrawResults.map(r => ({
-    period,
-    reds: r.reds,
-    blue: r.blue,
-    strategy: 'enhanced',
-    score: r.score || 0,
-  }));
+  var n = Math.min(merged.reds.length, merged.blues.length);
+  var picks = [];
+  for (var i=0; i<n; i++){
+    picks.push({
+      period, reds: merged.reds[i], blue: merged.blues[i] || merged.blues[0],
+      strategy: 'manual-merge', score: 0,
+    });
+  }
 
   fetch('/api/save', {
     method: 'POST',
@@ -131,12 +133,10 @@ export function saveCurrentDraw() {
     body: JSON.stringify({ picks }),
   }).catch(() => {});
 
-  const logEntries = store.lastDrawResults.map(r => ({
-    period,
-    source: 'enhanced',
-    reds_json: JSON.stringify(r.reds),
-    blue: r.blue,
-  }));
+  var logEntries = picks.map(function(p){ return {
+    period, source: 'manual-merge',
+    reds_json: JSON.stringify(p.reds), blue: p.blue,
+  };});
   fetch('/api/prediction-log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

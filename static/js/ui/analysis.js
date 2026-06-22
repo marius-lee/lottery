@@ -163,13 +163,68 @@ export function switchAnalysisTab(tab, el) {
     const similarEl = document.getElementById('similarContent');
     if (similarEl) similarEl.innerHTML = renderSimilarAnalysis();
   }
-  if (tab === 'correlation') {
-    import('../analysis/correlation.js').then(m => {
-      m.renderBundleSelector('correlationContent');
-    });
-  }
   if (tab === 'charts') {
     import('../chart.js').then(m => { m.switchChart('sum'); });
+  }
+  if (tab === 'sanlang') {
+    renderSanlangAnalysis();
+  }
+}
+
+// ── 李相春 三浪信号面板 (2003) ──
+
+async function renderSanlangAnalysis() {
+  const el = document.getElementById('sanlangContent');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#FBBF24;padding:12px;text-align:center;">三浪信号加载中...</div>';
+
+  try {
+    const r = await fetch('/api/lixiangchun/sanlang');
+    const d = await r.json();
+    const jiang = d.jiang || [];
+    const sheng = d.sheng || [];
+
+    let h = '<div style="padding:8px;">';
+
+    // 说明
+    h += '<div style="font-size:10px;color:#64748B;margin-bottom:12px;line-height:1.5;">';
+    h += '李相春《彩票小额投注必读》(2003) p73-74：<br>';
+    h += '<b style="color:#34D399;">降三浪</b> = 间隔逐次递减(≥10→4-6→0-3)，冷号反转为热号的最强信号，近期应优先选择。<br>';
+    h += '<b style="color:#EF4444;">升三浪</b> = 间隔逐次递增(0-3→4-6→≥10)，热号"疲惫"，除非出现反转信号否则避开。<br>';
+    h += '</div>';
+
+    // 降三浪 (绿)
+    h += '<div class="analysis-card" style="margin-bottom:12px;">';
+    h += '<h3 style="color:#34D399;margin:0 0 8px 0;">▼ 降三浪 · 即将活跃 ('+jiang.length+'个)</h3>';
+    if (jiang.length > 0) {
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+      jiang.forEach(n => {
+        h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#059669;color:#fff;font-weight:700;font-size:15px;" title="号码'+n+'：降三浪信号，预计近期频繁出现">'+n+'</span>';
+      });
+      h += '</div>';
+    } else {
+      h += '<div style="color:#64748B;font-size:12px;">当前无降三浪信号</div>';
+    }
+    h += '</div>';
+
+    // 升三浪 (红)
+    h += '<div class="analysis-card">';
+    h += '<h3 style="color:#EF4444;margin:0 0 8px 0;">▲ 升三浪 · 建议避开 ('+sheng.length+'个)</h3>';
+    if (sheng.length > 0) {
+      h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+      sheng.forEach(n => {
+        h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#DC2626;color:#fff;font-weight:700;font-size:15px;opacity:0.7;" title="号码'+n+'：升三浪信号，建议避开">'+n+'</span>';
+      });
+      h += '</div>';
+    } else {
+      h += '<div style="color:#64748B;font-size:12px;">当前无升三浪信号</div>';
+    }
+    h += '</div>';
+
+    h += '</div>';
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#EF4444;padding:12px;">三浪加载失败: '+e.message+'</div>';
   }
 }
 

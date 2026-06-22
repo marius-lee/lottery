@@ -74,12 +74,8 @@ export function renderPlaceholders() {
 
 // ============ 选项 ============
 
-export function updateSoft() {
-  store.useSoft = document.getElementById('softToggle').checked;
-}
-
-export function updateLuck() {
-  store.useLuck = document.getElementById('luckToggle').checked;
+export function updateAdvFilter() {
+  store.useAdvFilter = document.getElementById('advFilterToggle').checked;
 }
 
 export function updateDiversity() {
@@ -88,23 +84,59 @@ export function updateDiversity() {
 
 export function updateGreedy() {
   store.useGreedy = document.getElementById('greedyToggle').checked;
-  // 贪心模式自动启用分散红球
   if (store.useGreedy) {
     document.getElementById('diversityToggle').checked = true;
     store.useDiversity = true;
   }
 }
 
-export function updateFivePeriod() {
-  store.useFivePeriod = document.getElementById('fivePeriodToggle').checked;
+export function updateLiuBlue() {
+  store.useLiuBlue = document.getElementById('liuBlueToggle').checked;
+}
+export function updateCaileleBlue() {
+  store.useCaileleBlue = document.getElementById('caileleBlueToggle').checked;
+}
+export function updateGongyiBlue() {
+  store.useGongyiBlue = document.getElementById('gongyiBlueToggle').checked;
+}
+export function updateWumingBlue() {
+  store.useWumingBlue = document.getElementById('wumingBlueToggle').checked;
 }
 
 export function updateBacktest() {
   store.useBacktest = document.getElementById('backtestToggle').checked;
 }
+export function updateColorFilter() {
+  store.useColorFilter = document.getElementById('colorFilterToggle').checked;
+}
+export function updateBlock9Filter() {
+  store.useBlock9Filter = document.getElementById('block9FilterToggle').checked;
+}
+export function updateSpreadFilter() {
+  store.useSpreadFilter = document.getElementById('spreadFilterToggle').checked;
+}
+export function updateAcFilter() {
+  store.useAcFilter = document.getElementById('acFilterToggle').checked;
+}
+export function updateWumingClockwise() {
+  store.useWumingClockwise = document.getElementById('wumingClockwiseToggle').checked;
+}
+export function updateWumingBSD() {
+  store.useWumingBSD = document.getElementById('wumingBSDToggle').checked;
+}
+export function updateXiaBlue() {
+  store.useXiaBlue = document.getElementById('xiaBlueToggle').checked;
+}
 
-export function updateParamFilter() {
-  store.useParamFilter = document.getElementById('paramFilterToggle').checked;
+export function updateTwelveValue() {
+  store.useTwelveValue = document.getElementById('twelveValueToggle').checked;
+}
+export function updateEightValue() {
+  store.useEightValue = document.getElementById('eightValueToggle').checked;
+}
+
+export function updateGridSelection() {
+  store.useGridSelection = document.getElementById('gridSelectionToggle').checked;
 }
 
 // ============ API 调用 ============
@@ -112,17 +144,24 @@ export function updateParamFilter() {
 async function drawTickets(luckMode) {
   // luckMode: '' (无), '&luck=1' (blend), '&luck=2' (pure)
   updateProgress('生成中...', 20);
-  const soft = store.useSoft && luckMode !== '&luck=2' ? '&soft=1' : '';
+  const advFilter = store.useAdvFilter && luckMode !== '&luck=2' ? '&adv_filter=1' : '';
   const diversity = store.useGreedy && luckMode !== '&luck=2'
     ? '&max_overlap=2&div=1'
     : (store.useDiversity && luckMode !== '&luck=2' ? '&max_overlap=2' : '');
-  const fivePeriod = store.useFivePeriod && luckMode !== '&luck=2' ? '&five_period=1' : '';
+  const liuB = store.useLiuBlue && luckMode !== '&luck=2' ? '&liu_blue=1' : '';
+  const caileleB = store.useCaileleBlue && luckMode !== '&luck=2' ? '&cailele_blue=1' : '';
+  const gongyiB = store.useGongyiBlue && luckMode !== '&luck=2' ? '&gongyi_blue=1' : '';
+  const wumingB = store.useWumingBlue && luckMode !== '&luck=2' ? '&wuming_blue=1' : '';
   const backtest = store.useBacktest && luckMode !== '&luck=2' ? '&backtest=1' : '';
-  const paramF = store.useParamFilter && luckMode !== '&luck=2' ? '&param=1' : '';
-  const bundle = store.bundledPair ? `&bundle_a=${store.bundledPair[0]}&bundle_b=${store.bundledPair[1]}` : '';
+  const colorF = store.useColorFilter ? '&color_filter=1' : '';
+  const block9F = store.useBlock9Filter ? '&block9_filter=1' : '';
+  const spreadF = store.useSpreadFilter ? '&spread_filter=1' : '';
+  const acF = store.useAcFilter ? '&ac_filter=1' : '';
+  const wumClock = store.useWumingClockwise ? '&wuming_clockwise=1' : '';
+  const wumBSD = store.useWumingBSD ? '&wuming_bsd=1' : '';
   let data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + soft + diversity + fivePeriod + backtest + paramF + bundle + luckMode);
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + liuB + caileleB + gongyiB + wumingB + backtest + colorF + block9F + wumClock + wumBSD + spreadF + acF + luckMode);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';
@@ -148,35 +187,25 @@ async function drawTickets(luckMode) {
   const infoRow = document.createElement('div');
   infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;';
 
-  const isLuck = data.luck_mode && data.luck_mode !== 'off';
-  if (isLuck) {
-    infoRow.style.background = '#2d1b0e';
-    infoRow.style.color = '#fbbf24';
-  } else {
-    infoRow.style.background = 'rgba(255,255,255,0.06)';
-    infoRow.style.color = '#94a3b8';
-  }
+  infoRow.style.background = 'rgba(255,255,255,0.06)';
+  infoRow.style.color = '#94a3b8';
   const algo = data.algorithm || '';
 
   if (data.luck_mode === 'pure') {
-    // 纯运气模式: 信息栏简化
+    infoRow.style.background = '#2d1b0e';
+    infoRow.style.color = '#fbbf24';
     infoRow.innerHTML = `🧿 运气开奖 · ${algo} · 近${data.luck_window || 10}期位置加权`;
   } else {
     const rs = data.rule_status || {};
     const h2 = rs.h2_arithmetic?.excluded || 0;
     const h3 = rs.h3_historical?.excluded || 0;
-    const s1 = rs.s1_consecutive?.violations?.length ? '⚠连号' : '✓连号';
-    const s4 = rs.s4_max_gap?.violations?.length ? '⚠间距' : '✓间距';
-    const luckTag = data.luck_mode === 'blend'
-      ? ` + 运气[近${data.luck_window}期位置偏置]`
-      : ` (运气规则关闭)`;
     const softTag = data.soft_filter
-      ? ` + 软[${s1} ${s4} 位置] 排除${(data.soft_excluded||0).toLocaleString()}`
-      : ` (软过滤关闭)`;
+      ? ` + 高级过滤 排除${(data.soft_excluded||0).toLocaleString()}`
+      : '';
     const poolStr = data.pool_valid_reds != null
       ? ` → 有效池 ${data.pool_valid_reds.toLocaleString()} 红球`
       : '';
-    infoRow.innerHTML = `硬过滤[等差${h2} 历史${h3}]${luckTag}${softTag}${poolStr}`;
+    infoRow.innerHTML = `硬过滤[等差${h2} 历史${h3}]${softTag}${poolStr} · ${algo}`;
   }
   stage.appendChild(infoRow);
 
@@ -211,8 +240,7 @@ export function proceedWithDraw() {
     clearProgress();
   }, 30000);
 
-  const luckMode = store.useLuck ? '&luck=1' : '';
-  drawTickets(luckMode).finally(() => clearTimeout(safety));
+  drawTickets('').finally(() => clearTimeout(safety));
 }
 
 export function proceedWithLuckDraw() {
@@ -226,6 +254,72 @@ export function proceedWithLuckDraw() {
   }, 30000);
 
   drawTickets('&luck=2').finally(() => clearTimeout(safety));
+}
+
+// ============ 微尔算法 ============
+
+export async function startWeierDraw() {
+  disableButtons();
+  store.lastDrawResults = null;
+  renderPlaceholders();
+  updateProgress('微尔算法分析中...', 10);
+
+  const safety = setTimeout(() => {
+    restoreButtons();
+    clearProgress();
+  }, 60000);
+
+  let data;
+  try {
+    const r = await fetch('/api/weier/generate');
+    data = await r.json();
+  } catch (e) {
+    stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">微尔算法失败，请重试</div>';
+    clearProgress(); restoreButtons(); clearTimeout(safety); return;
+  }
+  if (!data || !data.ok) {
+    stageEl().innerHTML = `<div style="color:#cc3333;padding:20px;">${data?.msg || '生成失败'}</div>`;
+    clearProgress(); restoreButtons(); clearTimeout(safety); return;
+  }
+
+  const results = data.tickets.map(t => ({ reds: t.reds, blue: t.blue, score: 5, fails: {} }));
+  store.lastDrawResults = results;
+  const stage = stageEl();
+  stage.innerHTML = '';
+
+  // 条件检测信息栏
+  const infoRow = document.createElement('div');
+  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:left;padding:8px 12px;border-radius:6px;background:rgba(5,150,105,0.1);color:#4ade80;line-height:1.6;';
+  let logHtml = `<b>微尔算法 · 8步条件过滤</b> `;
+  if (data.filter_log) {
+    const exact = data.filter_log.exact_pool_size || '';
+    logHtml += `| ${exact} → ${data.filter_log.final_count || data.tickets.length}注`;
+  }
+  if (data.warning) {
+    logHtml += `<br><span style="color:#FBBF24;">⚠ ${data.warning}</span>`;
+  }
+  if (data.filter_log && data.filter_log.original_filtered_count) {
+    logHtml += `<br>原过滤池${data.filter_log.original_filtered_count}注, 降级采样${data.tickets.length}注`;
+  }
+  infoRow.innerHTML = logHtml;
+  stage.appendChild(infoRow);
+
+  // 票面
+  for (let d = 0; d < results.length; d++) {
+    const row = document.createElement('div');
+    row.className = 'draw-row';
+    const label = document.createElement('span');
+    label.className = 'draw-label';
+    label.textContent = '#' + (d + 1);
+    row.appendChild(label);
+    results[d].reds.forEach(n => row.appendChild(createBall(n, 'red', 'landed')));
+    row.appendChild(createBall(results[d].blue, 'blue', 'landed'));
+    stage.appendChild(row);
+  }
+
+  updateProgress('完成', 100);
+  await delay(300);
+  clearProgress(); restoreButtons(); clearTimeout(safety);
 }
 
 // ============ 覆盖设计 (Tier 3) ============
@@ -297,4 +391,96 @@ export async function startCoveringDraw() {
   clearProgress();
   restoreButtons();
   clearTimeout(safety);
+}
+
+// ============ 张委铭算法 ============
+
+export async function startZhangDraw() {
+  disableButtons();
+  store.lastDrawResults = null;
+  renderPlaceholders();
+  updateProgress('张委铭算法分析中...', 10);
+
+  const safety = setTimeout(() => {
+    restoreButtons();
+    clearProgress();
+  }, 60000);
+
+  // 决定调用哪个端点
+  let endpoint;
+  if (store.useGridSelection) {
+    endpoint = '/api/zhang/grid?n=' + store.drawCount;
+  } else if (store.useTwelveValue && store.useEightValue) {
+    endpoint = '/api/zhang/combined?n=' + store.drawCount;
+  } else if (store.useTwelveValue) {
+    endpoint = '/api/zhang/twelve-value?n=' + store.drawCount;
+  } else if (store.useEightValue) {
+    endpoint = '/api/zhang/eight-value?n=' + store.drawCount;
+  } else {
+    stageEl().innerHTML = '<div style="color:#FBBF24;padding:20px;">请先在策略面板勾选张委铭选项（十二值红球/八值蓝球/行列网格）</div>';
+    clearProgress(); restoreButtons(); clearTimeout(safety); return;
+  }
+
+  let data;
+  try {
+    const r = await fetch(endpoint);
+    data = await r.json();
+  } catch (e) {
+    stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">张委铭算法失败，请重试</div>';
+    clearProgress(); restoreButtons(); clearTimeout(safety); return;
+  }
+  if (!data || !data.ok) {
+    stageEl().innerHTML = `<div style="color:#cc3333;padding:20px;">${data?.msg || '生成失败'}</div>`;
+    clearProgress(); restoreButtons(); clearTimeout(safety); return;
+  }
+
+  const results = data.tickets.map(t => ({ reds: t.reds, blue: t.blue, score: 5, fails: {} }));
+  store.lastDrawResults = results;
+  const stage = stageEl();
+  stage.innerHTML = '';
+
+  // 信息栏
+  const infoRow = document.createElement('div');
+  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:left;padding:8px 12px;border-radius:6px;background:rgba(168,85,247,0.1);color:#A78BFA;line-height:1.6;';
+
+  let infoHtml = '<b>张委铭 · ' + (data.algorithm || '') + '</b><br>';
+
+  if (data.twelve_value) {
+    const tv = data.twelve_value;
+    infoHtml += `十二值红球: ${tv.candidate_count}个候选 [${(tv.candidates||[]).slice(0,12).join(' ')}${tv.candidate_count>12?'...':''}]<br>`;
+    infoHtml += `策略: P1-2→前8, P3-4→池+邻, P5→避池选邻, P6→30-33<br>`;
+    infoHtml += `<span style="color:#94A3B8;">原书1767期: avg${tv.stats.avg_hits_per_period}个/期, ≥4占${tv.stats.pct_ge_4}%</span><br>`;
+  }
+  if (data.grid) {
+    const g = data.grid;
+    infoHtml += `行列网格: ${g.mode_desc}<br>`;
+    infoHtml += `断行: [${(g.break_rows||[]).join(',')||'无'}] 断列: [${(g.break_cols||[]).join(',')}]<br>`;
+    infoHtml += `<span style="color:#94A3B8;">剩余${g.remaining_count}个号码: ${(g.remaining_numbers||[]).slice(0,15).join(' ')}${g.remaining_count>15?'...':''}</span><br>`;
+  }
+  if (data.eight_value) {
+    const ev = data.eight_value;
+    infoHtml += `八值蓝球: ${ev.candidate_count}个候选 [${(ev.candidates||[]).join(' ')}]<br>`;
+    infoHtml += `<span style="color:#FBBF24;">${ev.use_recommendation} (连续错${ev.consecutive_errors}次)</span> `;
+    infoHtml += `<span style="color:#94A3B8;">| 原书: ${ev.stats.success_rate_pct}%成功率 vs 理论${ev.stats.theoretical_rate_pct}%</span><br>`;
+  }
+
+  infoRow.innerHTML = infoHtml;
+  stage.appendChild(infoRow);
+
+  // 票面
+  for (let d = 0; d < results.length; d++) {
+    const row = document.createElement('div');
+    row.className = 'draw-row';
+    const label = document.createElement('span');
+    label.className = 'draw-label';
+    label.textContent = '#' + (d + 1);
+    row.appendChild(label);
+    results[d].reds.forEach(n => row.appendChild(createBall(n, 'red', 'landed')));
+    row.appendChild(createBall(results[d].blue, 'blue', 'landed'));
+    stage.appendChild(row);
+  }
+
+  updateProgress('完成', 100);
+  await delay(300);
+  clearProgress(); restoreButtons(); clearTimeout(safety);
 }
