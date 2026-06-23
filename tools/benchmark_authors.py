@@ -114,6 +114,15 @@ def lixiangchun_filtered_3(data_slice):
     result = generate_tickets(n=3, soft=False, spread_filter=True, ac_filter=True)
     return result.get("tickets", []) if result.get("ok") else []
 
+def micro_peng_channel_3(data_slice):
+    """主流程 + 彭浩通道过滤 3注"""
+    from ml.micro_portfolio import generate_tickets
+    rng = random.Random()
+    try: rng.seed(int(str(data_slice[-1][0]) + "42"))
+    except: pass
+    result = generate_tickets(n=3, soft=False, peng_channel_filter=True)
+    return result.get("tickets", []) if result.get("ok") else []
+
 def random_3(data_slice):
     """纯随机基线 3注"""
     rng = random.Random()
@@ -134,6 +143,7 @@ authors = {
     "蒋加林(2010)": jiangjialin_3,
     "李相春(纯)": lixiangchun_3,
     "李相春(散度+AC)": lixiangchun_filtered_3,
+    "微投+彭浩通道": micro_peng_channel_3,
     "彭浩": peng_3,
     "←随机基线": random_3,
 }

@@ -118,6 +118,15 @@ export function updateSpreadFilter() {
 export function updateAcFilter() {
   store.useAcFilter = document.getElementById('acFilterToggle').checked;
 }
+export function updatePengChannelFilter() {
+  store.usePengChannelFilter = document.getElementById('pengChannelFilterToggle').checked;
+}
+export function updateGapFilter() {
+  store.useGapFilter = document.getElementById('gapFilterToggle').checked;
+}
+export function updateOmissionFilter() {
+  store.useOmissionFilter = document.getElementById('omissionFilterToggle').checked;
+}
 export function updateWumingClockwise() {
   store.useWumingClockwise = document.getElementById('wumingClockwiseToggle').checked;
 }
@@ -157,11 +166,14 @@ async function drawTickets(luckMode) {
   const block9F = store.useBlock9Filter ? '&block9_filter=1' : '';
   const spreadF = store.useSpreadFilter ? '&spread_filter=1' : '';
   const acF = store.useAcFilter ? '&ac_filter=1' : '';
+  const pengChannelF = store.usePengChannelFilter ? '&peng_channel=1' : '';
+  const gapF = store.useGapFilter ? '&gap_filter=1' : '';
+  const omissionF = store.useOmissionFilter ? '&omission_filter=1' : '';
   const wumClock = store.useWumingClockwise ? '&wuming_clockwise=1' : '';
   const wumBSD = store.useWumingBSD ? '&wuming_bsd=1' : '';
   let data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + liuB + caileleB + gongyiB + wumingB + backtest + colorF + block9F + wumClock + wumBSD + spreadF + acF + luckMode);
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + liuB + caileleB + gongyiB + wumingB + backtest + colorF + block9F + wumClock + wumBSD + spreadF + acF + pengChannelF + gapF + omissionF + luckMode);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';

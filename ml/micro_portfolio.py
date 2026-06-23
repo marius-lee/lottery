@@ -23,7 +23,22 @@
 import random
 import itertools
 from ml.ssq_constants import TICKET_PRICE, RANDOM_SINGLE_EV
-from ml.li_xiangchun import compute_spread, compute_ac_value  # [文献] 李相春2003 p55-62
+from ml.shared.spread import compute_spread       # [李相春2003, 彩天使2004]
+from ml.shared.ac_value import compute_ac_value     # [李相春2003, 刘大军2010]
+
+# [彭浩 2010] 通道过滤缓存 — 每位置[下轨, 上轨]范围
+_peng_channels = None
+_peng_channels_data_count = 0
+
+# [刘大军 2010] 重合码 — 大中小∩012路交叉验证 [文献] 擒号绝技 p21-22
+# 大数{7,8,9}∩2路{2,5,8}={8}, 中数{3,4,5,6}∩0路{0,3,6,9}={3,6}, 小数{0,1,2}∩1路{1,4,7}={1}
+COINCIDENCE_TAILS = {1, 3, 6, 8}
+
+# [彩天使 2009] 遗漏比缓存 — 每号码当前遗漏比
+# 理论周期: 红球33/6=5.5 [文献] 新编绝算双色球 p89
+_RED_PERIOD = 33.0 / 6.0  # 5.5
+_omission_ratios = None
+_omission_data_count = 0
 
 # [原书] 吴长坤《双色球擒号绝技》(2010) Ch4 §6: 三色分解体系
 # 红球按波色分3类, 7码(6红+1蓝)需三色俱备(原书声称95%, 近500期实测81.4%)
@@ -1134,8 +1149,13 @@ def _generate_luck_tickets(n=3, max_overlap=None, five_period=False, pattern_rul
 # 故障降级
 # ────────────────────────────────────────────────────────
 
-def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period=False, pattern_rules=False):
-    """故障降级: 纯随机, 无硬/软过滤. 红球/蓝球注间去重. """
+def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period=False, pattern_rules=False,
+                                color_filter=False, block9_filter=False, block9_killed=None,
+                                spread_filter=False, ac_filter=False,
+                                peng_channel_filter=False, peng_channels=None,
+                                gap_filter=False, omission_filter=False, omission_ratios=None,
+                                coincidence_filter=False):
+    """随机生成+过滤: 不经池, 直接random.sample+排序+过过滤. 秒级响应."""
     blue_weights = _blue_freq_weights()
     if five_period:
         fpb = _five_period_boost()
@@ -1144,12 +1164,19 @@ def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period
         ppb = _pattern_blue_boost()
         blue_weights = [blue_weights[i] * ppb[i] for i in range(16)]
 
-    red_weights = None
     if luck_mode == 'pure':
         if not _calibrated:
             _calibrate_luck_blue_mix()
         _, blue_luck = _compute_luck_position_weights()
         blue_weights = _luck_blended_blue_weights(blue_weights, blue_luck)
+
+    # 预加载通道/遗漏比 (与主路径共享)
+    if peng_channel_filter and peng_channels is None:
+        from server.db import load_draws
+        peng_channels = _get_peng_channels(load_draws())
+    if omission_filter and omission_ratios is None:
+        from server.db import load_draws
+        omission_ratios = _get_omission_ratios(load_draws())
 
     tickets = []
     used_reds = set()
@@ -1158,6 +1185,15 @@ def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period
         for _ in range(500):  # [工程] 重试上限: 防止无限循环
             c = tuple(sorted(random.sample(range(1, 34), 6)))
             if c in used_reds:
+                continue
+            # 全部过滤
+            if not _passes_red_filters(c, color_filter=color_filter,
+                    block9_filter=block9_filter, block9_killed=block9_killed,
+                    spread_filter=spread_filter, ac_filter=ac_filter,
+                    peng_channel_filter=peng_channel_filter, peng_channels=peng_channels,
+                    gap_filter=gap_filter,
+                    omission_filter=omission_filter, omission_ratios=omission_ratios,
+                    coincidence_filter=coincidence_filter):
                 continue
             # Tier 1: 注间分散
             if max_overlap is not None and tickets:
@@ -1300,11 +1336,65 @@ def _backtest_rank_tickets(n, valid_reds, n_combos, min_hits=3):
     return result
 
 
+def _get_peng_channels(data):
+    """计算6个红球位置的彭浩通道范围 [彭浩 2010 Ch5 §3].
+
+    使用MA9+MA18双通道交集, 返回 [(lower, upper), ...] 每位置.
+    结果缓存在模块级, 数据不变时不重新计算.
+    """
+    global _peng_channels, _peng_channels_data_count
+    if _peng_channels is not None and _peng_channels_data_count == len(data):
+        return _peng_channels
+
+    from ml.peng_hao import compute_channel_dual
+    channels = []
+    for pos in range(6):
+        ch = compute_channel_dual(data, pos)
+        lower = max(1, int(ch.get("lower", 1)))
+        upper = min(33, int(ch.get("upper", 33)))
+        channels.append((lower, upper))
+    _peng_channels = channels
+    _peng_channels_data_count = len(data)
+    return channels
+
+
+def _get_omission_ratios(data):
+    """计算所有红球的遗漏比 [彩天使 2009 p90].
+
+    OR = 当前遗漏期数 / 理论出现周期(RED_PERIOD=5.5)
+    OR > 5 → 极寒带, 应避开 [文献] 原书p108
+    """
+    global _omission_ratios, _omission_data_count
+    if _omission_ratios is not None and _omission_data_count == len(data):
+        return _omission_ratios
+
+    # 计算每个号码最近一次出现距今多少期
+    last_seen = {}
+    for i in range(len(data) - 1, -1, -1):
+        for n in data[i][1:7]:
+            if n not in last_seen:
+                last_seen[n] = len(data) - 1 - i
+
+    ratios = {}
+    for n in range(1, 34):
+        gap = last_seen.get(n, len(data))
+        ratios[n] = gap / _RED_PERIOD
+
+    _omission_ratios = ratios
+    _omission_data_count = len(data)
+    return ratios
+
+
 def _passes_red_filters(reds, color_filter=False, block9_filter=False,
-                         block9_killed=None, spread_filter=False, ac_filter=False):
+                         block9_killed=None, spread_filter=False, ac_filter=False,
+                         peng_channel_filter=False, peng_channels=None,
+                         gap_filter=False, omission_filter=False,
+                         omission_ratios=None, coincidence_filter=False):
     """检查可选红色球过滤规则. 返回 True=通过(保留), False=被过滤(跳过).
 
-    包含: 吴长坤三色分解(Ch4§6), 方块9杀号(Ch6§1), 李相春散度(p55-57), AC值(p60-62).
+    包含: 吴长坤三色分解(Ch4§6), 方块9杀号(Ch6§1), 李相春散度(p55-57), AC值(p60-62),
+          彭浩通道过滤(Ch5§3), 间距分析(2004 p114-119), 遗漏比过滤(2009 p90),
+          刘大军重合码(2010 p21-22).
     """
     if color_filter:
         rs = set(reds)
@@ -1314,11 +1404,41 @@ def _passes_red_filters(reds, color_filter=False, block9_filter=False,
         return False
     if spread_filter:
         sp = compute_spread(list(reds), 33)
-        if sp < 3 or sp > 10:  # [文献] 原书p56: 36期仅2次>10, <3仅理论存在
+        if sp < 3 or sp > 10:
             return False
     if ac_filter:
-        if compute_ac_value(list(reds)) < 6:  # [文献] 原书p61: 30/32选7 AC通常≥6
+        if compute_ac_value(list(reds)) < 6:
             return False
+    # [文献] 李相春2004 p114-119: 间距分析 — 最大间距+平均间距约束
+    # [数据] 近500期校准: avg_gap P5=3.2 P95=6.2 → [4,7]; max_gap P5=5 P95=17
+    if gap_filter:
+        s = sorted(reds)
+        max_gap = max(s[i+1] - s[i] for i in range(5))
+        avg_gap = (s[-1] - s[0]) / 5.0
+        if max_gap < 5 or max_gap > 17:
+            return False
+        if avg_gap < 4 or avg_gap > 7:
+            return False
+
+    # [文献] 刘大军2010 p21-22: 重合码过滤 — 红球尾数需覆盖{1,3,6,8}
+    if coincidence_filter:
+        tails = {n % 10 for n in reds}
+        if not (tails & COINCIDENCE_TAILS):
+            return False
+
+    # [文献] 彩天使2009 p90/p108: 遗漏比过滤 — 排除含极寒号码的组合
+    if omission_filter and omission_ratios:
+        for n in reds:
+            if omission_ratios.get(n, 0) > 5:  # [文献] 原书p108: OR>5=极寒带
+                return False
+
+    # [彭浩 2010 Ch5 §3] 6位置通道过滤: 每红球必须落在对应位置的MA通道内
+    if peng_channel_filter and peng_channels:
+        s = sorted(reds)
+        for pos in range(6):
+            lower, upper = peng_channels[pos]
+            if s[pos] < lower or s[pos] > upper:
+                return False
     return True
 
 
@@ -1342,6 +1462,10 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                      liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue=False,
                      color_filter=False, block9_filter=False,
                      spread_filter=False, ac_filter=False,
+                     peng_channel_filter=False,
+                     gap_filter=False,
+                     omission_filter=False,
+                     coincidence_filter=False,
                      wuming_clockwise=False, wuming_bsd=False):
     """生成号码主入口.
 
@@ -1365,25 +1489,46 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     # ── off: 池采样 ──
     global _valid_reds, _soft_excluded, _past_count
     from server.db import load_draws
-    try:
-        if len(load_draws()) != _past_count:
-            _build_pool()
-    except Exception:
-        _valid_reds = None
-        _soft_excluded = None
 
     # 吴长坤 2010: 方块9杀号 — 上期空方块本期继续杀
     block9_killed = _block9_kill(load_draws()) if block9_filter else set()
 
+    # [工程] 只在贪心/回测模式下建池(需全量枚举C(33,6)),
+    # 普通采样直接用回退路径(随机生成6数+过滤), 秒级响应.
+    needs_pool = (diversity_mode == 'greedy' or backtest_rank)
+    if needs_pool:
+        try:
+            if _valid_reds is None or len(load_draws()) != _past_count:
+                _build_pool()
+        except Exception:
+            _valid_reds = None
+            _soft_excluded = None
+
     if _valid_reds is None:
-        return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap, five_period=five_period, pattern_rules=pattern_rules)
+        return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap,
+            five_period=five_period, pattern_rules=pattern_rules,
+            color_filter=color_filter, block9_filter=block9_filter,
+            block9_killed=block9_killed,
+            spread_filter=spread_filter, ac_filter=ac_filter,
+            peng_channel_filter=peng_channel_filter,
+            gap_filter=gap_filter,
+            omission_filter=omission_filter,
+            coincidence_filter=coincidence_filter)
 
     exclude = _soft_excluded if soft else set()
     if param_filter and _param_excluded is not None:
         exclude = exclude | _param_excluded
     n_combos = len(_valid_reds) // 6
     if n_combos * 6 != len(_valid_reds) or n_combos == 0:
-        return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap, five_period=five_period, pattern_rules=pattern_rules)
+        return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap,
+            five_period=five_period, pattern_rules=pattern_rules,
+            color_filter=color_filter, block9_filter=block9_filter,
+            block9_killed=block9_killed,
+            spread_filter=spread_filter, ac_filter=ac_filter,
+            peng_channel_filter=peng_channel_filter,
+            gap_filter=gap_filter,
+            omission_filter=omission_filter,
+            coincidence_filter=coincidence_filter)
 
     # 蓝球: 各作者方法独立候选集投票 → 并集
     blue_candidates = set(range(1, 17))
@@ -1497,6 +1642,18 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     else:
         n = n_original
 
+    # [彭浩 2010 Ch5 §3] 通道过滤: 预计算6位置通道范围
+    # [彩天使 2009 p90] 遗漏比: 预计算所有号码遗漏比
+    peng_channels = None
+    omission_ratios = None
+    if peng_channel_filter or omission_filter:
+        from server.db import load_draws
+        data = load_draws()
+        if peng_channel_filter:
+            peng_channels = _get_peng_channels(data)
+        if omission_filter:
+            omission_ratios = _get_omission_ratios(data)
+
     for _ in range(n):
         for _ in range(500):  # [工程] 重试上限: 防止无限循环
             idx = random.randrange(n_combos)
@@ -1511,10 +1668,16 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
             if reds in used_reds:
                 continue
 
-            # 可选红色球过滤 (三色分解/方块9/散度/AC值)
+            # 可选红色球过滤 (三色/方块9/散度/AC/彭浩通道/间距/遗漏比)
             if not _passes_red_filters(reds, color_filter=color_filter,
                     block9_filter=block9_filter, block9_killed=block9_killed,
-                    spread_filter=spread_filter, ac_filter=ac_filter):
+                    spread_filter=spread_filter, ac_filter=ac_filter,
+                    peng_channel_filter=peng_channel_filter,
+                    peng_channels=peng_channels,
+                    gap_filter=gap_filter,
+                    omission_filter=omission_filter,
+                    omission_ratios=omission_ratios,
+                    coincidence_filter=coincidence_filter):
                 continue
 
             # Tier 1: 注间分散 — 候选注与已选注共享红球数 ≤ max_overlap
@@ -1535,7 +1698,12 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     continue
                 if not _passes_red_filters(c, color_filter=color_filter,
                         block9_filter=block9_filter, block9_killed=block9_killed,
-                        spread_filter=spread_filter, ac_filter=ac_filter):
+                        spread_filter=spread_filter, ac_filter=ac_filter,
+                        peng_channel_filter=peng_channel_filter,
+                        peng_channels=peng_channels,
+                        gap_filter=gap_filter,
+                        omission_filter=omission_filter,
+                        omission_ratios=omission_ratios):
                     continue
                 used_reds.add(c)
                 blue = _pick_blue(blue_weights)

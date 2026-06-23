@@ -80,6 +80,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         "/api/red/": "_handle_red_get",
         "/api/weier/": "_handle_weier_get",
         "/api/lixiangchun/": "_handle_lixiangchun_get",
+        "/api/liudajun/": "_handle_liudajun_get",
         "/static/": "_serve_static",
     }
 
@@ -168,8 +169,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _handle_weier_get(self, path):
         return self._json(self.ml_bridge.generate_weier())
 
+    def _handle_liudajun_get(self, path):
+        clean = path.split("?")[0]
+        if clean == "/api/liudajun/position-tails":
+            window = _parse_query_int(path, "window", 50)
+            return self._json(self.ml_bridge.liudajun_position_tails(window=window))
+        return self._json({"ok": False, "msg": "unknown endpoint"})
+
     def _handle_lixiangchun_get(self, path):
         clean = path.split("?")[0]
+        if clean == "/api/lixiangchun/dashboard":
+            return self._json(self.ml_bridge.lixiangchun_dashboard())
         if clean == "/api/lixiangchun/spread":
             nums = _parse_int_list(path, "numbers")
             return self._json(self.ml_bridge.lixiangchun_spread(nums))
@@ -224,6 +234,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
         spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
         ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
+        peng_channel_filter = _parse_query_int(path, "peng_channel", 0) == 1
+        gap_filter = _parse_query_int(path, "gap_filter", 0) == 1
+        omission_filter = _parse_query_int(path, "omission_filter", 0) == 1
+        coincidence_filter = _parse_query_int(path, "coincidence_filter", 0) == 1
         wuming_clockwise = _parse_query_int(path, "wuming_clockwise", 0) == 1
         wuming_bsd = _parse_query_int(path, "wuming_bsd", 0) == 1
         return self._json(self.ml_bridge.micro_3_tickets(
@@ -235,6 +249,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
             color_filter=color_filter, block9_filter=block9_filter,
             spread_filter=spread_filter, ac_filter=ac_filter,
+            peng_channel_filter=peng_channel_filter,
+            gap_filter=gap_filter,
+            omission_filter=omission_filter,
+            coincidence_filter=coincidence_filter,
             wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd))
 
     # ── 子路由: 张委铭算法 ──
@@ -304,10 +322,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
         spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
         ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
+        peng_channel_filter = _parse_query_int(path, "peng_channel", 0) == 1
+        gap_filter = _parse_query_int(path, "gap_filter", 0) == 1
+        omission_filter = _parse_query_int(path, "omission_filter", 0) == 1
         return self._json(self.ml_bridge.red_pick(
             n=n, soft=soft, param_filter=soft,
             color_filter=color_filter, block9_filter=block9_filter,
-            spread_filter=spread_filter, ac_filter=ac_filter))
+            spread_filter=spread_filter, ac_filter=ac_filter,
+            peng_channel_filter=peng_channel_filter,
+            gap_filter=gap_filter,
+            omission_filter=omission_filter))
 
     # ── 子路由: 覆盖设计 ──
 

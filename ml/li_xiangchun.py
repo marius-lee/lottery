@@ -5,201 +5,33 @@
   第三章: 选号技巧—趋势分析 (11短期+4中期+6长期=21种方法)
   第四章: 组号技巧—旋转矩阵 (平衡式+加权式, 即覆盖设计)
 
-独特算法 (其他12+作者未覆盖):
-  1. 散度分析 — 号码集中/分散程度的数学度量
-  2. 偏度分析 — 本期号码相对上期的整体偏移度量
-  3. DHR — 连续两期出现比率, 预测号码重复概率
-  4. 降三浪 — 冷号→热号反转的最强信号
-  5. 升三浪 — 热号→冷号的疲惫信号
-  6. 双底/三底 — 等间隔出现模式识别
+独有算法:
+  1. 降三浪 — 冷号→热号反转的最强信号
+  2. 升三浪 — 热号→冷号的疲惫信号
+  3. 双底/三底 — 等间隔出现模式识别
+  4. 热门转冷门 — 活跃期结束判断
+  5. 冷热号偏态 — 间隔统计
+  6. 间距分析 — 相邻红球间距统计
 
-与现有系统的关系:
-  - 11种短期偏态分析中9种已被吴明/彭浩/李志林等覆盖
-  - 旋转矩阵 = 覆盖设计, 系统已有 covering_design.py
-  - 散度和偏度是本书独有, 其他作者未涉及
+共享算法 (已提取至 ml.shared):
+  - 散度 [李相春 2003, 彩天使 2004] → ml.shared.spread
+  - 偏度 [李相春 2003, 彩天使 2004] → ml.shared.skewness
+  - AC值 [李相春 2003, 刘大军 2010] → ml.shared.ac_value
+  - DHR  [李相春 2003, 彩天使 2004] → ml.shared.dhr
 """
 
 import math
 import random
 from typing import List, Tuple, Dict, Optional
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 1. 散度分析 (Spread) — 第55-57页
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def compute_spread(numbers: List[int], pool_size: int = 33) -> float:
-    """计算一组号码的散度.
-
-    定义 (第55-56页):
-      散度 = max_{i ∈ 所有号码} min_{j ∈ 选中号码} |i - j|
-    即: 对号码池中每个号码, 计算其与最近选中号码的距离,
-    取所有距离中的最大值。
-
-    含义:
-      - 散度越大 → 号码越集中 (有大片空白区)
-      - 散度越小 → 号码越分散 (均匀覆盖)
-
-    参考值 (北京风采32选7):
-      - 理论范围: 3-25
-      - 常见值: 5-6 (均线=6)
-      - >10罕见 (36期仅2次)
-      - 偏离均线后3期内回归
-
-    [数学] 散度严格定义于原书 p55-56
-    """
-    if not numbers:
-        return 0.0
-
-    all_nums = list(range(1, pool_size + 1))
-    max_min_dist = 0
-
-    for i in all_nums:
-        min_dist = min(abs(i - n) for n in numbers)
-        if min_dist > max_min_dist:
-            max_min_dist = min_dist
-
-    return float(max_min_dist)
-
-
-def spread_filter(candidates: List[List[int]], pool_size: int = 33,
-                  spread_range: Tuple[int, int] = (3, 10)) -> List[List[int]]:
-    """散度过滤: 只保留散度在合理范围内的组合.
-
-    [文献] spread_range默认(3,10)基于原书p56统计:
-      36期中散度>10仅2次, <3仅理论存在
-    """
-    return [c for c in candidates
-            if spread_range[0] <= compute_spread(c, pool_size) <= spread_range[1]]
+from ml.shared.spread import compute_spread
+from ml.shared.skewness import compute_skewness
+from ml.shared.ac_value import compute_ac_value
+from ml.shared.dhr import compute_dhr
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 2. 偏度分析 (Skewness) — 第57-59页
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def compute_skewness(current_numbers: List[int],
-                     previous_numbers: List[int]) -> float:
-    """计算本期号码相对上期的偏度.
-
-    定义 (第58页):
-      偏度 = max_{j ∈ 本期号码} min_{k ∈ 上期号码} |j - k|
-    即: 对本期每个号码, 计算其与上期最近号码的距离,
-    取所有距离中的最大值。
-
-    含义:
-      - 偏度越大 → 本期号码整体偏离上期越远
-      - 偏度越小 → 本期号码与上期越接近
-
-    参考值 (北京风采32选7):
-      - 理论范围: 0-25
-      - 正常范围: 4-5 (中间区域)
-      - <2和>12未在39期中出现过
-      - 偏离中间区域后4期内回归
-
-    [数学] 偏度严格定义于原书 p58
-
-    关键关系 (第59页):
-      本期散度 = 下期偏度的上限
-      即: 下期偏度 ≤ 本期散度
-    """
-    if not current_numbers or not previous_numbers:
-        return 0.0
-
-    max_min_dist = 0
-    for j in current_numbers:
-        min_dist = min(abs(j - k) for k in previous_numbers)
-        if min_dist > max_min_dist:
-            max_min_dist = min_dist
-
-    return float(max_min_dist)
-
-
-def predict_skewness_bound(current_spread: float) -> float:
-    """根据当前散度预测下期偏度上限.
-
-    定理 (第59页): 下期偏度 ≤ 本期散度
-
-    [数学] 由定义直接推导: 散度衡量号码池中任意号码到本期号码的最大距离,
-    下期号码必在此号码池中, 故其到本期号码的最小距离上限即散度.
-    """
-    return current_spread
-
-
-def skewness_filter(candidates: List[List[int]],
-                    previous_numbers: List[int],
-                    skew_range: Tuple[int, int] = (2, 12)) -> List[List[int]]:
-    """偏度过滤: 只保留偏度在合理范围的组合.
-
-    [文献] skew_range默认(2,12)基于原书p59统计: <2和>12从未出现
-    """
-    return [c for c in candidates
-            if skew_range[0] <= compute_skewness(c, previous_numbers) <= skew_range[1]]
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 3. DHR — 连续两期出现比率 (第76-78页)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def compute_dhr(history: List[List[int]], target_num: int) -> float:
-    """计算某号码的连续两期出现比率 (DHR).
-
-    定义 (第77页):
-      DHR = 仅出现1期的次数 / 连续2期及以上出现的总次数
-
-    含义:
-      - DHR越低 → 该号码越"粘滞", 出现后倾向于继续出现
-      - DHR越高 → 该号码越"孤立", 出现后倾向于立即消失
-      - 平均值≈6:1 (即DHR≈6)
-
-    使用 (第78页):
-      选择DHR低于均值的号码, 它们更可能在下一期重复出现.
-
-    [文献] DHR公式 + 均值6:1来自原书p77-78
-    """
-    single_count = 0   # 仅出现1期的次数
-    streak_count = 0   # 连续2期及以上的总次数
-
-    i = 0
-    while i < len(history):
-        if target_num in history[i]:
-            # 统计连续出现长度
-            streak_len = 1
-            j = i + 1
-            while j < len(history) and target_num in history[j]:
-                streak_len += 1
-                j += 1
-            if streak_len == 1:
-                single_count += 1
-            else:
-                streak_count += 1
-            i = j
-        else:
-            i += 1
-
-    if streak_count == 0:
-        return float('inf')  # 从未连续出现 → 极不可能重复
-
-    return single_count / streak_count
-
-
-def dhr_predict(current_numbers: List[int],
-                history: List[List[int]],
-                dhr_threshold: float = 6.0) -> List[int]:
-    """基于DHR预测哪些号码更可能重复.
-
-    返回当前号码中DHR低于阈值的号码 (更可能重复).
-
-    [文献] dhr_threshold=6.0基于原书p77: 平均DHR≈6:1
-    """
-    dhr_vals = {num: compute_dhr(history, num) for num in current_numbers}
-    repeat_candidates = [num for num in current_numbers if dhr_vals[num] < dhr_threshold]
-    # 按DHR升序 (越低的越可能重复)
-    repeat_candidates.sort(key=lambda n: dhr_vals[n])
-    return repeat_candidates
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 4. 降三浪 — 冷号→热号反转信号 (第73-74页)
+# 1. 降三浪 — 冷号→热号反转信号 (第73-74页)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def detect_jiang_sanlang(intervals: List[int]) -> bool:
@@ -442,53 +274,7 @@ def compute_hot_cold_stats(history: List[List[int]],
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. AC值 (算术复杂性) — 第60-62页
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def compute_ac_value(numbers: List[int]) -> int:
-    """计算算术复杂性 (AC值).
-
-    定义 (第60页):
-      AC = 所有两数正差值的不同值个数 - (r - 1)
-      其中 r = 号码个数
-
-    含义:
-      - AC越低 → 号码规律性越强
-      - AC越高 → 号码越随机
-      - 算术级数 (如1,6,11,16,21,26,31) 的AC=0
-      - 好的投注组合应有较高的AC值
-
-    参考值:
-      - 35选7: AC≥7
-      - 30/32选7: AC≥6
-
-    [数学] AC值严格定义于原书p60
-    """
-    r = len(numbers)
-    if r < 2:
-        return 0
-
-    diffs = set()
-    for i in range(r):
-        for j in range(i + 1, r):
-            diff = abs(numbers[i] - numbers[j])
-            if diff > 0:
-                diffs.add(diff)
-
-    return len(diffs) - (r - 1)
-
-
-def ac_filter(candidates: List[List[int]],
-              min_ac: int = 6) -> List[List[int]]:
-    """AC值过滤: 过滤掉AC值过低的组合.
-
-    [文献] min_ac=6基于原书p61: 30/32选7的AC值通常≥6
-    """
-    return [c for c in candidates if compute_ac_value(c) >= min_ac]
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 8. 综合趋势评分
+# 7. 综合趋势评分
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def trend_score(history: List[List[int]],
@@ -549,6 +335,104 @@ def trend_score(history: List[List[int]],
     scores['total'] = total
 
     return scores
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 8. 统一信号仪表盘 (2003+2004+2009 三书聚合)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_RED_PERIOD = 33.0 / 6.0  # [文献] 彩天使2009 p89: 红球理论周期=5.5
+
+
+def dashboard(history: List[List[int]], pool_size: int = 33) -> Dict:
+    """李相春三书全部信号聚合 — 一次调用返回所有指标.
+
+    返回:
+      sanlang: 降三浪/升三浪/热门转冷门
+      dhr_sticky: DHR最低的5个 (最可能重复)
+      dhr_avoid: DHR最高的5个 (最不可能重复)
+      shuangdi: 双底/三底预测
+      spread_trend: 散度趋势 (当前值+均线+区间)
+      skewness_trend: 偏度趋势 (当前值+均线+区间)
+      omission_ratios: 所有号码遗漏比
+    """
+    # ── 三浪信号 ──
+    sanlang = sanlang_predict(history, pool_size)
+
+    # ── DHR (所有号码, 取Top5/Bottom5) ──
+    all_dhr = {}
+    for num in range(1, pool_size + 1):
+        dhr = compute_dhr(history, num)
+        if dhr != float('inf'):
+            all_dhr[num] = round(dhr, 2)
+    dhr_sorted = sorted(all_dhr.items(), key=lambda x: x[1])
+    dhr_sticky = [{"num": n, "dhr": d} for n, d in dhr_sorted[:5] if d < 10]
+    dhr_avoid = [{"num": n, "dhr": d} for n, d in dhr_sorted[-5:] if d > 0]
+
+    # ── 双底/三底预测 ──
+    bottom_preds = []
+    for num in range(1, pool_size + 1):
+        intervals = extract_intervals(history, num)
+        if len(intervals) >= 3:
+            gap = detect_sandi(intervals) or detect_shuangdi(intervals)
+        elif len(intervals) >= 2:
+            gap = detect_shuangdi(intervals)
+        else:
+            gap = None
+        if gap is not None:
+            bottom_preds.append({"num": num, "predicted_gap": gap,
+                                 "type": "三底" if (len(intervals) >= 3 and detect_sandi(intervals)) else "双底"})
+
+    # ── 散度/偏度趋势 ──
+    if len(history) >= 1:
+        latest_reds = history[-1][1:7] if len(history[-1]) >= 7 else history[-1]
+        current_spread = compute_spread(latest_reds, pool_size)
+        spread_trend = {
+            "current": current_spread,
+            "mean": 6,  # [文献] 2003 p56
+            "normal_range": [5, 9],  # [文献] 2004 p109: SSQ散度常见5-9
+            "zone": "normal" if 5 <= current_spread <= 9 else ("high" if current_spread > 9 else "low"),
+            "note": f"均线=6, 偏离后≤3期回归" if abs(current_spread - 6) > 2 else "在正常范围"
+        }
+    else:
+        spread_trend = None
+
+    if len(history) >= 2:
+        prev_reds = history[-2][1:7] if len(history[-2]) >= 7 else history[-2]
+        curr_reds = history[-1][1:7] if len(history[-1]) >= 7 else history[-1]
+        current_skew = compute_skewness(curr_reds, prev_reds)
+        skewness_trend = {
+            "current": current_skew,
+            "normal_range": [3, 7],  # [文献] 2004 p113: SSQ偏度常见3-7
+            "zone": "normal" if 3 <= current_skew <= 7 else ("high" if current_skew > 7 else "low"),
+            "bound": current_spread if spread_trend else None,  # [定理] 下期偏度≤本期散度
+            "note": f"正常偏度3-7" if 3 <= current_skew <= 7 else f"偏离正常范围"
+        }
+    else:
+        skewness_trend = {"current": None, "normal_range": [3, 7], "zone": "unknown"}
+
+    # ── 遗漏比 ──
+    ratios = {}
+    for num in range(1, pool_size + 1):
+        gap = 0
+        for i in range(len(history) - 1, -1, -1):
+            if num in history[i]:
+                gap = len(history) - 1 - i
+                break
+        else:
+            gap = len(history)
+        ratios[num] = round(gap / _RED_PERIOD, 1)
+
+    return {
+        "sanlang": {"jiang": sanlang["jiang"], "sheng": sanlang["sheng"],
+                     "hot_end": sanlang["hot_end"]},
+        "dhr_sticky": dhr_sticky,
+        "dhr_avoid": dhr_avoid,
+        "shuangdi": bottom_preds[:5],
+        "spread_trend": spread_trend,
+        "skewness_trend": skewness_trend,
+        "omission_ratios": ratios,
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -105,28 +105,16 @@
         </label>
         <div class="option-detail">吴长坤 2010 Ch6 §1：33红球行列图上13个3×3方块，约80%期有空方块（实测68%），上期空方块本期继续杀。勾选后排除预测为空方块内的号码。</div>
       </div>
-      <!-- 散度分析 -->
-      <div class="option-card" id="card-spreadFilter">
-        <label class="option-label" for="spreadFilterToggle">
-          <input type="checkbox" id="spreadFilterToggle" onchange="updateSpreadFilter()">
-          <span class="option-icon">📏</span>
-          <span class="option-name">散度分析</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-spreadFilter').classList.toggle('expanded')">▸</span>
+      <!-- 彭浩通道 -->
+      <div class="option-card" id="card-pengChannel">
+        <label class="option-label" for="pengChannelFilterToggle">
+          <input type="checkbox" id="pengChannelFilterToggle" onchange="updatePengChannelFilter()">
+          <span class="option-icon">📊</span>
+          <span class="option-name">彭浩通道</span>
+          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-pengChannel').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">李相春《彩票小额投注必读》(2003) p55-57：散度=max min|i-j|，度量号码集中/分散程度。均线=6，常见范围5-6，>10罕见（36期仅2次）。勾选后排除散度不在3-10范围的组合。</div>
+        <div class="option-detail">彭浩《双色球Excel全攻略》(2010) Ch5 §3：MA9+MA18双通道。6个红球位置独立建模, 每位置号码必须在MA通道[下轨, 上轨]范围内。基准测试红球1.701(最高), 利用位置结构信号排除不自然组合。</div>
       </div>
-      <!-- AC值分析 -->
-      <div class="option-card" id="card-acFilter">
-        <label class="option-label" for="acFilterToggle">
-          <input type="checkbox" id="acFilterToggle" onchange="updateAcFilter()">
-          <span class="option-icon">🔢</span>
-          <span class="option-name">AC值分析</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-acFilter').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">李相春《彩票小额投注必读》(2003) p60-62：AC=正差值的不同值个数-(r-1)。算术级数AC=0, 中奖号码AC通常≥6(30/32选7)。勾选后排除AC<6的组合, 过滤规律性太强的号码。</div>
-      </div>
-
-
       <!-- 🔴 红球出号区 -->
       <div class="option-section-label" style="margin-top:12px;">🔴 红球出号</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
@@ -231,6 +219,7 @@
       <option value="jiangjialin">蒋加林</option>
       <option value="wuming">吴明</option>
       <option value="lixiangchun">李相春</option>
+      <option value="liudajun">刘大军</option>
     </select>
     <button class="panel-tab" id="helpToggle" onclick="togglePanel('help')" role="tab">说明</button>
   </nav>
@@ -347,6 +336,11 @@
     <div id="lixiangchunContent" style="padding:8px;"></div>
   </div>
 
+  <!-- ===== Liu Dajun Panel ===== -->
+  <div class="content-panel" id="liudajunPanel">
+    <div id="liudajunContent" style="padding:8px;"></div>
+  </div>
+
   <!-- ===== Help ===== -->
   <div class="content-panel" id="helpPanel">
     <div class="help-grid">
@@ -384,6 +378,7 @@
 <script src="static/js/ui/wuming-panel.js"></script>
 <script src="static/js/ui/peng-panel.js"></script>
 <script src="static/js/ui/lixiangchun-panel.js"></script>
+<script src="static/js/ui/liudajun-panel.js"></script>
 <script>
   // 作者面板下拉切换
   var _authorHandlers = {
@@ -393,7 +388,8 @@
     peng: function(){ window._showPengPanel&&window._showPengPanel(); },
     jiangjialin: function(){ window._showJiangJiaLinPanel&&window._showJiangJiaLinPanel(); },
     wuming: function(){ window._showWuMingPanel&&window._showWuMingPanel(); },
-    lixiangchun: function(){ window._showLiXiangChunPanel&&window._showLiXiangChunPanel(); }
+    lixiangchun: function(){ window._showLiXiangChunPanel&&window._showLiXiangChunPanel(); },
+    liudajun: function(){ window._showLiuDaJunPanel&&window._showLiuDaJunPanel(); }
   };
   window.switchAuthor = function(author){
     if(!author) return;
@@ -418,8 +414,7 @@
     if(document.getElementById('advFilterToggle')?.checked) params.push('adv_filter=1');
     if(document.getElementById('colorFilterToggle')?.checked) params.push('color_filter=1');
     if(document.getElementById('block9FilterToggle')?.checked) params.push('block9_filter=1');
-    if(document.getElementById('spreadFilterToggle')?.checked) params.push('spread_filter=1');
-    if(document.getElementById('acFilterToggle')?.checked) params.push('ac_filter=1');
+    if(document.getElementById('pengChannelFilterToggle')?.checked) params.push('peng_channel=1');
 
     try {
       var r = await fetch('/api/red/pick?' + params.join('&'));

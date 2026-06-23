@@ -1,81 +1,165 @@
-/** 李相春面板 — 趋势分析+散度/偏度/三浪 (2003)
+/** 李相春统一仪表盘 — 三书聚合 (2003+2004+2009)
 
- *  选号理论: 趋势分析是制胜武器 (第3章, 11种短期+4中期+6长期)
- *  独特算法: 散度(集中度)/偏度(偏移度)/DHR(重复率)/三浪(冷热反转)
- *  组号: 旋转矩阵 = 覆盖设计 (系统已有)
+ *  2003《彩票小额投注必读》: 散度/偏度/AC值/DHR/三浪/双底
+ *  2004《手把手教你玩彩票》: 间距分析 + SSQ校准
+ *  2009《新编绝算双色球》: 遗漏比趋势分析
+
+ *  过滤条件归属李相春Tab, 不从红球区借用.
  */
 window._showLiXiangChunPanel = function(){
   var el = document.getElementById('lixiangchunContent');
   if(!el) return;
 
   var h = '<div class="weier-container">';
-  h += '<h5 style="color:#34D399;font-size:13px;margin:0 0 4px 0;">📊 李相春·趋势分析 [2003]</h5>';
-  h += '<div style="font-size:10px;color:#64748B;margin-bottom:10px;">散度(集中度)+偏度(偏移度)+AC值(复杂度)+三浪(冷热反转) · 小额投注方法论</div>';
+  h += '<h5 style="color:#34D399;font-size:13px;margin:0 0 2px 0;">📊 李相春趋势分析 [2003-2009]</h5>';
+  h += '<div style="font-size:10px;color:#64748B;margin-bottom:10px;">三书聚合: 散度+偏度+AC+间距+遗漏比+三浪+DHR+双底</div>';
 
-  // 三浪信号摘要区
-  h += '<div id="lxSanlangSummary" style="margin-bottom:10px;padding:8px;border-radius:6px;background:rgba(255,255,255,0.03);font-size:11px;">';
-  h += '<span style="color:#64748B;">三浪信号加载中...</span>';
+  // 信号区 (异步加载)
+  h += '<div id="lxDashboard" style="font-size:11px;">';
+  h += '<span style="color:#64748B;">信号加载中...</span>';
   h += '</div>';
 
-  // 生成按钮
-  h += '<div style="display:flex;align-items:center;gap:8px;">';
-  h += '<span style="font-size:10px;color:#94A3B8;">散度3-10 · 偏度2-12 · AC≥6 · 避开升三浪</span>';
-  h += '<button class="btn btn-draw" onclick="window._lxDraw()" style="font-size:12px;padding:6px 20px;margin-left:auto;">李相春出号</button>';
+  // 过滤开关
+  h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;">';
+  h += '<span style="font-size:10px;color:#94A3B8;">过滤:</span>';
+  h += '<label style="font-size:10px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxSpread" checked><span>📏散度</span></label>';
+  h += '<label style="font-size:10px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxAC" checked><span>🔢AC值</span></label>';
+  h += '<label style="font-size:10px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxGap"><span>↔️间距</span></label>';
+  h += '<label style="font-size:10px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxOmission"><span>📉遗漏比</span></label>';
+  h += '<button class="btn btn-draw" onclick="window._lxIntegratedDraw()" style="font-size:11px;padding:5px 16px;margin-left:auto;">综合出号</button>';
   h += '</div>';
 
   h += '<div id="lxResult" style="margin-top:10px;"></div>';
   h += '</div>';
   el.innerHTML = h;
 
-  // 异步加载三浪信号
-  window._lxLoadSanlang();
+  window._lxLoadDashboard();
 };
 
-window._lxLoadSanlang = async function(){
-  var el = document.getElementById('lxSanlangSummary');
+window._lxLoadDashboard = async function(){
+  var el = document.getElementById('lxDashboard');
   if(!el) return;
   try {
-    var r = await fetch('/api/lixiangchun/sanlang');
+    var r = await fetch('/api/lixiangchun/dashboard');
     var d = await r.json();
-    var h = '';
-    if(d.jiang && d.jiang.length > 0){
-      h += '<div style="margin-bottom:4px;">';
-      h += '<span style="color:#34D399;">▼ 降三浪 (即将活跃): </span>';
-      d.jiang.forEach(function(n){
-        h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#059669;color:#fff;font-weight:700;font-size:11px;margin:0 2px;">'+n+'</span>';
-      });
-      h += '</div>';
-    } else {
-      h += '<div style="color:#64748B;margin-bottom:4px;">▼ 降三浪: 暂无信号</div>';
-    }
-    if(d.sheng && d.sheng.length > 0){
-      h += '<div>';
-      h += '<span style="color:#EF4444;">▲ 升三浪 (建议避开): </span>';
-      d.sheng.forEach(function(n){
-        h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#DC2626;color:#fff;font-weight:700;font-size:11px;margin:0 2px;">'+n+'</span>';
-      });
-      h += '</div>';
-    } else {
-      h += '<div style="color:#64748B;">▲ 升三浪: 暂无信号</div>';
-    }
-    el.innerHTML = h;
   } catch(e){
-    el.innerHTML = '<span style="color:#EF4444;">三浪加载失败</span>';
+    el.innerHTML = '<span style="color:#EF4444;">信号加载失败</span>';
+    return;
   }
+
+  var h = '';
+
+  // ── 三浪信号 ──
+  var sl = d.sanlang || {};
+  h += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">';
+
+  h += '<div style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(5,150,105,0.08);">';
+  h += '<div style="color:#34D399;font-weight:600;margin-bottom:4px;">▼ 降三浪 · 即将活跃</div>';
+  if(sl.jiang && sl.jiang.length > 0){
+    sl.jiang.forEach(function(n){
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#059669;color:#fff;font-weight:700;font-size:12px;margin:1px;">'+n+'</span>';
+    });
+  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  h += '</div>';
+
+  h += '<div style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(220,38,38,0.06);">';
+  h += '<div style="color:#EF4444;font-weight:600;margin-bottom:4px;">▲ 升三浪 · 建议避开</div>';
+  if(sl.sheng && sl.sheng.length > 0){
+    sl.sheng.forEach(function(n){
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#DC2626;color:#fff;font-weight:700;font-size:12px;margin:1px;opacity:0.7;">'+n+'</span>';
+    });
+  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  h += '</div>';
+
+  h += '<div style="flex:1;min-width:120px;padding:8px;border-radius:6px;background:rgba(251,191,36,0.06);">';
+  h += '<div style="color:#FBBF24;font-weight:600;margin-bottom:4px;">🔻 活跃期结束</div>';
+  if(sl.hot_end && sl.hot_end.length > 0){
+    sl.hot_end.forEach(function(n){
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#B45309;color:#fff;font-weight:700;font-size:12px;margin:1px;">'+n+'</span>';
+    });
+  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  h += '</div>';
+  h += '</div>';
+
+  // ── 散度/偏度 + DHR + 双底 ──
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">';
+
+  var st = d.spread_trend || {};
+  var sk = d.skewness_trend || {};
+  h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:10px;">';
+  h += '<span style="color:#94A3B8;">📏 散度: </span>';
+  h += '<span style="color:'+(st.zone==='normal'?'#34D399':'#FBBF24')+';font-weight:600;">'+st.current+'</span>';
+  h += '<span style="color:#64748B;"> (正常'+st.normal_range+')</span>';
+  h += '<br><span style="color:#94A3B8;">📐 偏度: </span>';
+  h += '<span style="color:'+(sk.zone==='normal'?'#34D399':'#FBBF24')+';font-weight:600;">'+sk.current+'</span>';
+  h += '<span style="color:#64748B;"> (正常'+sk.normal_range+')</span>';
+  if(sk.bound) h += '<span style="color:#475569;"> 上限='+sk.bound+'</span>';
+  h += '</div>';
+
+  h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:10px;">';
+  h += '<span style="color:#94A3B8;">📌 粘滞号 (DHR低→易重复):</span><br>';
+  if(d.dhr_sticky && d.dhr_sticky.length > 0){
+    d.dhr_sticky.forEach(function(x){
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,0.2);color:#60A5FA;font-weight:600;font-size:10px;margin:1px;" title="DHR='+x.dhr+'">'+x.num+'</span>';
+    });
+  } else { h += '<span style="color:#64748B;">-</span>'; }
+  h += '<br><span style="color:#64748B;">📉 孤立号 (DHR高→勿追):</span><br>';
+  if(d.dhr_avoid && d.dhr_avoid.length > 0){
+    d.dhr_avoid.forEach(function(x){
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.1);color:#F87171;font-weight:600;font-size:10px;margin:1px;" title="DHR='+x.dhr+'">'+x.num+'</span>';
+    });
+  } else { h += '<span style="color:#64748B;">-</span>'; }
+  h += '</div>';
+
+  h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:10px;">';
+  h += '<span style="color:#94A3B8;">⏱ 双底/三底预测:</span><br>';
+  if(d.shuangdi && d.shuangdi.length > 0){
+    d.shuangdi.forEach(function(x){
+      h += '<span style="color:#A78BFA;">'+x.num+'</span><span style="color:#64748B;">→约'+x.predicted_gap+'期后</span> ';
+    });
+  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  h += '</div>';
+  h += '</div>';
+
+  // ── 遗漏比摘要 ──
+  var ratios = d.omission_ratios || {};
+  var extreme = [];
+  for(var k in ratios){ if(ratios[k] > 5) extreme.push(k); }
+  h += '<div style="font-size:10px;color:#64748B;">';
+  h += '📉 遗漏比: ';
+  if(extreme.length > 0){
+    h += '<span style="color:#EF4444;">极寒带(OR>5): '+extreme.join(', ')+'</span>';
+  } else {
+    h += '<span style="color:#34D399;">无极端冷号</span>';
+  }
+  h += '</div>';
+
+  el.innerHTML = h;
 };
 
-window._lxDraw = async function(){
+window._lxIntegratedDraw = async function(){
   var el = document.getElementById('lxResult');
   if(!el) return;
-  el.innerHTML = '<div style="color:#FBBF24;padding:8px;">趋势分析中...</div>';
+  el.innerHTML = '<div style="color:#FBBF24;padding:8px;">综合出号中...</div>';
 
   var n = (window.store && window.store.drawCount) || 3;
+  // 读取Tab内李相春专属过滤开关
+  var params = ['n=' + n];
+  if(document.getElementById('lxSpread')?.checked) params.push('spread_filter=1');
+  if(document.getElementById('lxAC')?.checked) params.push('ac_filter=1');
+  if(document.getElementById('lxGap')?.checked) params.push('gap_filter=1');
+  if(document.getElementById('lxOmission')?.checked) params.push('omission_filter=1');
+
+  var controller = new AbortController();
+  var timeout = setTimeout(function(){ controller.abort(); }, 30000);
 
   try {
-    var r = await fetch('/api/lixiangchun/generate?n='+n);
+    var r = await fetch('/api/micro/tickets?' + params.join('&'), {signal: controller.signal});
+    clearTimeout(timeout);
     var data = await r.json();
   } catch(e){
-    el.innerHTML = '<div style="color:#EF4444;padding:8px;">出号失败</div>';
+    clearTimeout(timeout);
+    el.innerHTML = '<div style="color:#EF4444;padding:8px;">' + (e.name === 'AbortError' ? '请求超时' : '出号失败') + '</div>';
     return;
   }
   if(!data || !data.ok){
@@ -83,11 +167,8 @@ window._lxDraw = async function(){
     return;
   }
 
-  var stats = data.stats || {};
   var h = '<div style="font-size:10px;color:#94A3B8;margin-bottom:4px;">';
-  h += '候选池: '+stats.candidate_pool_size+'号';
-  if(stats.avoid_sheng && stats.avoid_sheng.length) h += ' | 避开升三浪: '+stats.avoid_sheng.join(',');
-  if(stats.prefer_jiang && stats.prefer_jiang.length) h += ' | 优先降三浪: '+stats.prefer_jiang.join(',');
+  h += '算法: '+data.algorithm+' · 池: '+(data.pool_valid_reds||'随机').toLocaleString()+'注';
   h += '</div>';
 
   h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';

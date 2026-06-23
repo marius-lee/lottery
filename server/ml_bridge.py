@@ -53,6 +53,8 @@ def micro_3_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue=False,
                     color_filter=False, block9_filter=False,
                     spread_filter=False, ac_filter=False,
+                    peng_channel_filter=False, gap_filter=False,
+                    omission_filter=False, coincidence_filter=False,
                     wuming_clockwise=False, wuming_bsd=False):
     """从号码池不放回随机采样 n 注。"""
     from ml.micro_portfolio import generate_tickets
@@ -64,6 +66,10 @@ def micro_3_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                             gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
                             color_filter=color_filter, block9_filter=block9_filter,
                             spread_filter=spread_filter, ac_filter=ac_filter,
+                            peng_channel_filter=peng_channel_filter,
+                            gap_filter=gap_filter,
+                            omission_filter=omission_filter,
+                            coincidence_filter=coincidence_filter,
                             wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd)
 
 
@@ -546,6 +552,28 @@ def lixiangchun_dhr(num):
     return {"num": num, "dhr": dhr, "sticky": dhr < 6.0}
 
 
+# ============ 刘大军算法 (Liu, 2010-2014) ============
+
+def liudajun_position_tails(window=50):
+    """每位置尾数分布分析 — 刘大军定尾选号法核心.
+
+    GET /api/liudajun/position-tails?window=50
+    """
+    from ml.liu_dajun import position_tail_analysis
+    return position_tail_analysis(db.load_draws(), window=window)
+
+
+# ============ 李相春算法 (Li, 2003-2009) ============
+
+def lixiangchun_dashboard():
+    """李相春三书全部信号聚合 — 一次返回所有指标.
+
+    GET /api/lixiangchun/dashboard
+    """
+    from ml.li_xiangchun import dashboard
+    return dashboard(db.load_draws())
+
+
 def lixiangchun_trend_score(reds, blue=None):
     """李相春趋势分析综合评分.
 
@@ -571,15 +599,19 @@ def lixiangchun_generate(n=3):
 # ============ 红球/蓝球独立出号 ============
 
 def red_pick(n=3, soft=False, param_filter=False, color_filter=False, block9_filter=False,
-             spread_filter=False, ac_filter=False):
+             spread_filter=False, ac_filter=False, peng_channel_filter=False, gap_filter=False,
+             omission_filter=False):
     """红球独立出号: 返回池子状态 + 红球号码.
 
-    GET /api/red/pick?n=3&color_filter=1&block9_filter=1&spread_filter=1&ac_filter=1
+    GET /api/red/pick?n=3&color_filter=1&block9_filter=1&spread_filter=1&ac_filter=1&peng_channel=1&gap_filter=1
     """
     from ml.micro_portfolio import generate_tickets
     result = generate_tickets(n=n, soft=soft, param_filter=param_filter,
                               color_filter=color_filter, block9_filter=block9_filter,
-                              spread_filter=spread_filter, ac_filter=ac_filter)
+                              spread_filter=spread_filter, ac_filter=ac_filter,
+                              peng_channel_filter=peng_channel_filter,
+                              gap_filter=gap_filter,
+                              omission_filter=omission_filter)
     if not result.get("ok"):
         return {"ok": False, "msg": result.get("msg", "生成失败"),
                 "pool_empty": True, "pool_size": 0}
