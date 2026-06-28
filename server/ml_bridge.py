@@ -733,17 +733,24 @@ def position_draw(n=3):
 # ── 智能覆盖 (组合覆盖设计 + 多样化) ──
 
 def ensemble_draw(n=3):
-    """智能覆盖出号 — 覆盖设计 + 贪心多样化."""
+    """智能覆盖出号 — 5方法聚合评分 + 贪心覆盖设计."""
     from ml.micro_portfolio import generate_tickets_covering
-    from ml.covering_design import generate_candidate_set
+    from ml.ensemble_aggregator import score_all_methods, aggregate_scores, select_hot_numbers
     data = db.load_draws()
-    total = len(data) or 1
-    ml_red = {}
-    for num in range(1, 34):
-        cnt = sum(1 for r in data if num in r[1:7])
-        ml_red[num] = cnt / total
-    hot = generate_candidate_set(ml_red, size=15)
+    if len(data) < 20:
+        return {"ok": False, "msg": f"数据不足 ({len(data)}期)"}
+    # 5方法聚合评分
+    method_scores = score_all_methods(data)
+    weights = _get_ensemble_weights(data)
+    final = aggregate_scores(method_scores, weights)
+    hot = select_hot_numbers(final, k=15)
     return generate_tickets_covering(n=n, hot_numbers=hot, t=4)
+
+def _get_ensemble_weights(data):
+    """从回测校准获取5方法权重."""
+    from ml.ensemble_aggregator import _get_weights as _ew
+    return _ew(data, k=15, window=50)
+
 
 # ── 曾献忠 曾氏模块 (2014) ──
 

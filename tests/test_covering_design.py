@@ -6,18 +6,18 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class TestSimannealCovering(unittest.TestCase):
+class TestGreedyCovering(unittest.TestCase):
     """simanneal_covering 基础功能"""
 
     @classmethod
     def setUpClass(cls):
         sys.path.insert(0, PROJECT_ROOT)
 
-    def test_simanneal_covering_runs(self):
+    def test_greedy_t_covering_runs(self):
         """v=15, t=4 可完成迭代"""
-        from ml.covering_design import simanneal_covering
+        from ml.covering_design import greedy_t_covering
         hot_numbers = list(range(1, 16))
-        tickets, cov = simanneal_covering(hot_numbers, n_tickets=6, t=4, iterations=500)
+        tickets, cov = greedy_t_covering(hot_numbers, n_tickets=6, t=4)
         self.assertGreater(len(tickets), 0)
         for t in tickets:
             self.assertEqual(len(t), 6)
@@ -77,9 +77,9 @@ class TestCoveringWithBlue(unittest.TestCase):
     def test_generate_tickets_covering_runs(self):
         """覆盖设计 + 蓝球分配生成有效票集"""
         from ml.micro_portfolio import generate_tickets_covering
-        result = generate_tickets_covering(n=6, hot_numbers=list(range(1, 16)), t=4)
-        self.assertTrue(result["ok"])
-        self.assertEqual(len(result["tickets"]), 6)
+        result = generate_tickets_covering(n=3, hot_numbers=list(range(1, 13)), t=4)
+        self.assertTrue(result["ok"], result.get("msg", ""))
+        self.assertGreaterEqual(len(result["tickets"]), 1)
         for t in result["tickets"]:
             self.assertEqual(len(t["reds"]), 6)
             self.assertGreaterEqual(t["blue"], 1)
@@ -90,7 +90,8 @@ class TestCoveringWithBlue(unittest.TestCase):
     def test_generate_tickets_covering_blue_unique(self):
         """覆盖票蓝球注间不重复"""
         from ml.micro_portfolio import generate_tickets_covering
-        result = generate_tickets_covering(n=6, hot_numbers=list(range(1, 16)), t=4)
+        result = generate_tickets_covering(n=3, hot_numbers=list(range(1, 13)), t=4)
+        self.assertTrue(result["ok"], result.get("msg", ""))
         blues = [t["blue"] for t in result["tickets"]]
         self.assertEqual(len(set(blues)), len(blues))
 

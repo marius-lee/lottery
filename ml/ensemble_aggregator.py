@@ -521,7 +521,7 @@ def ensemble_tickets(k=15, t=4, n=6, max_overlap=2):
         dict {ok, tickets, hot_numbers, method_weights, coverage_pct, ...}
     """
     from server.db import load_draws
-    from ml.covering_design import simanneal_covering
+    from ml.covering_design import greedy_t_covering
     from ml.micro_portfolio import _pick_unique_blue
     from ml.ssq_constants import TICKET_PRICE, RANDOM_SINGLE_EV
 
@@ -540,15 +540,8 @@ def ensemble_tickets(k=15, t=4, n=6, max_overlap=2):
     hot_numbers = select_hot_numbers(final_scores, k=k)
 
     # 4. 覆盖设计 (轻量版, 限迭代)
-    # [工程] api_iter=2000/rounds=3: SA_ITERATIONS=10000时单轮~3s,
-    # 降到2000×3轮≈1-2s总耗时, 对15选6覆盖质量影响<5%
-    best_tickets, best_cov = [], 0.0
-    for _ in range(2):  # [工程] 2轮: api响应优先, 覆盖增益边际递减
-        tickets, cov = simanneal_covering(hot_numbers, n, t, iterations=1000)
-        if cov > best_cov:
-            best_cov, best_tickets = cov, tickets
-        if best_cov >= 95:  # [工程] 95%可接受, 不用追99.9%
-            break
+        # 贪心覆盖: 确定性, ~0.1-1s, (1-1/e)近似比
+    best_tickets, best_cov = greedy_t_covering(hot_numbers, n, t)
 
     if not best_tickets:
         return {"ok": False, "msg": "覆盖设计未能产生有效票"}
