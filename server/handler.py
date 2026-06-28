@@ -100,6 +100,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/bl/draw": lambda: self._json(self.ml_bridge.bl_draw(n=qint(q, "n", 3))),
             "/api/position/draw": lambda: self._json(self.ml_bridge.position_draw(n=qint(q, "n", 3))),
             "/api/ensemble/draw": lambda: self._json(self.ml_bridge.ensemble_draw(n=qint(q, "n", 3))),
+            "/api/advanced/generate": lambda: self._json(
+                self.ml_bridge.advanced_generate(n=qint(q, "n", 3))),
             "/api/claims/summary": lambda: self._json(self.ml_bridge.claims_summary_api()),
             "/api/claims/run": lambda: self._json(self.ml_bridge.claims_run_api()),
             "/api/mandel/config": lambda: self._json(self.ml_bridge.mandel_config_api()),
