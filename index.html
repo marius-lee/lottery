@@ -70,7 +70,7 @@
           <span class="option-name">高级过滤</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-advFilter').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">排除历史上极少出现的红球组合：≥5连号、间距≥24、位置从未出现过、奇偶比0:6/1:5/5:1/6:0、和值不在历史P5-P95范围。从110万组合池中排除约15万无效注。</div>
+        <div class="option-detail">排除历史上极少出现的红球组合（≥5连号、间距≥24、位置未出现、极端奇偶比、和值异常）。组合池中排除约15万无效注。</div>
       </div>
       <!-- 分散红球 -->
       <div class="option-card" id="card-diversity">
@@ -80,7 +80,7 @@
           <span class="option-name">分散红球</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-diversity').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">任意两注之间共享红球不超过2个。贪心优化开启时自动覆盖此选项（贪心内部包含更优分散）。</div>
+        <div class="option-detail">任意两注间共享红球不超过2个。贪心优化开启时自动覆盖。</div>
       </div>
       <!-- 贪心优化 -->
       <div class="option-card" id="card-greedy">
@@ -91,7 +91,7 @@
           <span class="option-tag">推荐</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-greedy').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">推荐开启。从1000个候选组合中用贪心算法最大化注间Jaccard距离，选出最分散的N注。有测试证明贪心分散度≥纯随机。勾选后自动启用分散红球。</div>
+        <div class="option-detail">推荐开启。贪心算法最大化注间Jaccard距离，选出最分散的N注。自动启用分散。</div>
       </div>
       <!-- 三色分解 -->
       <div class="option-card" id="card-colorFilter">
@@ -131,7 +131,7 @@
           <span class="option-name">跨度过滤</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-spreadFilter').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">红球跨度 (max-min) 历史P5-P95范围约束，排除极窄或极宽组合。</div>
+        <div class="option-detail">红球跨度（max-min）历史P5-P95范围约束。</div>
       </div>
       <!-- AC值过滤 -->
       <div class="option-card" id="card-acFilter">
@@ -151,7 +151,7 @@
           <span class="option-name">遗漏比过滤</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-omissionFilter').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">彩天使 2009 p90: 各号码遗漏期数/理论遗漏比, 排除遗漏比≥3.0的过冷号码组合。</div>
+        <div class="option-detail">彩天使 2009：排除遗漏比≥3.0的过冷号码组合。</div>
       </div>
       <!-- 间距过滤 -->
       <div class="option-card" id="card-gapFilter">
@@ -161,7 +161,7 @@
           <span class="option-name">间距过滤</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-gapFilter').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">相邻号码间距: 排除间距≥15的组合 (24%历史组合满足)。</div>
+        <div class="option-detail">排除相邻间距≥15的组合。</div>
       </div>
       <!-- ═══ 🔵 蓝球策略 ═══ -->
       <div class="option-section-label">🔵 蓝球策略 — 多作者方法投票</div>
@@ -177,7 +177,7 @@
           <span class="option-name">刘大军 五期断蓝</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-liuBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">刘大军 (2010): 五期内已出蓝球本期不选，仅推荐遗漏≥5期的蓝球。基于短周期热号回避原则。</div>
+        <div class="option-detail">刘大军 2010：五期内已出蓝球不选，推荐遗漏≥5期的蓝球。</div>
       </div>
       <!-- 吴明蓝球 -->
       <div class="option-card" id="card-wumingBlue">
@@ -187,7 +187,7 @@
           <span class="option-name">吴明 蓝球分析</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴明 (2010): 蓝球振幅/遗漏/冷热综合分析，推荐处于周期性回归窗口的蓝球。</div>
+        <div class="option-detail">吴明 2010：蓝球振幅/遗漏/冷热综合，推荐周期回归窗口蓝球。</div>
       </div>
       <!-- 吴明顺时针 -->
       <div class="option-card" id="card-wumingClockwise">
@@ -197,7 +197,7 @@
           <span class="option-name">吴明 顺时针法</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingClockwise').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴明 (2010): 16蓝球顺时针旋转规律，基于旋转周期预测下一蓝球方向。</div>
+        <div class="option-detail">吴明 2010：16蓝球顺时针旋转规律，预测下一蓝球方向。</div>
       </div>
       <!-- 吴明大小单双尾 -->
       <div class="option-card" id="card-wumingBSD">
@@ -207,7 +207,7 @@
           <span class="option-name">吴明 大小单双尾</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingBSD').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴明 (2010): 蓝球大小(1-8/9-16)、单双、尾数三维分类，基于状态转移矩阵推荐候选。</div>
+        <div class="option-detail">吴明 2010：大小/单双/尾数三维分类，状态转移矩阵推荐。</div>
       </div>
       <!-- 彩乐乐蓝球 -->
       <div class="option-card" id="card-caileleBlue">
@@ -217,7 +217,7 @@
           <span class="option-name">彩乐乐 蓝球</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-caileleBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">彩乐乐平台 (2012): 基于蓝球轨迹/振幅/AC值三项指标的蓝球推荐模型。</div>
+        <div class="option-detail">彩乐乐 2012：蓝球轨迹/振幅/AC值三项指标推荐。</div>
       </div>
       <!-- 公益时报蓝球 -->
       <div class="option-card" id="card-gongyiBlue">
@@ -227,7 +227,7 @@
           <span class="option-name">公益时报 蓝球</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-gongyiBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">公益时报 (2013): 基于蓝球历史遗漏分布与周期回归窗口的候选筛选。</div>
+        <div class="option-detail">公益时报 2013：蓝球历史遗漏分布与周期回归筛选。</div>
       </div>
       <!-- 夏氏加减法 -->
       <div class="option-card" id="card-xiaBlue">
@@ -237,50 +237,50 @@
           <span class="option-name">夏氏 加减法</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-xiaBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">夏氏 (2013): sub4+add4 蓝球加减法 — 基于上期蓝球±4生成候选集, 协同红球出号。</div>
+        <div class="option-detail">夏氏 2013：上期蓝球±4生成候选集。</div>
       </div>
 
     </div>
 
     <!-- 统一出号 -->
-    <div class="btn-row" style="justify-content:center;margin-top:12px;gap:12px;">
-      <button class="btn btn-draw" id="drawBtn" onclick="startDraw()" style="font-size:15px;padding:10px 32px;background:linear-gradient(135deg,#DC2626,#F97316);">
-        🎰 出号
-      </button>
-      <button class="btn btn-draw" id="luckBtn" onclick="startLuckDraw()" style="font-size:15px;padding:10px 32px;background:linear-gradient(135deg,#D97706,#FBBF24);">
-        🧿 幸运开奖
-      </button>
-      <button class="btn btn-save" id="saveBtn" onclick="saveCurrentDraw()" disabled style="font-size:15px;padding:10px 32px;">
-        确定保存
-      </button>
+    <div class="draw-toolbar">
+      <div class="draw-toolbar-primary">
+        <button class="btn btn-draw btn-primary-draw" id="drawBtn" onclick="startDraw()">
+          <span class="btn-icon">🎰</span> 出号
+        </button>
+        <button class="btn btn-luck btn-primary-draw" id="luckBtn" onclick="startLuckDraw()">
+          <span class="btn-icon">🧿</span> 幸运开奖
+        </button>
+        <button class="btn btn-save btn-primary-draw" id="saveBtn" onclick="saveCurrentDraw()" disabled>
+          <span class="btn-icon">💾</span> 确定保存
+        </button>
+      </div>
+      <div class="draw-toolbar-divider">
+        <span>高级引擎</span>
+      </div>
+      <div class="draw-toolbar-secondary">
+        <button class="btn-engine" id="ensembleBtn" onclick="ensembleDraw()" title="组合覆盖设计 + 贪心多样化">
+          <span class="btn-engine-icon">🧠</span>智能覆盖
+        </button>
+        <button class="btn-engine" id="biasBtn" onclick="biasDraw()" title="Dirichlet后验 + Thompson采样">
+          <span class="btn-engine-icon">🎯</span>偏差增强
+        </button>
+        <button class="btn-engine" id="blBtn" onclick="blDraw()" title="多方法观点贝叶斯融合">
+          <span class="btn-engine-icon">⚖️</span>B-L融合
+        </button>
+        <button class="btn-engine" id="posBtn" onclick="posDraw()" title="每位置独立最优方法">
+          <span class="btn-engine-icon">📐</span>分位策略
+        </button>
+        <button class="btn-engine" id="advBtn" onclick="advancedDraw()" title="粒子滤波+熵值选号+Kelly注数">
+          <span class="btn-engine-icon">🧬</span>智能引擎
+        </button>
+        <button class="btn-engine btn-engine-mandel" id="mandelBtn" onclick="togglePanel('mandel')" title="Stefan Mandel全买覆盖策略">
+          <span class="btn-engine-icon">🧮</span>Mandel
+        </button>
+      </div>
     </div>
-    <div id="mergeStatus" style="text-align:center;font-size:11px;color:#64748B;margin-top:4px;"></div>
-    <div class="btn-row" style="justify-content:center;margin-top:8px;">
-      <button class="btn btn-draw" id="ensembleBtn" onclick="ensembleDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#7C3AED,#A78BFA);">
-        🧠 智能覆盖
-      </button>
-      <button class="btn btn-draw" id="biasBtn" onclick="biasDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#DC2626,#F97316);">
-        🎯 偏差增强
-      </button>
-    </div>
-    <div class="btn-row" style="justify-content:center;margin-top:8px;">
-      <button class="btn btn-draw" id="blBtn" onclick="blDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#0891B2,#22D3EE);">
-        ⚖️ B-L融合
-      </button>
-      <button class="btn btn-draw" id="posBtn" onclick="posDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#65A30D,#A3E635);">
-        分位策略
-      </button>
-      <button class="btn btn-draw" id="advBtn" onclick="advancedDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#EC4899,#8B5CF6);">
-        🧬 智能引擎
-      </button>
-    </div>
-    <div class="btn-row" style="justify-content:center;margin-top:8px;">
-      <button class="btn btn-draw" id="mandelBtn" onclick="togglePanel('mandel')" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#059669,#22C55E);">
-        🧮 Mandel大奖
-      </button>
-    </div>
+    <div id="mergeStatus" style="text-align:center;font-size:11px;color:#64748B;margin-top:6px;"></div>
 
-    </div>
   </section>
 
   <!-- ===== Stage ===== -->
