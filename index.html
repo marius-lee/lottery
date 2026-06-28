@@ -270,9 +270,15 @@
       <button class="btn btn-draw" id="posBtn" onclick="posDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#65A30D,#A3E635);">
         分位策略
       </button>
-      <button class="btn btn-draw" id="advBtn" onclick="advancedDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#EC4899,#8B5CF6);animation:glow-adv 2s ease-in-out infinite alternate;">
+      <button class="btn btn-draw" id="advBtn" onclick="advancedDraw()" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#EC4899,#8B5CF6);">
         🧬 智能引擎
       </button>
+    </div>
+    <div class="btn-row" style="justify-content:center;margin-top:8px;">
+      <button class="btn btn-draw" id="mandelBtn" onclick="togglePanel('mandel')" style="font-size:14px;padding:8px 24px;background:linear-gradient(135deg,#059669,#22C55E);">
+        🧮 Mandel大奖
+      </button>
+    </div>
 
     </div>
   </section>
@@ -452,6 +458,61 @@
     <div id="yangContent" style="padding:8px;"></div>
   </div>
 
+  <!-- ===== Mandel 全买覆盖 ===== -->
+  <div class="content-panel" id="mandelPanel">
+    <div style="padding:12px;max-width:720px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        <h4 style="margin:0;color:#22C55E;font-size:15px;">🧮 Stefan Mandel 全买覆盖策略</h4>
+        <span style="font-size:10px;color:#64748B;">基于组合数学，不预测号码。</span>
+      </div>
+
+      <!-- V 选择器 -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.03);">
+        <label style="font-size:12px;color:#94A3B8;">选号池大小</label>
+        <input type="range" id="mandelV" min="8" max="15" value="12" style="flex:1;max-width:200px;accent-color:#22C55E;" oninput="document.getElementById('mandelVLabel').textContent='V='+this.value;mandelPreview()">
+        <b id="mandelVLabel" style="color:#22C55E;min-width:40px;">V=12</b>
+        <select id="mandelMethod" onchange="mandelPreview()" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#14142B;color:#E2E8F0;font-size:11px;">
+          <option value="laplace">Laplace频率</option>
+          <option value="ensemble">5方法聚合</option>
+          <option value="cold9">冷号反转</option>
+          <option value="random">纯随机</option>
+        </select>
+      </div>
+
+      <!-- 计算结果 -->
+      <div id="mandelInfo" style="margin-bottom:8px;padding:10px 12px;border-radius:8px;background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.08);"></div>
+
+      <!-- 样本票 -->
+      <div id="mandelSample" style="margin-bottom:12px;"></div>
+
+      <!-- 头奖检查 -->
+      <div style="margin-bottom:12px;">
+        <button class="btn-small" onclick="checkJackpot()" style="background:rgba(34,197,94,0.12);color:#22C55E;">查询当前头奖</button>
+        <div id="jackpotStatus" style="margin-top:6px;font-size:11px;color:#94A3B8;"></div>
+      </div>
+
+      <!-- 完整对比表 -->
+      <details style="margin-top:12px;">
+        <summary style="cursor:pointer;color:#64748B;font-size:12px;padding:4px 0;">V=8~15 完整成本/概率对比表</summary>
+        <div style="overflow-x:auto;margin-top:8px;">
+          <table class="bt-table" style="width:100%;font-size:10px;">
+            <thead><tr><th>V</th><th>C(V,6)</th><th>总注数</th><th>成本/期</th><th>P(6红全在)</th><th>期望等待</th></tr></thead>
+            <tbody id="mandelTbody"><tr><td colspan="6">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- 说明 -->
+      <div style="margin-top:16px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.1);font-size:10px;color:#FCA5A5;line-height:1.5;">
+        <b>数学模型验证，不构成购买建议。</b><br>
+        Stefan Mandel用此方法在1960-1990年代中了14次彩票头奖。<br>
+        核心条件：(a)6个开奖红球全在你选的V个号码中 (b)你买了C(V,6)所有组合 (c)你买了16个蓝球。<br>
+        保本头奖 = ¥3,544万 (32×C(33,6))。低于此数学期望为负。<br>
+        本系统提供选号工具和成本分析，购买决策和风险由用户自行承担。
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Help ===== -->
   <div class="content-panel" id="helpPanel">
     <div class="help-grid">
@@ -478,7 +539,7 @@
 
 </div>
 
-<script type="module" src="static/js/app.js"></script>
+<script  src="static/js/app.js"></script>
 
 <script src="static/js/ui/panel-utils.js"></script>
 <script src="static/js/ui/weier-panel.js"></script>
@@ -492,6 +553,7 @@
 <script src="static/js/ui/liudajun-panel.js"></script>
 <script src="static/js/ui/zeng-panel.js"></script>
 <script src="static/js/ui/yang-panel.js"></script>
+<script  src="static/js/ui/mandel.js"></script>
 <script src="static/js/ui/inline.js"></script>
 </body>
 </html>

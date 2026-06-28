@@ -803,3 +803,75 @@ def schedule_status_api():
         return {"ok": True, **schedule_status()}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Mandel 全买覆盖 (Stefan Mandel 14次中奖策略)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def mandel_config_api():
+    """Mandel 策略配置表 — V=8~15 成本/概率/等待年期对比."""
+    from ml.mandel_cover import mandel_summary
+    return {"ok": True, "summary": mandel_summary(),
+            "breakeven_jackpot": 35442176,
+            "note": "期望总成本 = 32×C(33,6) = ¥3,544万 (与V无关). "
+                    "小V = 低成本 + 长等待; 大V = 高成本 + 短等待."}
+
+
+def mandel_preview_api(v=12):
+    """Mandel 策略预览 — 不生成全部票, 仅返回配置+选号+成本分析."""
+    from ml.mandel_cover import MandelConfig, select_v_numbers
+    config = MandelConfig(v=v, jackpot_threshold=50_000_000)
+    v_numbers = select_v_numbers(db.load_draws(), v, method="laplace")
+
+    return {
+        "ok": True,
+        "config": config.to_dict(),
+        "v_numbers": v_numbers,
+        "sample_tickets": [
+            {"reds": list(c), "blue": b}
+            for c in list(__import__('itertools').combinations(sorted(v_numbers), 6))[:5]
+            for b in [1, 2][:1]
+        ],
+        "warning": (
+            f"全买需 {config.total_tickets:,} 注, 成本 ¥{config.cost_per_draw:,}/期. "
+            f"期望等 {config.expected_years_to_win:.1f} 年, "
+            f"总期望投入 ¥{config.expected_total_cost:,.0f}. "
+            "仅供数学模型验证, 不构成购买建议."
+        ),
+    }
+
+
+def mandel_jackpot_api():
+    """拉取当前双色球头奖金额."""
+    from ml.mandel_cover import _fetch_jackpot, MandelConfig
+    jackpot = _fetch_jackpot()
+    if not jackpot:
+        return {"ok": False, "msg": "无法拉取头奖数据 (网络问题或中彩网API变更)"}
+
+    # 算所有V的EV
+    evaluations = []
+    for v in [8, 10, 12, 14, 15]:
+        cfg = MandelConfig(v=v)
+        ev_first = cfg.p_all6_reds_in_v * jackpot
+        # 低等奖简化估算
+        from ml.mandel_cover import _estimate_lower_prizes
+        low_ev = _estimate_lower_prizes(list(range(1, v + 1))) * 16
+        ev_total = ev_first + low_ev
+        evaluations.append({
+            "v": v,
+            "cost": cfg.cost_per_draw,
+            "ev_total": round(ev_total, 2),
+            "ev_ratio": round(ev_total / cfg.cost_per_draw, 4) if cfg.cost_per_draw else 0,
+            "trigger": ev_total > cfg.cost_per_draw,
+        })
+
+    return {
+        "ok": True,
+        "jackpot": round(jackpot, 0),
+        "jackpot_wan": round(jackpot / 10000, 0),
+        "evaluations": evaluations,
+        "breakeven_jackpot": 35442176,
+        "verdict": f"头奖{jackpot/1e4:.0f}万, "
+                   f"{'超过' if jackpot >= 35442176 else '低于'}保本线3,544万",
+    }

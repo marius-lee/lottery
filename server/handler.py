@@ -102,6 +102,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/ensemble/draw": lambda: self._json(self.ml_bridge.ensemble_draw(n=qint(q, "n", 3))),
             "/api/claims/summary": lambda: self._json(self.ml_bridge.claims_summary_api()),
             "/api/claims/run": lambda: self._json(self.ml_bridge.claims_run_api()),
+            "/api/mandel/config": lambda: self._json(self.ml_bridge.mandel_config_api()),
+            "/api/mandel/preview": lambda: self._json(self.ml_bridge.mandel_preview_api(
+                v=qint(q, "v", 12))),
+            "/api/mandel/jackpot": lambda: self._json(self.ml_bridge.mandel_jackpot_api()),
             "/api/schedule/status": lambda: self._json(self.ml_bridge.schedule_status_api()),
             "/api/zeng/dashboard": lambda: self._json(self.ml_bridge.zeng_dashboard()),
             "/api/zeng/generate": lambda: self._json(self.ml_bridge.zeng_generate(
