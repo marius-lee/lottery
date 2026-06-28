@@ -382,15 +382,6 @@
         </svg>
         回测
       </button>
-        实验
-      </button>
-      <span style="color:#334155;margin:0 4px;">│</span>
-        粒子
-      </button>
-        Bandit
-      </button>
-        熵值
-      </button>
     </div>
     <div id="reviewSummary"></div>
     <canvas id="reviewTrendCanvas" width="640" height="120" style="display:none;margin:0 0 12px;width:100%;max-width:640px;border-radius:8px;"></canvas>
@@ -469,9 +460,9 @@
       <!-- V 选择器 -->
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.03);">
         <label style="font-size:12px;color:#94A3B8;">选号池大小</label>
-        <input type="range" id="mandelV" min="8" max="15" value="12" style="flex:1;max-width:200px;accent-color:#22C55E;" oninput="document.getElementById('mandelVLabel').textContent='V='+this.value;mandelPreview()">
+        <input type="range" id="mandelV" min="8" max="15" value="12" style="flex:1;max-width:200px;accent-color:#22C55E;">
         <b id="mandelVLabel" style="color:#22C55E;min-width:40px;">V=12</b>
-        <select id="mandelMethod" onchange="mandelPreview()" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#14142B;color:#E2E8F0;font-size:11px;">
+        <select id="mandelMethod" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#14142B;color:#E2E8F0;font-size:11px;">
           <option value="laplace">Laplace频率</option>
           <option value="ensemble">5方法聚合</option>
           <option value="cold9">冷号反转</option>
