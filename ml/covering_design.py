@@ -159,27 +159,7 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
         if best_cov >= 99.9:  # [文献] SA_MIN_COVERAGE: La Jolla已知最优覆盖通常≥99.9%
             break
 
-    # 覆盖不足→增量加票 [工程] 90%是实用下限, 30注是成本上限
-    if best_cov < 90 and target_tickets < 30:
-        for extra in [1, 2, 3]:
-            for _ in range(5):
-                tickets, cov = simanneal_covering(hot_numbers, target_tickets + extra, t, iterations=SA_ITERATIONS)
-                if cov > best_cov:
-                    best_cov, best_tickets = cov, tickets
-                if best_cov >= 95:
-                    break
-            if best_cov >= 95:
-                break
-
-    # [数学] C(v,6)覆盖不足→降级t=3: 覆盖至少3个红球仍可中五等奖(¥10)
-    if best_cov < 80:
-        for extra in [0, 1]:
-            for _ in range(3):
-                tickets, cov = simanneal_covering(hot_numbers, target_tickets + extra, 3, iterations=SA_ITERATIONS)
-                if cov > best_cov:
-                    best_cov, best_tickets = cov, tickets
-                if best_cov >= 95:
-                    break
+    # [工程] 低覆盖率提示 — 不自动加票, 用户要求的注数即上限
 
     if not best_tickets:
         return {"ok": False, "msg": "模拟退火未能产生有效覆盖"}
