@@ -3,15 +3,15 @@ import { store } from '../store.js';
 
 export function togglePanel(name) {
   const panel = document.getElementById(name + 'Panel');
+  if (!panel) return;
   const btn = document.getElementById(name + 'Toggle');
-  if (!panel || !btn) return;
 
   if (panel.classList.contains('show')) {
     panel.classList.remove('show');
-    btn.classList.remove('active');
+    if (btn) btn.classList.remove('active');
   } else {
     panel.classList.add('show');
-    btn.classList.add('active');
+    if (btn) btn.classList.add('active');
     panel.dispatchEvent(new CustomEvent('panel-shown'));
     if (name === 'help') panel.scrollTop = 0;
   }
@@ -104,8 +104,15 @@ export function toggleUserHistory() {
 }
 
 export function saveCurrentDraw() {
-  var merged = window._lastMergeResult;
+  // 优先读 store.lastDrawResults（一键出号），回退到 window._lastMergeResult（旧手动流程）
+  var results = (window.store && window.store.lastDrawResults) || null;
+  var merged = results ? {
+    reds: results.map(function(r){ return r.reds; }),
+    blues: results.map(function(r){ return r.blue; }),
+    n: results.length
+  } : (window._lastMergeResult || null);
   if (!merged || !merged.reds || !merged.blues) return;
+  if (merged.reds.length === 0 || merged.blues.length === 0) return;
 
   let maxPeriod = 0;
   store.DATA.forEach(r => { if (r[0] > maxPeriod) maxPeriod = r[0]; });
