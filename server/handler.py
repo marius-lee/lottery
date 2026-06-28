@@ -4,35 +4,20 @@ import json
 import urllib.parse
 from pathlib import Path
 
+from server.router import qbool, qint, qlist, qstr
 from server import db, fetcher, recommend
 
 ROOT = Path(__file__).parent.parent
 HTML_PATH = ROOT / "index.html"
 
 
-def _parse_query_params(path):
-    """Parse URL query string into a dict of lists."""
-    return urllib.parse.parse_qs(urllib.parse.urlparse(path).query)
-
-
-def _parse_query_int(path, key, default):
-    """从 URL 查询字符串提取整数参数，缺省返回 default。"""
-    vals = _parse_query_params(path).get(key, [])
-    return int(vals[0]) if vals else default
-
-
-def _parse_query_str(path, key, default):
-    """从 URL 查询字符串提取字符串参数。"""
-    vals = _parse_query_params(path).get(key, [])
-    return vals[0] if vals else default
-
-
-def _parse_int_list(path, key):
-    """从 URL 查询字符串提取逗号分隔的整数列表. e.g. numbers=1,5,9,13,18,26"""
-    vals = _parse_query_params(path).get(key, [])
-    if not vals:
-        return []
-    return [int(x.strip()) for x in vals[0].split(",") if x.strip()]
+def _parse_query(path):
+    """Parse URL query string into a flat dict (first value only)."""
+    qs = urllib.parse.urlparse(path).query
+    result = {}
+    for k, v in urllib.parse.parse_qs(qs).items():
+        result[k] = v[0] if v else ''
+    return result
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -81,6 +66,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         "/api/weier/": "_handle_weier_get",
         "/api/lixiangchun/": "_handle_lixiangchun_get",
         "/api/liudajun/": "_handle_liudajun_get",
+        "/api/zeng/": "_handle_zeng_get",
         "/static/": "_serve_static",
     }
 
@@ -90,6 +76,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._html()
 
         clean_path = p.split("?")[0]
+        q = _parse_query(p)
 
         # Exact-match endpoints
         handlers = {
@@ -103,7 +90,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/recommend": self._handle_recommend,
             "/api/rules/status": lambda: self._json({"ok": True, **self.ml_bridge.get_rule_status()}),
             "/api/zone-break/data": lambda: self._json(self.ml_bridge.get_zone_break_data()),
-            "/api/weier/conditions": lambda: self._json(self.ml_bridge.get_weier_conditions()),
+            "/api/weier/conditions": lambda: self._json(self.ml_bridge.get_weier_conditions()),"/api/backtest/run": lambda: self._json(self.ml_bridge.run_backtest()),
+            "/api/backtest/results": lambda: self._json({
+            "ok": True, "results": self.ml_bridge.get_backtest_results()}),
+            "/api/backtest/weights": lambda: self._json(
+            self.ml_bridge.get_strategy_weights()),
+            "/api/integration/status": lambda: self._json(self.ml_bridge.integration_status_api()),
+            "/api/bias/draw": lambda: self._json(self.ml_bridge.bias_draw(n=qint(q, "n", 3))),
+            "/api/bl/draw": lambda: self._json(self.ml_bridge.bl_draw(n=qint(q, "n", 3))),
+            "/api/position/draw": lambda: self._json(self.ml_bridge.position_draw(n=qint(q, "n", 3))),
+            "/api/ensemble/draw": lambda: self._json(self.ml_bridge.ensemble_draw(n=qint(q, "n", 3))),
+            "/api/claims/summary": lambda: self._json(self.ml_bridge.claims_summary_api()),
+            "/api/claims/run": lambda: self._json(self.ml_bridge.claims_run_api()),
+            "/api/schedule/status": lambda: self._json(self.ml_bridge.schedule_status_api()),
+            "/api/zeng/dashboard": lambda: self._json(self.ml_bridge.zeng_dashboard()),
+            "/api/zeng/generate": lambda: self._json(self.ml_bridge.zeng_generate(
+                n=qint(q, "n", 3), odd=qint(q, "odd", 3), big=qint(q, "big", 3))),
+
         }
         if clean_path in handlers:
             return handlers[clean_path]()
@@ -114,17 +117,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 handler = getattr(self, handler_name)
                 return handler(p) if handler_name.startswith("_handle_") else handler()
 
-        self.send_response(404)
-        self.end_headers()
+        self._json({"ok": False, "msg": "404 Not Found"}, code=404)
+        return
 
     # ── 子路由 ──
 
     def _handle_fetch(self, path):
-        force = "force=1" in path or "force=true" in path
+        q = _parse_query(path)
+        force = qbool(q, "force")
         source_name, short_data, new_count = fetcher.fetch_data(force=force)
+        claim_stats = None
         if short_data:
+            # 自动兑奖: 新数据后匹配所有未兑奖预测
+            try:
+                from server.auto_claim import auto_claim_all
+                claim_stats = auto_claim_all()
+            except Exception:
+                pass
             resp = {"ok": True, "source": source_name, "count": len(short_data),
                     "newCount": new_count, "data": short_data}
+            if claim_stats:
+                resp["autoClaim"] = claim_stats
             picks = db.load_user_picks()
             if picks: resp["userPicks"] = picks
         else:
@@ -150,21 +163,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self._json(fn() if fn else {"ok": False, "msg": "未知端点"})
 
     def _handle_jiangjialin_get(self, path):
-        n = _parse_query_int(path, "n", 3)
+        q = _parse_query(path)
         return self._json(self.ml_bridge.generate_jiang_jialin(
-            n=n, use_gap=_parse_query_int(path,"gap",1)==1,
-            use_span=_parse_query_int(path,"span",1)==1,
-            use_pattern=_parse_query_int(path,"pattern",1)==1,
-            use_shrink=_parse_query_int(path,"shrink",1)==1,
-            blue_mode=_parse_query_str(path,"blue","mod3")))
+            n=qint(q, "n", 3),
+            use_gap=qbool(q, "gap", True),
+            use_span=qbool(q, "span", True),
+            use_pattern=qbool(q, "pattern", True),
+            use_shrink=qbool(q, "shrink", True),
+            blue_mode=qstr(q, "blue", "mod3")))
 
     def _handle_lizhilin_get(self, path):
-        n = _parse_query_int(path, "n", 3)
-        kwargs = {k: _parse_query_int(path, k, 1) for k in
-                  ["dan8","dan3","trans","kill","btail"]}
-        kwargs["bten"] = _parse_query_int(path, "bten", 0)
-        kwargs["bperiod"] = _parse_query_int(path, "bperiod", 0)
-        return self._json(self.ml_bridge.generate_li_zhilin(n=n, **kwargs))
+        q = _parse_query(path)
+        kwargs = {k: qint(q, k, 1) for k in ["dan8","dan3","trans","kill","btail"]}
+        kwargs.update(bten=qint(q, "bten", 0), bperiod=qint(q, "bperiod", 0))
+        return self._json(self.ml_bridge.generate_li_zhilin(n=qint(q, "n", 3), **kwargs))
 
     def _handle_weier_get(self, path):
         return self._json(self.ml_bridge.generate_weier())
@@ -172,187 +184,157 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _handle_liudajun_get(self, path):
         clean = path.split("?")[0]
         if clean == "/api/liudajun/position-tails":
-            window = _parse_query_int(path, "window", 50)
-            return self._json(self.ml_bridge.liudajun_position_tails(window=window))
+            return self._json(self.ml_bridge.liudajun_position_tails(
+                window=qint(_parse_query(path), "window", 50)))
         return self._json({"ok": False, "msg": "unknown endpoint"})
 
+
+    def _handle_zeng_get(self, path):
+        clean = path.split("?")[0]
+        q = _parse_query(path)
+        dispatch = {
+            "/api/zeng/dashboard": lambda: self.ml_bridge.zeng_dashboard(),
+            "/api/zeng/generate": lambda: self.ml_bridge.zeng_generate(
+                n=qint(q, "n", 3), odd=qint(q, "odd", 3), big=qint(q, "big", 3)),
+        }
+        fn = dispatch.get(clean)
+        return self._json(fn() if fn else {"ok": False, "msg": "未知端点"})
     def _handle_lixiangchun_get(self, path):
         clean = path.split("?")[0]
-        if clean == "/api/lixiangchun/dashboard":
-            return self._json(self.ml_bridge.lixiangchun_dashboard())
-        if clean == "/api/lixiangchun/spread":
-            nums = _parse_int_list(path, "numbers")
-            return self._json(self.ml_bridge.lixiangchun_spread(nums))
-        if clean == "/api/lixiangchun/skewness":
-            curr = _parse_int_list(path, "current")
-            prev = _parse_int_list(path, "previous")
-            return self._json(self.ml_bridge.lixiangchun_skewness(curr, prev))
-        if clean == "/api/lixiangchun/ac":
-            nums = _parse_int_list(path, "numbers")
-            return self._json(self.ml_bridge.lixiangchun_ac_value(nums))
-        if clean == "/api/lixiangchun/sanlang":
-            return self._json(self.ml_bridge.lixiangchun_sanlang())
-        if clean == "/api/lixiangchun/dhr":
-            num = _parse_query_int(path, "num", 1)
-            return self._json(self.ml_bridge.lixiangchun_dhr(num))
-        if clean == "/api/lixiangchun/trend-score":
-            reds = _parse_int_list(path, "reds")
-            blue = _parse_query_int(path, "blue", None)
-            return self._json(self.ml_bridge.lixiangchun_trend_score(reds, blue))
-        if clean == "/api/lixiangchun/generate":
-            n = _parse_query_int(path, "n", 3)
-            return self._json(self.ml_bridge.lixiangchun_generate(n))
-        return self._json({"ok": False, "msg": "unknown endpoint"})
+        q = _parse_query(path)
+        dispatch = {
+            "/api/lixiangchun/dashboard": lambda: self.ml_bridge.lixiangchun_dashboard(),
+            "/api/lixiangchun/spread": lambda: self.ml_bridge.lixiangchun_spread(qlist(q, "numbers")),
+            "/api/lixiangchun/skewness": lambda: self.ml_bridge.lixiangchun_skewness(qlist(q, "current"), qlist(q, "previous")),
+            "/api/lixiangchun/ac": lambda: self.ml_bridge.lixiangchun_ac_value(qlist(q, "numbers")),
+            "/api/lixiangchun/sanlang": lambda: self.ml_bridge.lixiangchun_sanlang(),
+            "/api/lixiangchun/dhr": lambda: self.ml_bridge.lixiangchun_dhr(qint(q, "num", 1)),
+            "/api/lixiangchun/trend-score": lambda: self.ml_bridge.lixiangchun_trend_score(qlist(q, "reds"), qint(q, "blue", None)),
+            "/api/lixiangchun/generate": lambda: self.ml_bridge.lixiangchun_generate(qint(q, "n", 3)),
+        }
+        fn = dispatch.get(clean)
+        return self._json(fn() if fn else {"ok": False, "msg": "unknown endpoint"})
 
     # ── 子路由: 微投资组合 ──
 
     def _handle_micro_get(self, path):
         if path == "/api/micro/3tickets":
             return self._json(self.ml_bridge.micro_3_tickets(n=3))
-        n = _parse_query_int(path, "n", 3)
-        # 合并参数: 高级过滤 = 位置软过滤 + 奇偶/和值
-        soft = _parse_query_int(path, "adv_filter", 0) == 1 or _parse_query_int(path, "soft", 0) == 1
-        # 蓝球策略 — 按作者分组, 可多选
-        liu_blue = _parse_query_int(path, "liu_blue", 0) == 1
-        cailele_blue = _parse_query_int(path, "cailele_blue", 0) == 1
-        gongyi_blue = _parse_query_int(path, "gongyi_blue", 0) == 1
-        wuming_blue = _parse_query_int(path, "wuming_blue", 0) == 1
-        # 向后兼容: old params map to all authors
-        if _parse_query_int(path, "smart_blue", 0) == 1 or _parse_query_int(path, "pattern", 0) == 1:
+        q = _parse_query(path)
+        n = qint(q, "n", 3)
+        soft = qbool(q, "adv_filter") or qbool(q, "soft")
+        liu_blue = qbool(q, "liu_blue")
+        cailele_blue = qbool(q, "cailele_blue")
+        gongyi_blue = qbool(q, "gongyi_blue")
+        wuming_blue = qbool(q, "wuming_blue")
+        if qbool(q, "smart_blue") or qbool(q, "pattern"):
             liu_blue = cailele_blue = gongyi_blue = wuming_blue = True
-        five_period = liu_blue
-        pattern_rules = (liu_blue and cailele_blue and gongyi_blue and wuming_blue)
-        # 独立参数
-        luck_raw = _parse_query_int(path, "luck", 0)
-        luck_mode = {0: 'off', 2: 'pure'}.get(luck_raw, 'off')  # blend已移除
-        mo = _parse_query_int(path, "max_overlap", -1)
+        five_period = qbool(q, "five_period", liu_blue)
+        pattern_rules = qbool(q, "pattern_rules")
+        luck_mode = {0: 'off', 2: 'pure'}.get(qint(q, "luck"), 'off')
+        mo = qint(q, "max_overlap", -1)
         max_overlap = None if mo < 0 else mo
-        div_raw = _parse_query_int(path, "div", 0)
-        diversity_mode = {0: None, 1: 'greedy'}.get(div_raw, None)
-        backtest_rank = _parse_query_int(path, "backtest", 0) == 1
-        color_filter = _parse_query_int(path, "color_filter", 0) == 1
-        block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
-        spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
-        ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
-        peng_channel_filter = _parse_query_int(path, "peng_channel", 0) == 1
-        gap_filter = _parse_query_int(path, "gap_filter", 0) == 1
-        omission_filter = _parse_query_int(path, "omission_filter", 0) == 1
-        coincidence_filter = _parse_query_int(path, "coincidence_filter", 0) == 1
-        wuming_clockwise = _parse_query_int(path, "wuming_clockwise", 0) == 1
-        wuming_bsd = _parse_query_int(path, "wuming_bsd", 0) == 1
+        diversity_mode = {0: None, 1: 'greedy'}.get(qint(q, "div"), None)
+        from ml.micro_portfolio import FilterConfig
+        filter_config = FilterConfig(
+            color_filter=qbool(q, "color_filter"),
+            block9_filter=qbool(q, "block9_filter"),
+            spread_filter=qbool(q, "spread_filter"),
+            ac_filter=qbool(q, "ac_filter"),
+            peng_channel_filter=qbool(q, "peng_channel"),
+            gap_filter=qbool(q, "gap_filter"),
+            omission_filter=qbool(q, "omission_filter"),
+            coincidence_filter=qbool(q, "coincidence_filter"),
+            wuming_clockwise=qbool(q, "wuming_clockwise"),
+            wuming_bsd=qbool(q, "wuming_bsd"))
+        author_mode = q.get("author", None)
         return self._json(self.ml_bridge.micro_3_tickets(
             n=n, soft=soft, luck_mode=luck_mode,
             max_overlap=max_overlap, diversity_mode=diversity_mode,
-            five_period=five_period, backtest_rank=backtest_rank,
+            five_period=five_period, backtest_rank=qbool(q, "backtest"),
             param_filter=soft, pattern_rules=pattern_rules,
             liu_blue=liu_blue, cailele_blue=cailele_blue,
             gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
-            color_filter=color_filter, block9_filter=block9_filter,
-            spread_filter=spread_filter, ac_filter=ac_filter,
-            peng_channel_filter=peng_channel_filter,
-            gap_filter=gap_filter,
-            omission_filter=omission_filter,
-            coincidence_filter=coincidence_filter,
-            wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd))
-
-    # ── 子路由: 张委铭算法 ──
-
+            author_mode=author_mode,
+            filter_config=filter_config))
     def _handle_zhang_get(self, path):
         clean = path.split("?")[0]
-        n = _parse_query_int(path, "n", 3)
-        dan_raw = _parse_query_str(path, "dan", "")
-        dan = [int(x) for x in dan_raw.split(",") if x.strip().isdigit()] if dan_raw else None
-        if clean == "/api/zhang/twelve-value":
-            return self._json(self.ml_bridge.generate_twelve_value(n=n, dan=dan))
-        elif clean == "/api/zhang/eight-value":
-            return self._json(self.ml_bridge.generate_eight_value(n=n))
-        elif clean == "/api/zhang/combined":
-            return self._json(self.ml_bridge.generate_zhang_combined(n=n, dan=dan))
-        elif clean == "/api/zhang/grid":
-            return self._json(self.ml_bridge.generate_grid_selection(n=n))
-        elif clean == "/api/zhang/dan1":
-            return self._json(self.ml_bridge.generate_dan1())
-        elif clean == "/api/zhang/dan2":
-            return self._json(self.ml_bridge.generate_dan2())
-        return self._json({"ok": False, "msg": "未知端点"})
+        q = _parse_query(path)
+        n = qint(q, "n", 3)
+        dan = qlist(q, "dan") or None
+        dispatch = {
+            "/api/zhang/twelve-value": lambda: self.ml_bridge.generate_twelve_value(n=n, dan=dan),
+            "/api/zhang/eight-value": lambda: self.ml_bridge.generate_eight_value(n=n),
+            "/api/zhang/combined": lambda: self.ml_bridge.generate_zhang_combined(n=n, dan=dan),
+            "/api/zhang/grid": lambda: self.ml_bridge.generate_grid_selection(n=n),
+            "/api/zhang/dan1": lambda: self.ml_bridge.generate_dan1(),
+            "/api/zhang/dan2": lambda: self.ml_bridge.generate_dan2(),
+        }
+        fn = dispatch.get(clean)
+        return self._json(fn() if fn else {"ok": False, "msg": "未知端点"})
 
     # ── 子路由: 彭浩算法 ──
 
     def _handle_peng_get(self, path):
         clean = path.split("?")[0]
-        if clean == "/api/peng/channel":
-            return self._json(self.ml_bridge.peng_channel_all_positions())
-        elif clean == "/api/peng/direction":
-            return self._json(self.ml_bridge.peng_direction_all_positions())
-        elif clean == "/api/peng/extreme":
-            return self._json(self.ml_bridge.peng_extreme_rules())
-        elif clean == "/api/peng/tickets":
-            n = _parse_query_int(path, "n", 3)
-            use_channel = _parse_query_int(path, "channel", 1) == 1
-            use_direction = _parse_query_int(path, "direction", 1) == 1
-            use_extreme = _parse_query_int(path, "extreme", 1) == 1
-            return self._json(self.ml_bridge.peng_generate_tickets(
-                n=n, use_channel=use_channel, use_direction=use_direction,
-                use_extreme=use_extreme))
-        elif clean == "/api/peng/blue":
-            return self._json(self.ml_bridge.peng_blue_prediction())
-        return self._json({"ok": False, "msg": "未知端点"})
+        q = _parse_query(path)
+        dispatch = {
+            "/api/peng/channel": lambda: self.ml_bridge.peng_channel_all_positions(),
+            "/api/peng/direction": lambda: self.ml_bridge.peng_direction_all_positions(),
+            "/api/peng/extreme": lambda: self.ml_bridge.peng_extreme_rules(),
+            "/api/peng/tickets": lambda: self.ml_bridge.peng_generate_tickets(
+                n=qint(q, "n", 3),
+                use_channel=qbool(q, "channel", True),
+                use_direction=qbool(q, "direction", True),
+                use_extreme=qbool(q, "extreme", True)),
+            "/api/peng/blue": lambda: self.ml_bridge.peng_blue_prediction(),
+        }
+        fn = dispatch.get(clean)
+        return self._json(fn() if fn else {"ok": False, "msg": "未知端点"})
 
     # ── 子路由: 蓝球独立出号 ──
 
     def _handle_blue_get(self, path):
-        liu = _parse_query_int(path, "liu_blue", 0) == 1
-        cailele = _parse_query_int(path, "cailele_blue", 0) == 1
-        gongyi = _parse_query_int(path, "gongyi_blue", 0) == 1
-        wuming = _parse_query_int(path, "wuming_blue", 0) == 1
-        clockwise = _parse_query_int(path, "wuming_clockwise", 0) == 1
-        bsd = _parse_query_int(path, "wuming_bsd", 0) == 1
-        xia = _parse_query_int(path, "xia_blue", 0) == 1
+        q = _parse_query(path)
         return self._json(self.ml_bridge.blue_pick(
-            liu_blue=liu, cailele_blue=cailele, gongyi_blue=gongyi,
-            wuming_blue=wuming, wuming_clockwise=clockwise, wuming_bsd=bsd,
-            xia_blue=xia))
+            liu_blue=qbool(q, "liu_blue"), cailele_blue=qbool(q, "cailele_blue"),
+            gongyi_blue=qbool(q, "gongyi_blue"), wuming_blue=qbool(q, "wuming_blue"),
+            wuming_clockwise=qbool(q, "wuming_clockwise"), wuming_bsd=qbool(q, "wuming_bsd"),
+            xia_blue=qbool(q, "xia_blue")))
 
     # ── 子路由: 红球独立出号 ──
 
     def _handle_red_get(self, path):
-        n = _parse_query_int(path, "n", 3)
-        soft = _parse_query_int(path, "soft", 0) == 1 or _parse_query_int(path, "adv_filter", 0) == 1
-        color_filter = _parse_query_int(path, "color_filter", 0) == 1
-        block9_filter = _parse_query_int(path, "block9_filter", 0) == 1
-        spread_filter = _parse_query_int(path, "spread_filter", 0) == 1
-        ac_filter = _parse_query_int(path, "ac_filter", 0) == 1
-        peng_channel_filter = _parse_query_int(path, "peng_channel", 0) == 1
-        gap_filter = _parse_query_int(path, "gap_filter", 0) == 1
-        omission_filter = _parse_query_int(path, "omission_filter", 0) == 1
+        q = _parse_query(path)
+        soft = qbool(q, "soft") or qbool(q, "adv_filter")
+        div_raw = qint(q, "div")
+        diversity_mode = {0: None, 1: "greedy"}.get(div_raw, None)
+        mo = qint(q, "max_overlap", -1)
+        max_overlap = None if mo < 0 else mo
         return self._json(self.ml_bridge.red_pick(
-            n=n, soft=soft, param_filter=soft,
-            color_filter=color_filter, block9_filter=block9_filter,
-            spread_filter=spread_filter, ac_filter=ac_filter,
-            peng_channel_filter=peng_channel_filter,
-            gap_filter=gap_filter,
-            omission_filter=omission_filter))
-
-    # ── 子路由: 覆盖设计 ──
-
+            n=qint(q, "n", 3), soft=soft, param_filter=soft,
+            color_filter=qbool(q, "color_filter"), block9_filter=qbool(q, "block9_filter"),
+            spread_filter=qbool(q, "spread_filter"), ac_filter=qbool(q, "ac_filter"),
+            peng_channel_filter=qbool(q, "peng_channel"),
+            gap_filter=qbool(q, "gap_filter"),
+            omission_filter=qbool(q, "omission_filter"),
+            coincidence_filter=qbool(q, "coincidence_filter"),
+            diversity_mode=diversity_mode, max_overlap=max_overlap))
     def _handle_covering_get(self, path):
-        v = _parse_query_int(path, "v", 15)
-        t = _parse_query_int(path, "t", 4)
-        return self._json(self.ml_bridge.generate_covering(v=v, t=t))
+        q = _parse_query(path)
+        return self._json(self.ml_bridge.generate_covering(v=qint(q, "v", 15), t=qint(q, "t", 4)))
 
     def _handle_covering_diverse(self, path):
-        v = _parse_query_int(path, "v", 15)
-        t = _parse_query_int(path, "t", 4)
-        n = _parse_query_int(path, "n", 6)
-        mo = _parse_query_int(path, "max_overlap", -1)
-        max_overlap = None if mo < 0 else mo
+        q = _parse_query(path)
+        mo = qint(q, "max_overlap", -1)
         return self._json(self.ml_bridge.generate_covering_diverse(
-            v=v, t=t, n=n, max_overlap=max_overlap))
+            v=qint(q, "v", 15), t=qint(q, "t", 4), n=qint(q, "n", 6),
+            max_overlap=None if mo < 0 else mo))
 
     # ── 子路由: 奖项评估 ──
 
     def _handle_evaluate_get(self, path):
-        n = _parse_query_int(path, "n", 3)
+        n = qint(_parse_query(path), "n", 3)
         tickets = self.ml_bridge.micro_3_tickets(n=n)
         if not tickets.get("tickets"):
             return self._json({"ok": False, "msg": "无法生成票集"})
@@ -376,12 +358,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── 子路由: 预测日志 ──
 
     def _handle_prediction_log_get(self, path):
-        if _parse_query_int(path, "stats", 0) == 1:
+        q = _parse_query(path)
+        if qbool(q, "stats"):
             return self._json({"ok": True, "stats": db.prediction_log_stats()})
-        limit = _parse_query_int(path, "limit", 100)
-        period = _parse_query_int(path, "period", 0) or None
-        entries = db.load_prediction_log(limit=limit, period=period)
-        return self._json({"ok": True, "entries": entries})
+        period = qint(q, "period", 0) or None
+        return self._json({"ok": True, "entries": db.load_prediction_log(
+            limit=qint(q, "limit", 100), period=period)})
 
     # ── 子路由: 统计 ──
 
@@ -470,8 +452,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "/api/prediction-log":
             return self._handle_prediction_log_post()
 
-        self.send_response(404)
-        self.end_headers()
+        self._json({"ok": False, "msg": "404 Not Found"}, code=404)
+        return
 
     # ── 子路由: 保存 ──
 

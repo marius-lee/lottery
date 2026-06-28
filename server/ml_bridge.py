@@ -51,26 +51,87 @@ def micro_3_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     diversity_mode=None, five_period=False, backtest_rank=False,
                     param_filter=False, pattern_rules=False,
                     liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue=False,
+                    author_mode=None, filter_config=None,
+                    # 向后兼容的独立过滤器参数
                     color_filter=False, block9_filter=False,
                     spread_filter=False, ac_filter=False,
                     peng_channel_filter=False, gap_filter=False,
                     omission_filter=False, coincidence_filter=False,
                     wuming_clockwise=False, wuming_bsd=False):
-    """从号码池不放回随机采样 n 注。"""
-    from ml.micro_portfolio import generate_tickets
+    """从号码池不放回随机采样 n 注。filter_config 优先于独立参数。"""
+    from ml.micro_portfolio import generate_tickets, FilterConfig
+    if filter_config is None:
+        filter_config = FilterConfig(
+            color_filter=color_filter, block9_filter=block9_filter,
+            spread_filter=spread_filter, ac_filter=ac_filter,
+            peng_channel_filter=peng_channel_filter, gap_filter=gap_filter,
+            omission_filter=omission_filter, coincidence_filter=coincidence_filter,
+            wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd)
     return generate_tickets(n=n, soft=soft, luck_mode=luck_mode,
                             max_overlap=max_overlap, diversity_mode=diversity_mode,
                             five_period=five_period, backtest_rank=backtest_rank,
                             param_filter=param_filter, pattern_rules=pattern_rules,
                             liu_blue=liu_blue, cailele_blue=cailele_blue,
                             gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
-                            color_filter=color_filter, block9_filter=block9_filter,
-                            spread_filter=spread_filter, ac_filter=ac_filter,
-                            peng_channel_filter=peng_channel_filter,
-                            gap_filter=gap_filter,
-                            omission_filter=omission_filter,
-                            coincidence_filter=coincidence_filter,
-                            wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd)
+                            author_mode=author_mode,
+                            filter_config=filter_config)
+
+
+def run_backtest(k=15, window=50):
+    """运行全量回测, 返回各方法 recall@K."""
+    from ml.ensemble_aggregator import run_full_backtest
+    return run_full_backtest(k=k, window=window)
+
+
+def get_backtest_results(limit=20):
+    """获取最近回测结果."""
+    return db.load_backtest_results(limit=limit)
+
+
+def get_strategy_weights():
+    """获取当前策略权重."""
+    weights, perf = db.load_strategy_weights()
+    return {"ok": True, "weights": weights, "perf": perf}
+
+
+# ── 已归档的API (模块迁移至 ml/_deprecated/) ──
+
+def kelly_allocate(red_lift=1.0, blue_lift=1.0, budget=100.0, tau=0.25):
+    """Kelly最优注数 — 已归档."""
+    return {"ok": False, "msg": "Kelly模块已归档至 ml/_deprecated/kelly_allocator.py — 负EV场景下最优投注=0"}
+
+def kelly_advanced(backtest_red_hits=None, backtest_blue_hits=None, budget=100.0, tau=0.25):
+    """基于回测数据的Kelly建议 — 已归档."""
+    return {"ok": False, "msg": "Kelly模块已归档"}
+
+def particle_filter_state(window=200):
+    """粒子滤波 — 已归档."""
+    return {"ok": False, "msg": "粒子滤波已归档至 ml/_deprecated/particle_filter.py — OOS无显著提升"}
+
+def strategy_bandit_state(widget_bandit=True):
+    """策略Bandit — 已归档."""
+    return {"ok": False, "msg": "策略Bandit已归档至 ml/_deprecated/strategy_bandit.py — 无独立验证"}
+
+def fdr_filter(method_scores=None):
+    """FDR筛选 — 已归档."""
+    return {"ok": False, "msg": "FDR已归档至 ml/_deprecated/fdr_method_selector.py — 5方法无需多重比较校正"}
+
+def entropy_hotness():
+    """熵值选号 — 已归档."""
+    return {"ok": False, "msg": "熵值模块已归档至 ml/_deprecated/entropy_selector.py — 无独立验证"}
+
+def run_experiments(window=50):
+    """A/B实验 — 已归档."""
+    return {"ok": False, "msg": "实验模块待重建 — 当前无活跃实验预设"}
+
+def advanced_generate(n=3, soft=False, budget=100.0):
+    """智能引擎 — 简化为 ensemble_draw."""
+    return ensemble_draw(n=n)
+
+def integration_status_api():
+    """引擎集成状态."""
+    from ml.engine_integration import integration_status
+    return integration_status()
 
 
 def get_rule_status():
@@ -188,8 +249,8 @@ def generate_eight_value(n=3):
         valid_reds = None
         try:
             import ml.micro_portfolio as mp
-            if mp._valid_reds is not None and len(data) == mp._past_count:
-                valid_reds = mp._valid_reds
+            if mp._state.valid_reds is not None and len(data) == mp._state.past_count:
+                valid_reds = mp._state.valid_reds
         except Exception:
             pass
         if valid_reds:
@@ -356,7 +417,7 @@ def wuming_extreme_dan():
 
     GET /api/wuming/extreme-dan
     """
-    from ml.micro_portfolio import _extreme_value_dan
+    from ml.wuming import extreme_value_dan as _extreme_value_dan
     return _extreme_value_dan(db.load_draws())
 
 
@@ -365,7 +426,7 @@ def wuming_sum_compound():
 
     GET /api/wuming/sum-compound
     """
-    from ml.micro_portfolio import _wu_sum_compound
+    from ml.wuming import wu_sum_compound as _wu_sum_compound
     return _wu_sum_compound()
 
 
@@ -374,7 +435,7 @@ def xia_sub4_add4_blue():
 
     GET /api/wuming/sub4-add4
     """
-    from ml.micro_portfolio import _xia_sub4_add4_blue
+    from ml.xia_zhiqiang import xia_sub4_add4_blue as _xia_sub4_add4_blue
     return _xia_sub4_add4_blue()
 
 
@@ -383,7 +444,7 @@ def xia_compute_reds():
 
     GET /api/wuming/compute-reds
     """
-    from ml.micro_portfolio import _xia_compute_reds
+    from ml.xia_zhiqiang import xia_compute_reds as _xia_compute_reds
     return _xia_compute_reds()
 
 
@@ -392,7 +453,7 @@ def wuming_position_filter():
 
     GET /api/wuming/positions
     """
-    from ml.micro_portfolio import POSITION_VALUABLE
+    from ml.wuming import POSITION_VALUABLE
     return {"ok": True, "positions": {str(k): list(v) for k, v in POSITION_VALUABLE.items()},
             "source": "吴明2006.9 Ch4: 位置战法"}
 
@@ -402,7 +463,7 @@ def wuming_repeat_analysis():
 
     GET /api/wuming/repeats
     """
-    from ml.micro_portfolio import _repeat_method
+    from ml.wuming import repeat_method as _repeat_method
     return _repeat_method(db.load_draws())
 
 
@@ -411,7 +472,7 @@ def wuming_period5():
 
     GET /api/wuming/period5
     """
-    from ml.micro_portfolio import _period5_hotness
+    from ml.wuming import period5_hotness as _period5_hotness
     return _period5_hotness()
 
 
@@ -420,7 +481,7 @@ def wuming_cold9():
 
     GET /api/wuming/cold9
     """
-    from ml.micro_portfolio import _period9_cold
+    from ml.wuming import period9_cold as _period9_cold
     return _period9_cold()
 
 
@@ -429,7 +490,7 @@ def wuming_zone6():
 
     GET /api/wuming/zone6
     """
-    from ml.micro_portfolio import _zone6_exclusion
+    from ml.wuming import zone6_exclusion as _zone6_exclusion
     return _zone6_exclusion()
 
 
@@ -438,7 +499,7 @@ def wuming_cyclic_oscillation():
 
     GET /api/wuming/oscillation
     """
-    from ml.micro_portfolio import _wuming_cyclic_oscillation
+    from ml.wuming import wuming_cyclic_oscillation as _wuming_cyclic_oscillation
     return _wuming_cyclic_oscillation()
 
 
@@ -447,14 +508,14 @@ def wuming_blue_extreme_alert():
 
     GET /api/wuming/blue-alert
     """
-    from ml.micro_portfolio import _wuming_blue_extreme_alert
+    from ml.wuming import wuming_blue_extreme_alert as _wuming_blue_extreme_alert
     return _wuming_blue_extreme_alert()
 
 
 def blue_pick(liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue=False,
               wuming_clockwise=False, wuming_bsd=False, xia_blue=False,
               five_period=False, pattern_rules=False):
-    """蓝球独立出号: 策略候选集交集 → 返回候选列表.
+    """蓝球独立出号: 策略候选集取交集, 交集为空时退到并集.
 
     GET /api/blue/pick?liu_blue=1&cailele_blue=1
     """
@@ -475,19 +536,20 @@ def blue_pick(liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue
     if pattern_rules: active.append(_pattern_blue_candidates)
 
     if not active:
-        return {"ok": True, "candidates": [], "mode": "none"}
+        return {"ok": True, "candidates": [], "mode": "none", "count": 0}
 
     inter = set(range(1, 17))
+    union = set()
     for fn in active:
         cands = fn()
         if cands:
             inter &= cands
-    return {"ok": True, "candidates": sorted(inter) if inter else [],
-            "mode": "intersection", "count": len(inter) if inter else 0}
-
-
-# ============ 蒋加林 (Jiang Jialin, 2010) ============
-
+            union |= cands
+    # 优先取交集, 为空则退到并集 (至少一票)
+    result = inter if inter else union
+    return {"ok": True, "candidates": sorted(result) if result else [],
+            "mode": "intersection" if inter else "union",
+            "count": len(result) if result else 0}
 def generate_jiang_jialin(n=3, use_gap=True, use_span=True,
                            use_pattern=True, use_shrink=True, blue_mode='mod3'):
     """蒋加林排列型思维出号.
@@ -600,7 +662,8 @@ def lixiangchun_generate(n=3):
 
 def red_pick(n=3, soft=False, param_filter=False, color_filter=False, block9_filter=False,
              spread_filter=False, ac_filter=False, peng_channel_filter=False, gap_filter=False,
-             omission_filter=False):
+             omission_filter=False, coincidence_filter=False,
+             diversity_mode=None, max_overlap=None):
     """红球独立出号: 返回池子状态 + 红球号码.
 
     GET /api/red/pick?n=3&color_filter=1&block9_filter=1&spread_filter=1&ac_filter=1&peng_channel=1&gap_filter=1
@@ -611,7 +674,9 @@ def red_pick(n=3, soft=False, param_filter=False, color_filter=False, block9_fil
                               spread_filter=spread_filter, ac_filter=ac_filter,
                               peng_channel_filter=peng_channel_filter,
                               gap_filter=gap_filter,
-                              omission_filter=omission_filter)
+                              omission_filter=omission_filter,
+                              coincidence_filter=coincidence_filter,
+                              diversity_mode=diversity_mode, max_overlap=max_overlap)
     if not result.get("ok"):
         return {"ok": False, "msg": result.get("msg", "生成失败"),
                 "pool_empty": True, "pool_size": 0}
@@ -624,10 +689,6 @@ def red_pick(n=3, soft=False, param_filter=False, color_filter=False, block9_fil
         "soft_excluded": result.get("soft_excluded", 0),
         "reds": [t["reds"] for t in tickets],
     }
-
-
-# ============ 覆盖设计多样化 (Tier 3) ============
-
 def generate_covering_diverse(v=15, t=4, n=6, max_overlap=None, five_period=False):
     """覆盖设计 + 蓝球分配。"""
     from ml.micro_portfolio import generate_tickets_covering
@@ -640,3 +701,105 @@ def generate_covering_diverse(v=15, t=4, n=6, max_overlap=None, five_period=Fals
         ml_red[num] = cnt / total
     hot = generate_candidate_set(ml_red, size=v)
     return generate_tickets_covering(n=n, hot_numbers=hot, t=t, max_overlap=max_overlap, five_period=five_period)
+
+
+
+
+
+# ── 偏差增强 (Thompson + Gumbel-Max + 覆盖设计) ──
+
+def bias_draw(n=3):
+    """偏差增强出号 — Dirichlet后验 + Thompson采样 + Gumbel-Max."""
+    from ml.bias_engine import bias_tickets
+    return bias_tickets(k=15, t=4, n=n)
+
+
+# ── Black-Litterman 融合 ──
+
+def bl_draw(n=3):
+    """B-L融合出号 — 多方法观点贝叶斯融合."""
+    from ml.black_litterman import bl_tickets
+    return bl_tickets(k=15, t=4, n=n)
+
+
+# ── 分位策略 ──
+
+def position_draw(n=3):
+    """分位策略出号 — 每位置独立最优方法选号."""
+    from ml.position_engine import position_tickets
+    return position_tickets(n=n, k=15)
+
+
+# ── 智能覆盖 (组合覆盖设计 + 多样化) ──
+
+def ensemble_draw(n=3):
+    """智能覆盖出号 — 覆盖设计 + 贪心多样化."""
+    from ml.micro_portfolio import generate_tickets_covering
+    from ml.covering_design import generate_candidate_set
+    data = db.load_draws()
+    total = len(data) or 1
+    ml_red = {}
+    for num in range(1, 34):
+        cnt = sum(1 for r in data if num in r[1:7])
+        ml_red[num] = cnt / total
+    hot = generate_candidate_set(ml_red, size=15)
+    return generate_tickets_covering(n=n, hot_numbers=hot, t=4)
+
+# ── 曾献忠 曾氏模块 (2014) ──
+
+def zeng_dashboard():
+    """曾氏模块仪表盘 — 衡值轮盘+四大定律+外部遗传."""
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'docs', 'research'))
+    try:
+        from zeng_xianzhong import dashboard as _zeng_dashboard
+        result = _zeng_dashboard(db.load_draws())
+        result["ok"] = True
+        return result
+    except Exception as e:
+        return {"ok": False, "msg": f"曾氏模块加载失败: {e}",
+                "wheel": {}, "linju": [], "prime_run": 0}
+
+def zeng_generate(n=3, odd=3, big=3):
+    """曾氏模块出号 — 衡值轮盘+四大定律+内外运动."""
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'docs', 'research'))
+    try:
+        from zeng_xianzhong import generate_from_module
+        return generate_from_module(db.load_draws(), odd_count=odd, big_count=big, n_tickets=n)
+    except Exception as e:
+        return {"ok": False, "msg": f"曾氏模块出号失败: {e}",
+                "tickets": [], "algorithm": "曾献忠-曾氏模块"}
+
+
+
+# ── 自动兑奖 API ──
+
+def claims_summary_api():
+    """兑奖统计总览."""
+    try:
+        from server.auto_claim import get_claims_summary
+        summary = get_claims_summary()
+        return {"ok": True, **summary}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+def claims_run_api():
+    """手动触发自动兑奖."""
+    try:
+        from server.auto_claim import auto_claim_all
+        stats = auto_claim_all()
+        return {"ok": True, **stats}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+# ── 调度器 API ──
+
+def schedule_status_api():
+    """定时调度器状态."""
+    try:
+        from server.scheduler import schedule_status
+        return {"ok": True, **schedule_status()}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}

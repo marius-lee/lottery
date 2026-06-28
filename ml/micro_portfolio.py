@@ -22,23 +22,112 @@
 """
 import random
 import itertools
+import threading
 from ml.ssq_constants import TICKET_PRICE, RANDOM_SINGLE_EV
 from ml.shared.spread import compute_spread       # [李相春2003, 彩天使2004]
 from ml.shared.ac_value import compute_ac_value     # [李相春2003, 刘大军2010]
 
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class FilterConfig:
+    """红球过滤配置 — 消除 handler→bridge→generate_tickets 三层25参数平铺.
+    
+    所有字段默认 False, 由 handler 层从查询参数构建.
+    """
+    color_filter: bool = False
+    block9_filter: bool = False
+    spread_filter: bool = False
+    ac_filter: bool = False
+    peng_channel_filter: bool = False
+    gap_filter: bool = False
+    omission_filter: bool = False
+    coincidence_filter: bool = False
+    wuming_clockwise: bool = False
+    wuming_bsd: bool = False
+    
+    def as_kwargs(self) -> dict:
+        """展开为 generate_tickets 兼容的关键字参数字典."""
+        return {
+            'color_filter': self.color_filter,
+            'block9_filter': self.block9_filter,
+            'spread_filter': self.spread_filter,
+            'ac_filter': self.ac_filter,
+            'peng_channel_filter': self.peng_channel_filter,
+            'gap_filter': self.gap_filter,
+            'omission_filter': self.omission_filter,
+            'coincidence_filter': self.coincidence_filter,
+            'wuming_clockwise': self.wuming_clockwise,
+            'wuming_bsd': self.wuming_bsd,
+        }
+
+
+# ── 吴明/夏志强策略已提取至独立模块 (ml/wuming.py, ml/xia_zhiqiang.py), 此处保留别名 ──
+from ml.wuming import (BLUE_CLOCKWISE, BLUE_BSD_TAIL, POSITION_VALUABLE,
+    wuming_cyclic_oscillation as _wuming_cyclic_oscillation,
+    wuming_blue_extreme_alert as _wuming_blue_extreme_alert,
+    wuming_clockwise_weights as _wuming_clockwise_weights,
+    wuming_bsd_tail_weights as _wuming_bsd_tail_weights,
+    period5_hotness as _period5_hotness,
+    period9_cold as _period9_cold,
+    zone6_exclusion as _zone6_exclusion,
+    position_filter as _position_filter,
+    wu_sum_compound as _wu_sum_compound,
+    extreme_value_dan as _extreme_value_dan,
+    repeat_method as _repeat_method)
+from ml.xia_zhiqiang import (xia_sub4_add4_blue as _xia_sub4_add4_blue,
+    xia_compute_reds as _xia_compute_reds)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 线程安全状态容器 — 所有模块级缓存收敛到单一持有者
+# ═══════════════════════════════════════════════════════════════════════════
+
+class _PoolState:
+    """线程安全的状态容器 — 所有模块级缓存的单一持有者.
+    
+    设计原则:
+      - 所有可变状态集中管理, 读写通过 _state.xxx
+      - _state.lock 保护建池等写操作
+      - 当前服务使用单线程 HTTPServer, 锁为前向兼容
+    """
+    __slots__ = ('lock', 'valid_reds', 'soft_excluded', 'param_excluded',
+                 'rule_status', 'past_count', 'last_verified',
+                 'sum_min', 'sum_max',
+                 'peng_channels', 'peng_channels_data_count',
+                 'omission_ratios', 'omission_data_count',
+                 'calibrated', 'luck_blue_mix')
+    
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.valid_reds = None
+        self.soft_excluded = None
+        self.param_excluded = None
+        self.rule_status = {}
+        self.past_count = 0
+        self.last_verified = 0
+        self.sum_min = None
+        self.sum_max = None
+        self.peng_channels = None
+        self.peng_channels_data_count = 0
+        self.omission_ratios = None
+        self.omission_data_count = 0
+        self.calibrated = False
+        self.luck_blue_mix = 0.06
+
+_state = _PoolState()
+
+
 # [彭浩 2010] 通道过滤缓存 — 每位置[下轨, 上轨]范围
-_peng_channels = None
-_peng_channels_data_count = 0
 
 # [刘大军 2010] 重合码 — 大中小∩012路交叉验证 [文献] 擒号绝技 p21-22
 # 大数{7,8,9}∩2路{2,5,8}={8}, 中数{3,4,5,6}∩0路{0,3,6,9}={3,6}, 小数{0,1,2}∩1路{1,4,7}={1}
-COINCIDENCE_TAILS = {1, 3, 6, 8}
+from ml.liu_dajun import COINCIDENCE_TAILS
 
 # [彩天使 2009] 遗漏比缓存 — 每号码当前遗漏比
 # 理论周期: 红球33/6=5.5 [文献] 新编绝算双色球 p89
 _RED_PERIOD = 33.0 / 6.0  # 5.5
-_omission_ratios = None
-_omission_data_count = 0
 
 # [原书] 吴长坤《双色球擒号绝技》(2010) Ch4 §6: 三色分解体系
 # 红球按波色分3类, 7码(6红+1蓝)需三色俱备(原书声称95%, 近500期实测81.4%)
@@ -79,14 +168,6 @@ def _block9_kill(data):
 
     return killed
 
-_valid_reds = None
-_soft_excluded = None
-_param_excluded = None  # P2: 奇偶比/和值过滤独立于soft
-_rule_status = {}
-_past_count = 0
-_last_verified = 0
-_sum_min = None  # P2: 历史红球和值下限 (P5)
-_sum_max = None  # P2: 历史红球和值上限 (P95)
 
 # ── 运气规则参数 ──
 # [工程] 运气规则: 蒋加林(2001)"百万军中选大将"概念, 非原书精确参数
@@ -96,8 +177,6 @@ _sum_max = None  # P2: 历史红球和值上限 (P95)
 
 LUCK_WINDOW = 10        # 回溯窗口期数
 LUCK_COEFF = 0.5        # 混合偏置强度 (blend模式)
-LUCK_BLUE_MIX = 0.06    # 蓝球运气融合比例 (首次使用时自动校准)
-_calibrated = False     # 校准标记
 
 
 def _check_hard(reds):
@@ -126,9 +205,9 @@ def _check_soft(reds, param_filter=False, color_filter=False):
         odd = sum(1 for n in s if n % 2 == 1)
         if odd <= 1 or odd >= 5:  # 拒绝 0:6, 1:5, 5:1, 6:0
             v.append("s6_odd_even")
-        if _sum_min is not None and _sum_max is not None:
+        if _state.sum_min is not None and _state.sum_max is not None:
             total = sum(s)
-            if total < _sum_min or total > _sum_max:
+            if total < _state.sum_min or total > _state.sum_max:
                 v.append("s7_sum_range")
 
     # 吴长坤 2010 Ch4 §6: 三色分解 — 6红球需含全部3种波色
@@ -144,12 +223,12 @@ def _check_soft(reds, param_filter=False, color_filter=False):
 
 def _verify():
     """验证新增期数, 报告软规则违规 (含 S5 位置)."""
-    global _last_verified, _rule_status
+    global _state
     from server.db import load_draws
     data = load_draws()
-    new = [r for r in data if r[0] > _last_verified]
+    new = [r for r in data if r[0] > _state.last_verified]
     if not new: return
-    old_rows = [r for r in data if r[0] <= _last_verified]
+    old_rows = [r for r in data if r[0] <= _state.last_verified]
     pos_seen = {p: set() for p in range(1, 7)}
     for row in old_rows:
         r = sorted(row[1:7])
@@ -157,27 +236,27 @@ def _verify():
             pos_seen[p].add(r[p - 1])
     for row in new:
         for name in _check_soft(row[1:7]):
-            _rule_status[name]["violations"].append(row[0])
+            _state.rule_status[name]["violations"].append(row[0])
         r = sorted(row[1:7])
         for p in range(1, 7):
             if r[p - 1] not in pos_seen[p]:
-                _rule_status.get("s5_position", {}) \
+                _state.rule_status.get("s5_position", {}) \
                     .setdefault("violations", []).append(row[0])
                 break
         for p in range(1, 7):
             pos_seen[p].add(r[p - 1])
-    _last_verified = data[-1][0]
+    _state.last_verified = data[-1][0]
 
 
 def _build_pool():
     """枚举 C(33,6), 硬过滤 + 软过滤."""
-    global _valid_reds, _soft_excluded, _param_excluded, _rule_status, _past_count, _sum_min, _sum_max
+    global _state
     from server.db import load_draws
     data = load_draws()
-    _past_count = len(data)
+    _state.past_count = len(data)
     past_reds = {tuple(sorted(r[1:7])) for r in data}
-    if not _rule_status:
-        _rule_status = {
+    if not _state.rule_status:
+        _state.rule_status = {
             "h2_arithmetic":  {"type": "hard", "excluded": 0, "violations": []},
             "h3_historical":  {"type": "hard", "excluded": 0, "violations": []},
             "s1_consecutive": {"type": "soft", "excluded": 0, "violations": []},
@@ -187,13 +266,13 @@ def _build_pool():
             "s7_sum_range":   {"type": "param", "excluded": 0, "violations": []},
         }
     # P2: 计算历史红球和值 P5/P95 范围 [数据] 百分位数来自蒋加林2001
-    if _sum_min is None:
+    if _state.sum_min is None:
         hist_sums = sorted(sum(row[1:7]) for row in data)
         n_hist = len(hist_sums)
         # [统计] n≥20: 百分位数估计的最小可靠样本量(统计经验准则)
         # [数学] 21=C(6,1)=理论最小和值, 183=28+29+30+31+32+33=理论最大和值
-        _sum_min = hist_sums[int(n_hist * 0.05)] if n_hist >= 20 else 21
-        _sum_max = hist_sums[int(n_hist * 0.95)] if n_hist >= 20 else 183
+        _state.sum_min = hist_sums[int(n_hist * 0.05)] if n_hist >= 20 else 21
+        _state.sum_max = hist_sums[int(n_hist * 0.95)] if n_hist >= 20 else 183
 
     _verify()
     pos_seen = {p: set() for p in range(1, 7)}
@@ -219,16 +298,16 @@ def _build_pool():
             if s[p-1] not in pos_seen[p]:
                 s5 += 1; soft.add(c)
                 break
-    _valid_reds = valid
-    _soft_excluded = soft
-    _param_excluded = param
-    _rule_status["h2_arithmetic"]["excluded"] = h2
-    _rule_status["h3_historical"]["excluded"] = h3
-    _rule_status["s1_consecutive"]["excluded"] = s1
-    _rule_status["s4_max_gap"]["excluded"] = s4
-    _rule_status["s5_position"]["excluded"] = s5
-    _rule_status["s6_odd_even"]["excluded"] = s6
-    _rule_status["s7_sum_range"]["excluded"] = s7
+    _state.valid_reds = valid
+    _state.soft_excluded = soft
+    _state.param_excluded = param
+    _state.rule_status["h2_arithmetic"]["excluded"] = h2
+    _state.rule_status["h3_historical"]["excluded"] = h3
+    _state.rule_status["s1_consecutive"]["excluded"] = s1
+    _state.rule_status["s4_max_gap"]["excluded"] = s4
+    _state.rule_status["s5_position"]["excluded"] = s5
+    _state.rule_status["s6_odd_even"]["excluded"] = s6
+    _state.rule_status["s7_sum_range"]["excluded"] = s7
 
 
 # ────────────────────────────────────────────────────────
@@ -561,390 +640,16 @@ def _pattern_blue_boost():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 吴明《揭秘双色球》(2010): 蓝球循环振荡 + 遗漏警报
 # ═══════════════════════════════════════════════════════════════════════════
-
-def _wuming_cyclic_oscillation():
-    """蓝球循环振荡预测 [吴明2010 Ch13 §2: 0-8半幅环距].
-
-    蓝球01-16为闭环, 最短距离=min(|a-b|, 16-|a-b|), max=8.
-    近20期平均振荡预测下期蓝球候选范围.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 20:
-        return {"ok": False, "msg": "数据不足"}
-
-    blues = [row[7] for row in data]
-    last_blue = blues[-1]
-    osc = []
-    for i in range(1, len(blues)):
-        osc.append(min(abs(blues[i] - blues[i-1]), 16 - abs(blues[i] - blues[i-1])))
-
-    avg = sum(osc[-20:]) / 20  # [原书] 20期窗口
-    # [原书] 预测范围: 平均振荡±1, 顺时针+逆时针双向
-    candidates = set()
-    for v in range(max(1, int(avg)), min(8, int(avg + 2))):
-        candidates.add((last_blue + v - 1) % 16 + 1)
-        candidates.add((last_blue - v + 15) % 16 + 1)
-    return {"ok": True, "last_blue": last_blue, "avg_oscillation": round(avg, 1),
-            "osc_history_5": osc[-5:], "candidates": sorted(candidates),
-            "candidate_count": len(candidates), "source": "吴明2010 Ch13: 循环振荡法"}
-
-
-def _wuming_blue_extreme_alert():
-    """蓝球遗漏警报 [吴明2010 Ch17: 博彩基本公式].
-
-    N = ln(1-D) / ln(1-P). D=99.9%, P=1/16 → N=107期(理论极值).
-    遗漏>59期告警(作者原书p224建议阈值).
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 60:
-        return {"ok": False, "msg": "数据不足"}
-    blues = [row[7] for row in data]
-    ci = len(blues) - 1
-    alerts = []
-    for b in range(1, 17):
-        om = ci
-        for i in range(ci - 1, -1, -1):
-            if blues[i] == b:
-                om = ci - i
-                break
-        alerts.append({"blue": b, "omission": om,
-                       "pct_to_extreme": round(om / 107 * 100, 1),
-                       "alert": om > 59})
-    alerts.sort(key=lambda x: -x["omission"])
-    return {"ok": True, "theoretical_extreme": 107,
-            "formula": "N = ln(1-D) / ln(1-P)",
-            "alerts": alerts, "source": "吴明2010 Ch17: 博彩基本公式"}
-
-
-# [原书] 吴明2010 Ch15 §4: 顺时针法 — 蓝球4区新排法
-BLUE_CLOCKWISE = {
-    "zone1": {1, 12, 11, 10},
-    "zone2": {2, 13, 16, 9},
-    "zone3": {3, 14, 15, 8},
-    "zone4": {4, 5, 6, 7},
-}
-
-# [原书] 吴明2010 Ch15 §5: 大小单双尾法 — 蓝球4维交叉分类
-BLUE_BSD_TAIL = {
-    "小单尾": {1, 3, 11, 13},     # 小号+单尾
-    "小双尾": {2, 4, 12, 14},     # 小号+双尾
-    "大单尾": {5, 7, 9, 15},      # 大号+单尾
-    "大双尾": {6, 8, 10, 16},     # 大号+双尾
-}
-
-def _wuming_clockwise_weights():
-    """顺时针法蓝球加权 [吴明2010 Ch15 §4].
-
-    与上期蓝球同区→降权, 利用四区间不重复规律.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 2:
-        return [1.0] * 16
-    last = data[-1][7]
-    weights = [1.0] * 16
-    for zone_name, nums in BLUE_CLOCKWISE.items():
-        if last in nums:
-            # [原书] 同区不重复3次, 降权当前区
-            for n in nums:
-                weights[n - 1] = 0.3
-            break
-    return weights
-
-
-def _wuming_bsd_tail_weights():
-    """大小单双尾法蓝球加权 [吴明2010 Ch15 §5].
-
-    与上期蓝球同类→降权.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 2:
-        return [1.0] * 16
-    last = data[-1][7]
-    weights = [1.0] * 16
-    for cat, nums in BLUE_BSD_TAIL.items():
-        if last in nums:
-            for n in nums:
-                weights[n - 1] = 0.3  # [原书] 同类不重复, 降权
-            break
-    return weights
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 吴明《双色球核心秘密与排除大法》(2006): 红球排除系统
-# ═══════════════════════════════════════════════════════════════════════════
-
-def _period5_hotness():
-    """5期重号摆动预测 [吴明2006 Ch1: 5大定理].
-
-    计算5期重号池大小+方向预测.
-    池>=20→偏多, <20→偏少. 返回 {hot_numbers, pool_size, direction}.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 6:
-        return {"ok": False}
-    # 近5期出现过的号码
-    recent5 = set()
-    for row in data[-5:]:
-        recent5.update(row[1:7])
-    pool_size = len(recent5)
-    # [原书] 平均值20.26, ≥20偏多 <20偏少
-    prev5 = set()
-    for row in data[-6:-1]:
-        prev5.update(row[1:7])
-    prev_size = len(prev5)
-    direction = "up" if pool_size > prev_size else ("down" if pool_size < prev_size else "flat")
-    return {"ok": True, "hot_numbers": sorted(recent5), "pool_size": pool_size,
-            "prev_size": prev_size, "direction": direction,
-            "recommend": "偏多→跟热" if pool_size >= 20 else "偏少→博冷",
-            "source": "吴明2006 Ch1: 5期重号理论"}
-
-
-def _period9_cold():
-    """9期冷号策略 [吴明2006 Ch3: 63.15%转化率].
-
-    找出遗漏≥9期的冷号, 标记可能反弹的号码.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 10:
-        return {"ok": False}
-    last_seen = {}
-    for i, row in enumerate(data):
-        for n in row[1:7]:
-            last_seen[n] = i
-    ci = len(data) - 1
-    cold = []
-    for n in range(1, 34):
-        om = ci - last_seen.get(n, 0)
-        if om >= 9:
-            cold.append({"number": n, "omission": om})
-    cold.sort(key=lambda x: -x["omission"])
-    return {"ok": True, "cold_numbers": cold, "count": len(cold),
-            "note": "63%冷号5期内转热 [吴明2006 p71-82]",
-            "source": "吴明2006 Ch3: 9期冷号理论"}
-
-
-def _zone6_exclusion():
-    """6区间排除法 [吴明2006 Ch4: 100%安全排1区].
-
-    6区间: 1=01-05, 2=06-11, 3=12-16, 4=17-22, 5=23-27, 6=28-33.
-    每期必空至少1区. 返回上期空区→本期继续杀.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 2:
-        return {"ok": False}
-    ZONES = [
-        (1, set(range(1, 6))),     # 01-05
-        (2, set(range(6, 12))),    # 06-11
-        (3, set(range(12, 17))),   # 12-16
-        (4, set(range(17, 23))),   # 17-22
-        (5, set(range(23, 28))),   # 23-27
-        (6, set(range(28, 34))),   # 28-33
-    ]
-    last_reds = set(data[-1][1:7])
-    empty_zones = [zid for zid, nums in ZONES if not (last_reds & nums)]
-    killed = set()
-    for zid in empty_zones:
-        killed.update(next(nums for z, nums in ZONES if z == zid))
-    return {"ok": True, "empty_zones": empty_zones, "killed": sorted(killed),
-            "killed_count": len(killed),
-            "note": "100%安全排空区 [吴明2006 p90-130]",
-            "source": "吴明2006 Ch4: 6区间排除法"}
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 吴明《双色球细节战法与蓝球攻略》(2006.9): 位置战法+重号战法
-# ═══════════════════════════════════════════════════════════════════════════
-
-# [原书] Ch4 p104-123: 6位置"有价值区域"
-POSITION_VALUABLE = {
-    1: (1, 19),   # 一号位: 01-19
-    2: (2, 22),   # 二号位: 02-22
-    3: (3, 28),   # 三号位: 03-28
-    4: (5, 31),   # 四号位: 05-31
-    5: (8, 32),   # 五号位: 08-32
-    6: (11, 33),  # 六号位: 11-33
-}
-
-def _position_filter(candidates):
-    """位置战法: 每位置号码必须在有价值区域内.
-
-    吴明2006.9 Ch4: 极值优先原理应用于6个位置.
-    超出区域视为"异常", 99%+的正常开奖不会超出.
-    """
-    filtered = []
-    for c in candidates:
-        valid = True
-        for p in range(6):
-            lo, hi = POSITION_VALUABLE[p + 1]
-            if not (lo <= c[p] <= hi):
-                valid = False
-                break
-        if valid:
-            filtered.append(c)
-    return filtered if filtered else candidates
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 夏志强《彩票中奖就这几招》(2013): 减4加4测蓝 + 计算与观察法
-# ═══════════════════════════════════════════════════════════════════════════
-
-def _xia_sub4_add4_blue():
-    """减4加4测蓝法 [夏志强 Trick 46, p64].
-
-    |蓝_{t-1} - 蓝_t| ± 4 = 预测范围. 声称90%准确率.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 3:
-        return {"ok": False}
-    b1 = data[-2][7]
-    b2 = data[-1][7]
-    base = abs(b1 - b2)
-    lo = max(1, base - 4)
-    hi = min(16, base + 4)
-    candidates = list(range(lo, hi + 1))
-    return {"ok": True, "candidates": candidates, "base": base,
-            "range": [lo, hi], "source": "夏志强 Trick 46: 减4加4测蓝法"}
-
-
-def _xia_compute_reds():
-    """计算与观察法选红号 [夏志强 Trick 65, p87].
-
-    公式: (6红和 - 每红) / 每红 = 商(忽略余数), 商的尾数→下期候选.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 1:
-        return {"ok": False}
-    reds = sorted(data[-1][1:7])
-    total = sum(reds)
-    candidates = set()
-    for r in reds:
-        if r == 0:
-            continue
-        q = (total - r) // r
-        tail = q % 10
-        for n in range(1, 34):
-            if n % 10 == tail:
-                candidates.add(n)
-    return {"ok": True, "candidates": sorted(candidates), "count": len(candidates),
-            "source": "夏志强 Trick 65: 计算与观察法"}
-
-
-def _wu_sum_compound():
-    """复合战法: 八区间+除8余数交集定位和值 [吴明和值大法 Ch4].
-
-    两个正交分类系统各自检测极值区间, 取交集.
-    163个和值→通常2-5个候选.
-    """
-    from server.db import load_draws
-    data = load_draws()
-    if len(data) < 50:
-        return {"ok": False}
-    sums = [sum(row[1:7]) for row in data]
-    # 八区间: 21-183均分8组
-    step = 21
-    zone8 = {i: (21+i*step, min(183, 21+(i+1)*step-1)) for i in range(8)}
-    # 连空检测
-    zone_om = {}
-    for zid, (lo,hi) in zone8.items():
-        om = 0
-        for s in reversed(sums):
-            if lo <= s <= hi: break
-            om += 1
-        zone_om[zid] = om
-    mod_om = {}
-    for r in range(8):
-        om = 0
-        for s in reversed(sums):
-            if s % 8 == r: break
-            om += 1
-        mod_om[r] = om
-    # 极值优先: 取连空最大的区间
-    best_z = max(zone_om, key=zone_om.get)
-    best_m = max(mod_om, key=mod_om.get)
-    lo, hi = zone8[best_z]
-    candidates = [s for s in range(lo, hi+1) if s % 8 == best_m]
-    return {"ok": True, "candidates": candidates, "zone_id": best_z,
-            "zone_range": [lo, hi], "mod_remainder": best_m,
-            "zone_omission": zone_om[best_z], "mod_omission": mod_om[best_m],
-            "source": "吴明《和值大法》: 八分法+除8余数复合战法"}
-
-
-def _extreme_value_dan(data):
-    """极值优先原理: 检测各位置达极值的号码 [吴明胆码篇 p15-16].
-
-    返回每位置最接近极值的号码列表.
-    """
-    if len(data) < 60:
-        return {"ok": False, "msg": "数据不足"}
-    # 用近200期统计每位置各号码的连空数据
-    window = min(200, len(data))
-    recent = data[-window:]
-    pos_stats = {}
-    for p in range(6):
-        # 统计每个号码的连空
-        current_omissions = {}
-        for n in range(1, 34):
-            om = 0
-            for i in range(len(recent)-1, -1, -1):
-                r = sorted(recent[i][1:7])
-                if r[p] == n:
-                    break
-                om += 1
-            current_omissions[n] = om
-        # 只显示在位置价值范围内的号码, 连空>15的标记
-        lo, hi = POSITION_VALUABLE[p + 1]
-        candidates = [(n, om) for n, om in current_omissions.items()
-                      if lo <= n <= hi and om > 15]
-        candidates.sort(key=lambda x: -x[1])
-        pos_stats[p] = [{"number": n, "omission": om, "alert": om > 30}
-                        for n, om in candidates[:5]]
-    return {"ok": True, "positions": pos_stats,
-            "source": "吴明《胆码篇》: 极值优先原理"}
-
-
-def _repeat_method(data):
-    """重号战法: 分析上期重复号.
-
-    吴明2006.9 Ch4 p124-134: 两层标准.
-    - 第一层(0-2重号): 连出极值=2, 连空=1-13/极值=26
-    - 第二层(3重号): 连空极值=35
-    返回: 建议的重号数量范围.
-    """
-    if len(data) < 2:
-        return {"ok": False}
-    last = set(data[-1][1:7])
-    prev = set(data[-2][1:7])
-    repeats = len(last & prev)
-    if repeats <= 2:
-        return {"ok": True, "repeat_count": repeats, "level": 1,
-                "recommend": "0-2重复", "extreme": 26,
-                "source": "吴明2006.9 Ch4: 重号战法"}
-    else:
-        return {"ok": True, "repeat_count": repeats, "level": 2,
-                "recommend": "≥3重复(罕见)", "extreme": 35,
-                "source": "吴明2006.9 Ch4: 重号战法"}
-
-
 def _calibrate_luck_blue_mix():
     """滑动窗口回测确定最优蓝球运气融合比例。"""
-    global LUCK_BLUE_MIX, _calibrated
+    global _state
     from server.db import load_draws
     data = load_draws()
     window = LUCK_WINDOW
     if len(data) < window + 5:
         return
-    best_mix = LUCK_BLUE_MIX
+    best_mix = _state.luck_blue_mix
     best_hits = -1
     # [工程] 0-30%以2%步长扫描: 31是合理上界(>30%运气就没意义了), 2%足够分辨最优
     for mix_pct in range(0, 31, 2):
@@ -971,8 +676,8 @@ def _calibrate_luck_blue_mix():
         if hits > best_hits:
             best_hits = hits
             best_mix = mix
-    LUCK_BLUE_MIX = best_mix
-    _calibrated = True
+    _state.luck_blue_mix = best_mix
+    _state.calibrated = True
 
 
 def _compute_luck_position_weights(window=None):
@@ -1010,7 +715,7 @@ def _compute_luck_position_weights(window=None):
 
 def _luck_blended_blue_weights(freq_weights, luck_blue, mix=None):
     """融合 Laplace 频率权重 + 运气权重。"""
-    mix = LUCK_BLUE_MIX if mix is None else mix
+    mix = _state.luck_blue_mix if mix is None else mix
     n = min(len(freq_weights), len(luck_blue))
     return [freq_weights[i] * (1.0 - mix) + luck_blue[i] * mix for i in range(n)]
 
@@ -1071,10 +776,10 @@ def _draw_luck_reds(red_weights):
 def _generate_luck_tickets(n=3, max_overlap=None, five_period=False, pattern_rules=False):
     """纯运气模式: 位置加权抽取 → 硬过滤 → 去重 → 蓝球.
 
-    不依赖 _valid_reds 池, 不依赖软过滤.
+    不依赖 _state.valid_reds 池, 不依赖软过滤.
     每次独立按位置频率加权抽取, 硬过滤校验, 跨注去重.
     """
-    if not _calibrated:
+    if not _state.calibrated:
         _calibrate_luck_blue_mix()
 
     red_weights, blue_luck = _compute_luck_position_weights()
@@ -1149,13 +854,132 @@ def _generate_luck_tickets(n=3, max_overlap=None, five_period=False, pattern_rul
 # 故障降级
 # ────────────────────────────────────────────────────────
 
+def _generate_author_tickets(n=3, author_mode='zhang', soft=False, luck_mode='off',
+                              max_overlap=None, five_period=False, pattern_rules=False,
+                              liu_blue=False, cailele_blue=False, gongyi_blue=False,
+                              wuming_blue=False, filter_config=None,
+                              **filter_kwargs):
+    """委托特定作者生成红球, 蓝球+出票逻辑复用本模块."""
+    from server.db import load_draws
+    data = load_draws()
+
+    # 蓝球准备 (同主路径)
+    blue_candidates = set(range(1, 17))
+    blue_methods_active = []
+    if liu_blue:
+        blue_methods_active.append(("刘大军", _liu_dajun_candidates))
+    if cailele_blue:
+        blue_methods_active.append(("彩乐乐", _cailele_candidates))
+    if gongyi_blue:
+        blue_methods_active.append(("公益时报", _gongyi_candidates))
+    if wuming_blue:
+        blue_methods_active.append(("吴明", _wuming_candidates))
+    if blue_methods_active:
+        inter = set(range(1, 17))
+        union = set()
+        for _, fn in blue_methods_active:
+            cands = fn()
+            if cands:
+                inter &= cands
+                union |= cands
+        blue_candidates = inter if inter else union
+
+    blue_weights = _blue_freq_weights()
+    if blue_candidates and len(blue_candidates) < 16:
+        w = 1.0 / len(blue_candidates)
+        blue_weights = [0.0] * 16
+        for b in blue_candidates:
+            blue_weights[b - 1] = w
+    if five_period:
+        fpb = _five_period_boost()
+        blue_weights = [blue_weights[i] * fpb[i] for i in range(16)]
+
+    # 调用作者模块生成红球
+    author_tickets = []
+    try:
+        if author_mode == 'zhang':
+            from ml.zhang_weiming import generate_weihao
+            result = generate_weihao(data, n_tickets=n)
+            author_tickets = result.get("tickets", []) if isinstance(result, dict) else []
+        elif author_mode == 'li_zhilin':
+            from ml.li_zhilin import generate_tickets as lz_generate
+            result = lz_generate(data, n_tickets=n)
+            author_tickets = result.get("tickets", []) if isinstance(result, dict) else []
+        elif author_mode == 'peng':
+            from ml.peng_hao import generate_tickets as ph_generate
+            result = ph_generate(data, n=n)
+            author_tickets = result.get("tickets", []) if isinstance(result, dict) else []
+        elif author_mode == 'jiang_jialin':
+            from ml.jiang_jialin import generate_tickets as jj_generate
+            result = jj_generate(data, n=n)
+            author_tickets = result.get("tickets", []) if isinstance(result, dict) else []
+    except Exception:
+        pass
+
+    # 将作者红球组装成标准ticket格式
+    tickets = []
+    used_reds = set()
+    used_blues = set()
+    for entry in author_tickets[:n]:
+        if isinstance(entry, dict):
+            reds = tuple(sorted(entry.get("reds", entry.get("numbers", []))))
+        elif isinstance(entry, (list, tuple)):
+            reds = tuple(sorted(entry))
+        else:
+            continue
+        if len(reds) != 6 or reds in used_reds:
+            continue
+        blue = _pick_unique_blue(blue_weights, used_blues)
+        used_reds.add(reds)
+        used_blues.add(blue)
+        tickets.append({"reds": list(reds), "blue": blue})
+
+    # 不足 → 补随机
+    while len(tickets) < n:
+        reds = tuple(sorted(random.sample(range(1, 34), 6)))
+        if reds not in used_reds:
+            blue = _pick_unique_blue(blue_weights, used_blues)
+            used_reds.add(reds)
+            used_blues.add(blue)
+            tickets.append({"reds": list(reds), "blue": blue})
+
+    algo = f"Author-{author_mode}" + ("+Soft" if soft else "")
+    _log_prediction(tickets, source=f"micro+{algo}")
+    return {
+        "ok": True,
+        "algorithm": algo,
+        "tickets": tickets, "budget": n,
+        "cost_rmb": n * TICKET_PRICE,
+        "pool_size": None, "pool_valid_reds": None,
+        "soft_filter": False, "soft_excluded": 0,
+        "luck_mode": luck_mode,
+        "luck_window": LUCK_WINDOW if luck_mode != 'off' else None,
+        "rule_status": _state.rule_status,
+        "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n, 2),
+                        "cost_per_draw": n * TICKET_PRICE},
+    }
+
+
 def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period=False, pattern_rules=False,
-                                color_filter=False, block9_filter=False, block9_killed=None,
+                                filter_config: 'FilterConfig | None' = None,
+                                block9_killed=None, peng_channels=None,
+                                omission_ratios=None,
+                                color_filter=False, block9_filter=False,
                                 spread_filter=False, ac_filter=False,
-                                peng_channel_filter=False, peng_channels=None,
-                                gap_filter=False, omission_filter=False, omission_ratios=None,
+                                peng_channel_filter=False,
+                                gap_filter=False, omission_filter=False,
                                 coincidence_filter=False):
     """随机生成+过滤: 不经池, 直接random.sample+排序+过过滤. 秒级响应."""
+    if filter_config is not None:
+        fk = filter_config.as_kwargs()
+        color_filter = fk['color_filter']
+        block9_filter = fk['block9_filter']
+        spread_filter = fk['spread_filter']
+        ac_filter = fk['ac_filter']
+        peng_channel_filter = fk['peng_channel_filter']
+        gap_filter = fk['gap_filter']
+        omission_filter = fk['omission_filter']
+        coincidence_filter = fk['coincidence_filter']
     blue_weights = _blue_freq_weights()
     if five_period:
         fpb = _five_period_boost()
@@ -1165,7 +989,7 @@ def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period
         blue_weights = [blue_weights[i] * ppb[i] for i in range(16)]
 
     if luck_mode == 'pure':
-        if not _calibrated:
+        if not _state.calibrated:
             _calibrate_luck_blue_mix()
         _, blue_luck = _compute_luck_position_weights()
         blue_weights = _luck_blended_blue_weights(blue_weights, blue_luck)
@@ -1181,31 +1005,22 @@ def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period
     tickets = []
     used_reds = set()
     for _ in range(n):
-        c = None
         for _ in range(500):  # [工程] 重试上限: 防止无限循环
             c = tuple(sorted(random.sample(range(1, 34), 6)))
-            if c in used_reds:
-                continue
-            # 全部过滤
-            if not _passes_red_filters(c, color_filter=color_filter,
-                    block9_filter=block9_filter, block9_killed=block9_killed,
-                    spread_filter=spread_filter, ac_filter=ac_filter,
-                    peng_channel_filter=peng_channel_filter, peng_channels=peng_channels,
-                    gap_filter=gap_filter,
-                    omission_filter=omission_filter, omission_ratios=omission_ratios,
-                    coincidence_filter=coincidence_filter):
-                continue
-            # Tier 1: 注间分散
-            if max_overlap is not None and tickets:
-                if any(len(set(c) & set(t["reds"])) > max_overlap
-                       for t in tickets):
-                    continue
-            used_reds.add(c)
-            break
+            ticket = _try_one_ticket(c, used_reds, tickets, blue_weights,
+                max_overlap=max_overlap, color_filter=color_filter,
+                block9_filter=block9_filter, block9_killed=block9_killed,
+                spread_filter=spread_filter, ac_filter=ac_filter,
+                peng_channel_filter=peng_channel_filter, peng_channels=peng_channels,
+                gap_filter=gap_filter, omission_filter=omission_filter,
+                omission_ratios=omission_ratios, coincidence_filter=coincidence_filter)
+            if ticket:
+                tickets.append(ticket)
+                break
         else:
-            c = (1, 2, 3, 4, 5, 6)
-        blue = _pick_blue(blue_weights)
-        tickets.append({"reds": list(c), "blue": blue})
+            tickets.append({"reds": [1, 2, 3, 4, 5, 6],
+                           "blue": _pick_blue(blue_weights)})
+    _log_prediction(tickets, source="micro+Fallback")
     return {
         "ok": True,
         "algorithm": "Fallback-Random",
@@ -1233,7 +1048,7 @@ def _jaccard_distance(a, b):
 
 
 def _build_candidate_pool(pool_size, valid_reds, n_combos, exclude, used_reds, rng=random):
-    """从_valid_reds随机采样pool_size个候选组合.
+    """从_state.valid_reds随机采样pool_size个候选组合.
     返回 [(idx, reds_tuple), ...], 排除已过滤和已使用的组合."""
     candidates = []
     seen = set()
@@ -1342,9 +1157,9 @@ def _get_peng_channels(data):
     使用MA9+MA18双通道交集, 返回 [(lower, upper), ...] 每位置.
     结果缓存在模块级, 数据不变时不重新计算.
     """
-    global _peng_channels, _peng_channels_data_count
-    if _peng_channels is not None and _peng_channels_data_count == len(data):
-        return _peng_channels
+    global _state
+    if _state.peng_channels is not None and _state.peng_channels_data_count == len(data):
+        return _state.peng_channels
 
     from ml.peng_hao import compute_channel_dual
     channels = []
@@ -1353,8 +1168,8 @@ def _get_peng_channels(data):
         lower = max(1, int(ch.get("lower", 1)))
         upper = min(33, int(ch.get("upper", 33)))
         channels.append((lower, upper))
-    _peng_channels = channels
-    _peng_channels_data_count = len(data)
+    _state.peng_channels = channels
+    _state.peng_channels_data_count = len(data)
     return channels
 
 
@@ -1364,9 +1179,9 @@ def _get_omission_ratios(data):
     OR = 当前遗漏期数 / 理论出现周期(RED_PERIOD=5.5)
     OR > 5 → 极寒带, 应避开 [文献] 原书p108
     """
-    global _omission_ratios, _omission_data_count
-    if _omission_ratios is not None and _omission_data_count == len(data):
-        return _omission_ratios
+    global _state
+    if _state.omission_ratios is not None and _state.omission_data_count == len(data):
+        return _state.omission_ratios
 
     # 计算每个号码最近一次出现距今多少期
     last_seen = {}
@@ -1380,9 +1195,26 @@ def _get_omission_ratios(data):
         gap = last_seen.get(n, len(data))
         ratios[n] = gap / _RED_PERIOD
 
-    _omission_ratios = ratios
-    _omission_data_count = len(data)
+    _state.omission_ratios = ratios
+    _state.omission_data_count = len(data)
     return ratios
+
+
+def _try_one_ticket(reds, used_reds, tickets, blue_weights,
+                     max_overlap=None, **filter_kwargs):
+    """过滤+重叠检查, 通过则返回ticket并更新used_reds, 否则返回None.
+    
+    消除 _generate_fallback_tickets 与主路径重复的过滤逻辑.
+    """
+    if reds in used_reds:
+        return None
+    if not _passes_red_filters(reds, **filter_kwargs):
+        return None
+    if max_overlap is not None and tickets:
+        if any(len(set(reds) & set(t["reds"])) > max_overlap for t in tickets):
+            return None
+    used_reds.add(reds)
+    return {"reds": list(reds), "blue": _pick_blue(blue_weights)}
 
 
 def _passes_red_filters(reds, color_filter=False, block9_filter=False,
@@ -1447,9 +1279,41 @@ def _passes_red_filters(reds, color_filter=False, block9_filter=False,
 # ────────────────────────────────────────────────────────
 
 def rule_status():
-    if _valid_reds is None:
+    if _state.valid_reds is None:
         _build_pool()
-    return _rule_status
+    return _state.rule_status
+
+
+# ────────────────────────────────────────────────────────
+# 预测日志自动记录
+# ────────────────────────────────────────────────────────
+
+def _log_prediction(tickets, source="micro_portfolio"):
+    """自动记录生成的号码到 prediction_log 表 (非阻塞, 失败静默)."""
+    if not tickets:
+        return
+    try:
+        from server import db
+        data = db.load_draws()
+        if not data:
+            return
+        period = data[-1][0] + 1  # 下一期
+        entries = []
+        for t in tickets:
+            reds = sorted(t.get("reds", []))
+            if len(reds) != 6:
+                continue
+            entries.append({
+                "period": period, "source": source,
+                "reds_json": ",".join(str(x) for x in reds),
+                "blue": t.get("blue", 0),
+                "pred_r1": reds[0], "pred_r2": reds[1], "pred_r3": reds[2],
+                "pred_r4": reds[3], "pred_r5": reds[4], "pred_r6": reds[5],
+            })
+        if entries:
+            db.save_prediction_log(entries)
+    except Exception:
+        pass  # 日志失败不影响核心流程
 
 
 # ────────────────────────────────────────────────────────
@@ -1460,6 +1324,9 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                      diversity_mode=None, five_period=False, backtest_rank=False,
                      param_filter=False, pattern_rules=False,
                      liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue=False,
+                     author_mode=None,
+                     filter_config: 'FilterConfig | None' = None,
+                     # ── 以下为向后兼容的独立参数, filter_config 优先 ──
                      color_filter=False, block9_filter=False,
                      spread_filter=False, ac_filter=False,
                      peng_channel_filter=False,
@@ -1478,16 +1345,47 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         max_overlap: 注间最大共享红球数, None=不限制. 0=完全不相交, 2=默认推荐
         diversity_mode: None=随机采样, 'greedy'=贪心max-min Jaccard
         five_period: 五期断蓝法加权 (刘大军, 2011)
+        author_mode: 委托特定作者 ('zhang'|'li_zhilin'|'peng'|'jiang_jialin')
 
     Returns:
         dict with tickets, algorithm, filter info, ev_estimate.
     """
+    # ── filter_config 优先于独立参数 ──
+    if filter_config is not None:
+        fk = filter_config.as_kwargs()
+        color_filter = fk['color_filter']
+        block9_filter = fk['block9_filter']
+        spread_filter = fk['spread_filter']
+        ac_filter = fk['ac_filter']
+        peng_channel_filter = fk['peng_channel_filter']
+        gap_filter = fk['gap_filter']
+        omission_filter = fk['omission_filter']
+        coincidence_filter = fk['coincidence_filter']
+        wuming_clockwise = fk['wuming_clockwise']
+        wuming_bsd = fk['wuming_bsd']
+
+    # ── 作者模式: 委托特定作者生成红球, 蓝球+过滤仍走本模块 ──
+    if author_mode:
+        return _generate_author_tickets(
+            n=n, author_mode=author_mode, soft=soft, luck_mode=luck_mode,
+            max_overlap=max_overlap, five_period=five_period,
+            pattern_rules=pattern_rules,
+            liu_blue=liu_blue, cailele_blue=cailele_blue,
+            gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
+            filter_config=filter_config,
+            color_filter=color_filter, block9_filter=block9_filter,
+            spread_filter=spread_filter, ac_filter=ac_filter,
+            peng_channel_filter=peng_channel_filter,
+            gap_filter=gap_filter, omission_filter=omission_filter,
+            coincidence_filter=coincidence_filter,
+            wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd)
+
     # ── pure 模式走独立路径 ──
     if luck_mode == 'pure':
         return _generate_luck_tickets(n=n, max_overlap=max_overlap, five_period=five_period, pattern_rules=pattern_rules)
 
     # ── off: 池采样 ──
-    global _valid_reds, _soft_excluded, _past_count
+    global _state
     from server.db import load_draws
 
     # 吴长坤 2010: 方块9杀号 — 上期空方块本期继续杀
@@ -1495,16 +1393,16 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
 
     # [工程] 只在贪心/回测模式下建池(需全量枚举C(33,6)),
     # 普通采样直接用回退路径(随机生成6数+过滤), 秒级响应.
-    needs_pool = (diversity_mode == 'greedy' or backtest_rank)
+    needs_pool = (diversity_mode == 'greedy' or backtest_rank or soft or param_filter)
     if needs_pool:
         try:
-            if _valid_reds is None or len(load_draws()) != _past_count:
+            if _state.valid_reds is None or len(load_draws()) != _state.past_count:
                 _build_pool()
         except Exception:
-            _valid_reds = None
-            _soft_excluded = None
+            _state.valid_reds = None
+            _state.soft_excluded = None
 
-    if _valid_reds is None:
+    if _state.valid_reds is None:
         return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap,
             five_period=five_period, pattern_rules=pattern_rules,
             color_filter=color_filter, block9_filter=block9_filter,
@@ -1515,11 +1413,11 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
             omission_filter=omission_filter,
             coincidence_filter=coincidence_filter)
 
-    exclude = _soft_excluded if soft else set()
-    if param_filter and _param_excluded is not None:
-        exclude = exclude | _param_excluded
-    n_combos = len(_valid_reds) // 6
-    if n_combos * 6 != len(_valid_reds) or n_combos == 0:
+    exclude = _state.soft_excluded if soft else set()
+    if param_filter and _state.param_excluded is not None:
+        exclude = exclude | _state.param_excluded
+    n_combos = len(_state.valid_reds) // 6
+    if n_combos * 6 != len(_state.valid_reds) or n_combos == 0:
         return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap,
             five_period=five_period, pattern_rules=pattern_rules,
             color_filter=color_filter, block9_filter=block9_filter,
@@ -1583,7 +1481,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     # Tier 2: 贪心多样性选注 — 先尝试从候选池贪心选, 不足则走随机采样
     if diversity_mode == 'greedy':
         greedy = _greedy_diverse_tickets(
-            n, _valid_reds, n_combos, exclude,
+            n, _state.valid_reds, n_combos, exclude,
             pool_size=1000, blue_weights=blue_weights,
         )
         if greedy is not None:
@@ -1592,6 +1490,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                 pool_size = (n_combos - len(exclude)) * 16
                 algo = "Pool-Sampling+Greedy"
                 if soft: algo += "+Soft"
+                _log_prediction(tickets, source=f"micro+{algo}")
                 return {
                     "ok": True, "algorithm": algo,
                     "tickets": tickets, "budget": n_original,
@@ -1601,7 +1500,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     "soft_filter": soft, "soft_excluded": len(exclude),
                     "luck_mode": luck_mode,
                     "luck_window": LUCK_WINDOW if luck_mode != 'off' else None,
-                    "rule_status": _rule_status,
+                    "rule_status": _state.rule_status,
                     "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
                                     "cost_per_draw": n_original * TICKET_PRICE},
                 }
@@ -1612,7 +1511,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
 
     # Tier P0: 百万军中选大将 — 回测排名选注
     elif backtest_rank:
-        ranked = _backtest_rank_tickets(n_original, _valid_reds, n_combos)
+        ranked = _backtest_rank_tickets(n_original, _state.valid_reds, n_combos)
         if ranked and len(ranked) >= n_original:
             for idx, reds, hits in ranked[:n_original]:
                 used_idx.add(idx)
@@ -1633,10 +1532,11 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                 "soft_filter": soft, "soft_excluded": len(exclude),
                 "luck_mode": luck_mode,
                 "luck_window": LUCK_WINDOW if luck_mode != 'off' else None,
-                "rule_status": _rule_status,
+                "rule_status": _state.rule_status,
                 "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
                                 "cost_per_draw": n_original * TICKET_PRICE},
             }
+            _log_prediction(tickets, source=f"micro+{algo}")
         else:
             n = n_original
     else:
@@ -1654,22 +1554,46 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         if omission_filter:
             omission_ratios = _get_omission_ratios(data)
 
+
+    def _pick_combo_idx():
+        return random.randrange(n_combos)
+
     for _ in range(n):
         for _ in range(500):  # [工程] 重试上限: 防止无限循环
-            idx = random.randrange(n_combos)
+            idx = _pick_combo_idx()
             if idx in used_idx:
                 continue
             base = idx * 6
-            assert base + 6 <= len(_valid_reds), \
-                f"idx={idx}, base={base}, len={len(_valid_reds)}, 越界"
-            reds = tuple(_valid_reds[base:base + 6])
+            assert base + 6 <= len(_state.valid_reds), \
+                f"idx={idx}, base={base}, len={len(_state.valid_reds)}, 越界"
+            reds = tuple(_state.valid_reds[base:base + 6])
             if reds in exclude:
                 continue
             if reds in used_reds:
                 continue
 
-            # 可选红色球过滤 (三色/方块9/散度/AC/彭浩通道/间距/遗漏比)
-            if not _passes_red_filters(reds, color_filter=color_filter,
+            # 可选红色球过滤 + 注间分散 → _try_one_ticket
+            ticket = _try_one_ticket(reds, used_reds, tickets, blue_weights,
+                max_overlap=max_overlap, color_filter=color_filter,
+                block9_filter=block9_filter, block9_killed=block9_killed,
+                spread_filter=spread_filter, ac_filter=ac_filter,
+                peng_channel_filter=peng_channel_filter,
+                peng_channels=peng_channels,
+                gap_filter=gap_filter,
+                omission_filter=omission_filter,
+                omission_ratios=omission_ratios,
+                coincidence_filter=coincidence_filter)
+            if ticket:
+                used_idx.add(idx)
+                tickets.append(ticket)
+                break
+        else:
+            for _ in range(500):  # [工程] 重试上限: 防止无限循环
+                c = tuple(sorted(random.sample(range(1, 34), 6)))
+                if c in used_reds:
+                    continue
+                ticket = _try_one_ticket(c, used_reds, tickets, blue_weights,
+                    max_overlap=max_overlap, color_filter=color_filter,
                     block9_filter=block9_filter, block9_killed=block9_killed,
                     spread_filter=spread_filter, ac_filter=ac_filter,
                     peng_channel_filter=peng_channel_filter,
@@ -1677,39 +1601,10 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     gap_filter=gap_filter,
                     omission_filter=omission_filter,
                     omission_ratios=omission_ratios,
-                    coincidence_filter=coincidence_filter):
-                continue
-
-            # Tier 1: 注间分散 — 候选注与已选注共享红球数 ≤ max_overlap
-            if max_overlap is not None and tickets:
-                if any(len(set(reds) & set(t["reds"])) > max_overlap
-                       for t in tickets):
-                    continue
-
-            used_idx.add(idx)
-            used_reds.add(reds)
-            blue = _pick_blue(blue_weights)
-            tickets.append({"reds": list(reds), "blue": blue})
-            break
-        else:
-            for _ in range(500):  # [工程] 重试上限: 防止无限循环
-                c = tuple(sorted(random.sample(range(1, 34), 6)))
-                if c in used_reds:
-                    continue
-                if not _passes_red_filters(c, color_filter=color_filter,
-                        block9_filter=block9_filter, block9_killed=block9_killed,
-                        spread_filter=spread_filter, ac_filter=ac_filter,
-                        peng_channel_filter=peng_channel_filter,
-                        peng_channels=peng_channels,
-                        gap_filter=gap_filter,
-                        omission_filter=omission_filter,
-                        omission_ratios=omission_ratios):
-                    continue
-                used_reds.add(c)
-                blue = _pick_blue(blue_weights)
-                tickets.append({"reds": list(c), "blue": blue})
-
-                break
+                    coincidence_filter=coincidence_filter)
+                if ticket:
+                    tickets.append(ticket)
+                    break
             else:
                 blue = _pick_blue(blue_weights)
                 tickets.append({"reds": [1, 2, 3, 4, 5, 6], "blue": blue})
@@ -1717,6 +1612,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
 
     pool_size = (n_combos - len(exclude)) * 16
     algo = "Pool-Sampling" + ("+Soft" if soft else "")
+    _log_prediction(tickets, source=f"micro+{algo}")
     return {
         "ok": True,
         "algorithm": algo,
@@ -1727,7 +1623,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         "soft_filter": soft, "soft_excluded": len(exclude),
         "luck_mode": luck_mode,
         "luck_window": LUCK_WINDOW if luck_mode != 'off' else None,
-        "rule_status": _rule_status,
+        "rule_status": _state.rule_status,
         "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
                         "cost_per_draw": n_original * TICKET_PRICE},
     }

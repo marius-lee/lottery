@@ -5,14 +5,14 @@
  */
 import { store, subscribe } from './store.js';
 import { loadFromServer, fetchLatestData } from './data.js';
-import { renderPlaceholders, proceedWithDraw, proceedWithLuckDraw, startCoveringDraw, startWeierDraw, startZhangDraw, updateAdvFilter, updateDiversity, updateGreedy, updateLiuBlue, updateCaileleBlue, updateGongyiBlue, updateWumingBlue, updateBacktest, updateColorFilter, updateBlock9Filter, updateWumingClockwise, updateWumingBSD, updateTwelveValue, updateEightValue, updateGridSelection } from './ui/draw.js';
+import { renderPlaceholders, proceedWithDraw, proceedWithLuckDraw, startCoveringDraw, startWeierDraw, startZhangDraw, updateAdvFilter, updateDiversity, updateGreedy, updateBacktest, updateColorFilter, updateBlock9Filter, updateSpreadFilter, updateAcFilter, updatePengChannelFilter, updateGapFilter, updateOmissionFilter, updateLiuBlue, updateCaileleBlue, updateGongyiBlue, updateWumingBlue, updateWumingClockwise, updateWumingBSD, updateXiaBlue, updateTwelveValue, updateEightValue, updateGridSelection, updateFivePeriod, updatePatternRules } from './ui/draw.js';
 import { togglePanel, resetHistoryPanels, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw } from './ui/panels.js';
 
 import { switchAnalysisTab } from './ui/analysis.js';
 import { switchChart } from './chart.js';
 import { runAutoCompare } from './ui/compare.js';
 import { refreshRecommend } from './ui/recommend.js';
-import { refreshReviewPanel } from './ui/review.js';
+import { refreshReviewPanel, runBacktest } from './ui/review.js';
 // Side-effect imports: 模块级代码自注册 panel-shown 和 data-changed 监听
 import './ui/omission.js';
 
@@ -41,6 +41,7 @@ subscribe('data-changed', () => {
 // ========== Init ==========
 
 function init() {
+  window.store = store;
   loadFromServer().then(loaded => {
     if (!loaded) {
       const el = document.getElementById('dataMsg');
@@ -50,10 +51,13 @@ function init() {
 
   Object.assign(window, {
     startDraw, startLuckDraw, startCoveringDraw, startWeierDraw, startZhangDraw,
-    updateDrawCount, updateAdvFilter, updateDiversity, updateGreedy, updateLiuBlue, updateCaileleBlue, updateGongyiBlue, updateWumingBlue, updateBacktest, updateColorFilter, updateBlock9Filter, updateWumingClockwise, updateWumingBSD, updateTwelveValue, updateEightValue, updateGridSelection,
+    updateDrawCount, updateAdvFilter, updateDiversity, updateGreedy, updateBacktest, updateColorFilter, updateBlock9Filter, updateSpreadFilter, updateAcFilter, updatePengChannelFilter, updateGapFilter, updateOmissionFilter,
+    updateLiuBlue, updateCaileleBlue, updateGongyiBlue, updateWumingBlue, updateWumingClockwise, updateWumingBSD, updateXiaBlue,
+    updateTwelveValue, updateEightValue, updateGridSelection, updateFivePeriod, updatePatternRules,
     togglePanel, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw,
     runAutoCompare, fetchLatestData,
     switchAnalysisTab, switchChart, refreshRecommend, refreshReviewPanel,
+    runBacktest,
   });
 
   renderPlaceholders();
