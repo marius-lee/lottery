@@ -147,6 +147,12 @@ export function updateEightValue() {
 export function updateGridSelection() {
   store.useGridSelection = document.getElementById('gridSelectionToggle').checked;
 }
+export function updateFivePeriod() {
+  store.useFivePeriod = document.getElementById('fivePeriodToggle').checked;
+}
+export function updatePatternRules() {
+  store.usePatternRules = document.getElementById('patternRulesToggle').checked;
+}
 
 // ============ API 调用 ============
 
@@ -157,10 +163,6 @@ async function drawTickets(luckMode) {
   const diversity = store.useGreedy && luckMode !== '&luck=2'
     ? '&max_overlap=2&div=1'
     : (store.useDiversity && luckMode !== '&luck=2' ? '&max_overlap=2' : '');
-  const liuB = store.useLiuBlue && luckMode !== '&luck=2' ? '&liu_blue=1' : '';
-  const caileleB = store.useCaileleBlue && luckMode !== '&luck=2' ? '&cailele_blue=1' : '';
-  const gongyiB = store.useGongyiBlue && luckMode !== '&luck=2' ? '&gongyi_blue=1' : '';
-  const wumingB = store.useWumingBlue && luckMode !== '&luck=2' ? '&wuming_blue=1' : '';
   const backtest = store.useBacktest && luckMode !== '&luck=2' ? '&backtest=1' : '';
   const colorF = store.useColorFilter ? '&color_filter=1' : '';
   const block9F = store.useBlock9Filter ? '&block9_filter=1' : '';
@@ -169,11 +171,12 @@ async function drawTickets(luckMode) {
   const pengChannelF = store.usePengChannelFilter ? '&peng_channel=1' : '';
   const gapF = store.useGapFilter ? '&gap_filter=1' : '';
   const omissionF = store.useOmissionFilter ? '&omission_filter=1' : '';
-  const wumClock = store.useWumingClockwise ? '&wuming_clockwise=1' : '';
-  const wumBSD = store.useWumingBSD ? '&wuming_bsd=1' : '';
+  const fivePeriod = store.useFivePeriod ? '&five_period=1' : '';
+  const patternRules = store.usePatternRules ? '&pattern_rules=1' : '';
+  const author = store.currentAuthor ? '&author=' + store.currentAuthor : '';
   let data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + liuB + caileleB + gongyiB + wumingB + backtest + colorF + block9F + wumClock + wumBSD + spreadF + acF + pengChannelF + gapF + omissionF + luckMode);
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + backtest + colorF + block9F + spreadF + acF + pengChannelF + gapF + omissionF + fivePeriod + patternRules + author + luckMode);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';
@@ -217,7 +220,8 @@ async function drawTickets(luckMode) {
     const poolStr = data.pool_valid_reds != null
       ? ` → 有效池 ${data.pool_valid_reds.toLocaleString()} 红球`
       : '';
-    infoRow.innerHTML = `硬过滤[等差${h2} 历史${h3}]${softTag}${poolStr} · ${algo}`;
+    const bluePool = data.blue_pool_size != null ? ` | 蓝球池${data.blue_pool_size}个` : '';
+    infoRow.innerHTML = `硬过滤[排除${h2+h3}组合]${softTag}${poolStr}${bluePool} · ${algo}`;
   }
   stage.appendChild(infoRow);
 

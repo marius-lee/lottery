@@ -42,10 +42,11 @@
 
   <!-- ===== Strategy Panel ===== -->
   
-  <!-- ═══ 系统门禁声明 ═══ -->
-  <div style="margin:0 16px 6px 16px;padding:6px 10px;border-radius:6px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.1);font-size:10px;color:#FBBF24;text-align:center;">
-    ⚠ 偏差检测门禁 (Bootstrap Bonferroni) 未通过 — 频率数据无显著偏离均匀分布。<br>
-    所有"预测"策略无统计优势。本工具通过 <b>组合覆盖设计</b> + <b>硬过滤</b> 提高效率，不保证中奖。
+  <!-- ═══ 系统声明 ═══ -->
+  <div style="margin:0 16px 6px 16px;padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.08);font-size:11px;color:#4ADE80;text-align:center;line-height:1.6;">
+    不预测号码。通过两个组合数学机制提高效率：<br>
+    <b>① 缩小号码池</b> — 蓝球投票 16→~6 个，红球聚合 33→15 个 &nbsp;|&nbsp;
+    <b>② 覆盖最大化</b> — 贪心算法让 <span id="bannerDrawCount">3</span> 注覆盖尽可能大的组合空间
   </div>
 <section class="strategy-panel">
     <div class="panel-header">
@@ -61,7 +62,7 @@
 
     <div class="option-grid">
       <!-- ═══ 🔴 红球策略 ═══ -->
-      <div class="option-section-label">🔴 红球策略</div>
+      <div class="option-section-label">🔴 红球 — 组合空间过滤</div>
       <!-- 高级过滤 -->
       <div class="option-card" id="card-advFilter">
         <label class="option-label" for="advFilterToggle">
@@ -111,7 +112,7 @@
           <span class="option-name">方块9杀号</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-block9Filter').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴长坤 2010 Ch6 §1：33红球行列图上13个3×3方块，约80%期有空方块（实测68%），上期空方块本期继续杀。勾选后排除预测为空方块内的号码。</div>
+        <div class="option-detail">吴长坤 2010 Ch6 §1：33红球行列图上13个3×3方块，约80%期有空方块（实测68%），上期空方块本期继续杀。勾选后排除选为空方块内的号码。</div>
       </div>
       <!-- 彭浩通道 -->
       <div class="option-card" id="card-pengChannel">
@@ -121,7 +122,7 @@
           <span class="option-name">彭浩通道</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-pengChannel').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">彭浩《双色球Excel全攻略》(2010) Ch5 §3：MA9+MA18双通道。6个红球位置独立建模, 每位置号码必须在MA通道[下轨, 上轨]范围内。基准测试红球1.701(最高), 利用位置结构信号排除不自然组合。</div>
+        <div class="option-detail">彭浩《双色球Excel全攻略》(2010) Ch5 §3：MA9+MA18双通道。每位置号码限在MA通道范围内，排除不符合位置结构的组合。</div>
       </div>
       <!-- 跨度过滤 -->
       <div class="option-card" id="card-spreadFilter">
@@ -166,8 +167,8 @@
       <!-- ═══ 🔵 蓝球策略 ═══ -->
       <div class="option-section-label">🔵 蓝球策略 — 多作者方法投票</div>
       <div style="font-size:10px;color:#64748B;padding:0 0 8px 0;">
-        偏差检测门禁判定蓝球频率无显著偏离均匀分布 (χ²=14.87, df=15, n.s.)。<br>
-        但各作者的蓝球方法基于不同独立假设 (周期/遗漏/振幅), 交叉投票可缩小候选集。勾选方法取交集; 交集为空时退到并集。
+        不预测蓝球。各方法基于不同排除规则（遗漏、振幅、周期），交叉投票缩小候选池。<br>
+        勾选方法取交集（缩小池子）；交集为空时退到并集（保底覆盖）。
       </div>
       <!-- 刘大军五期断蓝 -->
       <div class="option-card" id="card-liuBlue">
@@ -177,7 +178,7 @@
           <span class="option-name">刘大军 五期断蓝</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-liuBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">刘大军 2010：五期内已出蓝球不选，推荐遗漏≥5期的蓝球。</div>
+        <div class="option-detail">刘大军 2010：五期内已出蓝球不选，遗漏≥5期的蓝球。</div>
       </div>
       <!-- 吴明蓝球 -->
       <div class="option-card" id="card-wumingBlue">
@@ -187,7 +188,7 @@
           <span class="option-name">吴明 蓝球分析</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴明 2010：蓝球振幅/遗漏/冷热综合，推荐周期回归窗口蓝球。</div>
+        <div class="option-detail">吴明 2010：蓝球振幅/遗漏/冷热综合，周期回归窗口蓝球。</div>
       </div>
       <!-- 吴明顺时针 -->
       <div class="option-card" id="card-wumingClockwise">
@@ -197,7 +198,7 @@
           <span class="option-name">吴明 顺时针法</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingClockwise').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴明 2010：16蓝球顺时针旋转规律，预测下一蓝球方向。</div>
+        <div class="option-detail">吴明 2010：16蓝球顺时针旋转规律，推测下一蓝球方向。</div>
       </div>
       <!-- 吴明大小单双尾 -->
       <div class="option-card" id="card-wumingBSD">
@@ -207,7 +208,7 @@
           <span class="option-name">吴明 大小单双尾</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingBSD').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">吴明 2010：大小/单双/尾数三维分类，状态转移矩阵推荐。</div>
+        <div class="option-detail">吴明 2010：大小/单双/尾数三维分类，状态转移矩阵分类。</div>
       </div>
       <!-- 彩乐乐蓝球 -->
       <div class="option-card" id="card-caileleBlue">
@@ -217,7 +218,7 @@
           <span class="option-name">彩乐乐 蓝球</span>
           <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-caileleBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">彩乐乐 2012：蓝球轨迹/振幅/AC值三项指标推荐。</div>
+        <div class="option-detail">彩乐乐 2012：蓝球轨迹/振幅/AC值三项指标筛选。</div>
       </div>
       <!-- 公益时报蓝球 -->
       <div class="option-card" id="card-gongyiBlue">
@@ -256,23 +257,23 @@
         </button>
       </div>
       <div class="draw-toolbar-divider">
-        <span>高级引擎</span>
+        <span>号码池策略</span>
       </div>
       <div class="draw-toolbar-secondary">
-        <button class="btn-engine" id="ensembleBtn" onclick="ensembleDraw()" title="组合覆盖设计 + 贪心多样化">
-          <span class="btn-engine-icon">🧠</span>智能覆盖
+        <button class="btn-engine" id="ensembleBtn" onclick="ensembleDraw()" title="5方法聚合评分 → 贪心覆盖设计">
+          <span class="btn-engine-icon">🧠</span>聚合覆盖
         </button>
-        <button class="btn-engine" id="biasBtn" onclick="biasDraw()" title="Dirichlet后验 + Thompson采样">
-          <span class="btn-engine-icon">🎯</span>偏差增强
+        <button class="btn-engine" id="biasBtn" onclick="biasDraw()" title="Dirichlet后验 → Thompson采样">
+          <span class="btn-engine-icon">🎯</span>偏差采样
         </button>
-        <button class="btn-engine" id="blBtn" onclick="blDraw()" title="多方法观点贝叶斯融合">
-          <span class="btn-engine-icon">⚖️</span>B-L融合
+        <button class="btn-engine" id="blBtn" onclick="blDraw()" title="多方法观点贝叶斯加权">
+          <span class="btn-engine-icon">⚖️</span>B-L加权
         </button>
-        <button class="btn-engine" id="posBtn" onclick="posDraw()" title="每位置独立最优方法">
-          <span class="btn-engine-icon">📐</span>分位策略
+        <button class="btn-engine" id="posBtn" onclick="posDraw()" title="6个位置独立选号 + 约束采样">
+          <span class="btn-engine-icon">📐</span>分位采样
         </button>
-        <button class="btn-engine" id="advBtn" onclick="advancedDraw()" title="粒子滤波+熵值选号+Kelly注数">
-          <span class="btn-engine-icon">🧬</span>智能引擎
+        <button class="btn-engine" id="advBtn" onclick="advancedDraw()" title="5方法聚合 + 覆盖设计">
+          <span class="btn-engine-icon">🧬</span>多策略
         </button>
         <button class="btn-engine btn-engine-mandel" id="mandelBtn" onclick="togglePanel('mandel')" title="Stefan Mandel全买覆盖策略">
           <span class="btn-engine-icon">🧮</span>Mandel
@@ -512,7 +513,7 @@
       <h4>核心算法</h4>
       <p>从 C(33,6) = 1,107,568 组合空间中剔除 ≥5 连号 784 种，在剩余 1,106,784 种有效组合中均匀随机采样 3 注。</p>
       <h4>使用方法</h4>
-      <p>1. 点「<b>更新数据</b>」加载最新开奖<br>2. 选注数 → 点「<b>生成号码</b>」→ 微投资组合覆盖优化<br>3. 保存 → 开奖后点「<b>开奖对比</b>」查看命中</p>
+      <p>1. 点「<b>更新数据</b>」加载最新开奖<br>2. 选注数 → 勾选红球过滤/蓝球投票方法 → 点「<b>出号</b>」→ 覆盖优化生成<br>3. 保存 → 开奖后点「<b>开奖对比</b>」查看命中</p>
       <h4>数学来源</h4>
       <p class="help-refs">Liu, Liu &amp; Teo (2024) Management Science | Feller (1968) 赌徒破产 | La Jolla 覆盖库 | Forrest et al. (1994) 负选择 | Wang et al. (2016) J. Judgment &amp; Decision Making | D'Hondt et al. (2024) J. Gambling Studies</p>
     </div>

@@ -1681,7 +1681,7 @@ def generate_tickets_covering(n=6, hot_numbers=None, t=4, max_overlap=None, five
 
     return {
         "ok": True,
-        "algorithm": f"Covering-Design(v={cover['v']},t={t})",
+        "algorithm": f"聚合覆盖(v={cover['v']},t={t})",
         "tickets": tickets,
         "budget": len(tickets),
         "cost_rmb": len(tickets) * TICKET_PRICE,

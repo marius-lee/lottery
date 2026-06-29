@@ -28,6 +28,8 @@ function startLuckDraw() {
 
 function updateDrawCount() {
   store.drawCount = parseInt(document.getElementById('drawCount').value);
+  const bdc = document.getElementById('bannerDrawCount');
+  if (bdc) bdc.textContent = store.drawCount;
   renderPlaceholders();
 }
 

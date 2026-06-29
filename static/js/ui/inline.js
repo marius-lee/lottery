@@ -113,16 +113,19 @@ window.ensembleDraw = async function(){
     clearTimeout(timer);
     var d = await r.json();
     if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg||'失败') + '</div>'; if(btn) btn.disabled = false; return; }
-    var infoHtml = '<div style="font-size:10px;text-align:center;padding:6px;margin-bottom:8px;border-radius:6px;background:rgba(124,58,237,0.1);color:#A78BFA;">';
-    infoHtml += '<b>🧠 ' + (d.algorithm||'智能覆盖') + '</b>';
-    if(d.coverage_pct) infoHtml += ' · 覆盖率' + d.coverage_pct + '%';
+    var infoHtml = '<div style="font-size:10px;text-align:center;padding:6px;margin-bottom:8px;border-radius:6px;background:rgba(124,58,237,0.1);color:#A78BFA;line-height:1.5;">';
+    infoHtml += '<b>🧠 ' + (d.algorithm||'聚合覆盖') + '</b>';
     infoHtml += ' · 成本¥' + (d.cost_rmb||0);
+    if(d.covering && d.covering.v){
+      infoHtml += '<br><span style="font-size:9px;">红池' + d.covering.v + '→' + d.covering.hot_numbers.length + '号 | ';
+      infoHtml += 't=' + d.covering.t + '覆盖' + (d.covering.estimated_coverage_pct||0).toFixed(0) + '%</span>';
+    }
     infoHtml += '</div>';
     stage.innerHTML = infoHtml;
     renderTickets(stage, d);
     var saveBtn = document.getElementById('saveBtn');
     if(saveBtn) saveBtn.disabled = false;
-  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'引擎超时 (15s)':'引擎请求失败') + '</div>'; }
+  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'超时 (15s)':'请求失败') + '</div>'; }
   if(btn) btn.disabled = false;
 };
 
@@ -139,14 +142,14 @@ window.biasDraw = async function(){
     var d = await r.json();
     if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg||'失败') + '</div>'; if(btn) btn.disabled = false; return; }
     var infoHtml = '<div style="font-size:10px;text-align:center;padding:6px;margin-bottom:8px;border-radius:6px;background:rgba(220,38,38,0.1);color:#F97316;">';
-    infoHtml += '<b>🎯 ' + (d.algorithm||'偏差增强') + '</b>';
+    infoHtml += '<b>🎯 ' + (d.algorithm||'偏差采样') + '</b>';
     if(d.coverage_pct) infoHtml += ' · 覆盖率' + d.coverage_pct + '%';
     infoHtml += ' · 成本¥' + (d.cost_rmb||0);
     // 偏差分数 (top 5)
     if(d.bias_scores){
       var scores = d.bias_scores;
       var keys = Object.keys(scores).slice(0,5);
-      infoHtml += '<br><span style="font-size:9px;">热号: ' + keys.map(function(k){return k+'('+scores[k].toFixed(3)+')';}).join(' ') + '</span>';
+      infoHtml += '<br><span style="font-size:9px;">采样权重: ' + keys.map(function(k){return k+'('+scores[k].toFixed(3)+')';}).join(' ') + '</span>';
     }
     infoHtml += '</div>';
     stage.innerHTML = infoHtml;
@@ -154,7 +157,7 @@ window.biasDraw = async function(){
     window._lastMergeResult = {reds: (d.tickets||[]).map(function(t){return t.reds;}), blues: (d.tickets||[]).map(function(t){return t.blue;}), n: d.tickets.length};
     var saveBtn = document.getElementById('saveBtn');
     if(saveBtn) saveBtn.disabled = false;
-  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'引擎超时 (15s)':'引擎请求失败') + '</div>'; }
+  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'超时 (15s)':'请求失败') + '</div>'; }
   if(btn) btn.disabled = false;
 };
 
@@ -171,14 +174,14 @@ window.blDraw = async function(){
     var d = await r.json();
     if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg||'失败') + '</div>'; if(btn) btn.disabled = false; return; }
     var infoHtml = '<div style="font-size:10px;text-align:center;padding:6px;margin-bottom:8px;border-radius:6px;background:rgba(8,145,178,0.1);color:#22D3EE;">';
-    infoHtml += '<b>⚖️ ' + (d.algorithm||'B-L融合') + '</b>';
+    infoHtml += '<b>⚖️ ' + (d.algorithm||'B-L加权') + '</b>';
     if(d.coverage_pct) infoHtml += ' · 覆盖率' + d.coverage_pct + '%';
     infoHtml += ' · 成本¥' + (d.cost_rmb||0);
     // 方法权重
     if(d.method_weights){
       var mw = d.method_weights;
       var mk = Object.keys(mw).slice(0,3);
-      infoHtml += '<br><span style="font-size:9px;">置信度: ' + mk.map(function(k){return k+':'+mw[k].toFixed(3);}).join(' ') + '</span>';
+      infoHtml += '<br><span style="font-size:9px;">权重: ' + mk.map(function(k){return k+':'+mw[k].toFixed(3);}).join(' ') + '</span>';
     }
     infoHtml += '</div>';
     stage.innerHTML = infoHtml;
@@ -186,7 +189,7 @@ window.blDraw = async function(){
     window._lastMergeResult = {reds: (d.tickets||[]).map(function(t){return t.reds;}), blues: (d.tickets||[]).map(function(t){return t.blue;}), n: d.tickets.length};
     var saveBtn = document.getElementById('saveBtn');
     if(saveBtn) saveBtn.disabled = false;
-  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'引擎超时 (15s)':'引擎请求失败') + '</div>'; }
+  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'超时 (15s)':'请求失败') + '</div>'; }
   if(btn) btn.disabled = false;
 };
 
@@ -203,7 +206,7 @@ window.posDraw = async function(){
     var d = await r.json();
     if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg||'失败') + '</div>'; if(btn) btn.disabled = false; return; }
     var infoHtml = '<div style="font-size:10px;text-align:center;padding:6px;margin-bottom:8px;border-radius:6px;background:rgba(101,163,13,0.1);color:#A3E635;">';
-    infoHtml += '<b>📐 ' + (d.algorithm||'分位策略') + '</b>';
+    infoHtml += '<b>📐 ' + (d.algorithm||'分位采样') + '</b>';
     infoHtml += ' · 成本¥' + (d.cost_rmb||0);
     // 每位置方法
     if(d.position_methods){
@@ -221,7 +224,7 @@ window.posDraw = async function(){
     window._lastMergeResult = {reds: (d.tickets||[]).map(function(t){return t.reds;}), blues: (d.tickets||[]).map(function(t){return t.blue;}), n: d.tickets.length};
     var saveBtn = document.getElementById('saveBtn');
     if(saveBtn) saveBtn.disabled = false;
-  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'引擎超时 (15s)':'引擎请求失败') + '</div>'; }
+  } catch(e){ clearTimeout(timer); stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'超时 (15s)':'请求失败') + '</div>'; }
   if(btn) btn.disabled = false;
 };
 
@@ -244,12 +247,12 @@ window.advancedDraw = async function(){
     var r = await fetch('/api/advanced/generate?n=' + n, {signal: ac.signal});
     var d = await r.json();
     if(!d.ok){
-      stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg || '引擎启动失败') + '</div>';
+      stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg || '启动失败') + '</div>';
       if(btn) btn.disabled = false;
       return;
     }
     var infoHtml = '<div style="font-size:10px;margin-bottom:8px;text-align:center;padding:6px 10px;border-radius:6px;background:rgba(236,72,153,0.1);color:#F472B6;line-height:1.6;">';
-    infoHtml += '<b>🧬 ' + (d.algorithm || '智能引擎') + '</b> · 成本¥' + (d.cost_rmb||0);
+    infoHtml += '<b>🧬 ' + (d.algorithm || '多策略覆盖') + '</b> · 成本¥' + (d.cost_rmb||0);
     infoHtml += '</div>';
     stage.innerHTML = infoHtml;
     renderTickets(stage, d);
@@ -257,7 +260,7 @@ window.advancedDraw = async function(){
     if(saveBtn) saveBtn.disabled = false;
   } catch(e) {
     clearTimeout(timer);
-    stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'引擎超时 (15s)':'引擎请求失败') + '</div>';
+    stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'超时 (15s)':'请求失败') + '</div>';
   }
   if(btn) btn.disabled = false;
 };
