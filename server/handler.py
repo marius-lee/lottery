@@ -109,6 +109,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 v=qint(q, "v", 12))),
             "/api/mandel/jackpot": lambda: self._json(self.ml_bridge.mandel_jackpot_api()),
             "/api/schedule/status": lambda: self._json(self.ml_bridge.schedule_status_api()),
+            "/api/wheeling/compare": lambda: self._json(self.ml_bridge.wheel_comparison_api()),
+            "/api/wheeling/generate": lambda: self._json(self.ml_bridge.wheeling_generate_api(
+                v=qint(q, "v", 10))),
+            "/api/kelly": lambda: self._json(self.ml_bridge.kelly_api(
+                tickets=qint(q, "n", 3), pool_v=qint(q, "v", 15),
+                coverage_pct=float(q.get("cov", 36)), blue_pct=float(q.get("blue", 37.5)))),
+            "/api/sprt/monitor": lambda: self._json(self.ml_bridge.sprt_monitor_api()),
+            "/api/fdr/filter": lambda: self._json(self.ml_bridge.fdr_filter_api()),
+            "/api/changepoint/detect": lambda: self._json(self.ml_bridge.changepoint_api()),
+            "/api/mi/analyze": lambda: self._json(self.ml_bridge.mi_selector_api()),
             "/api/zeng/dashboard": lambda: self._json(self.ml_bridge.zeng_dashboard()),
             "/api/zeng/generate": lambda: self._json(self.ml_bridge.zeng_generate(
                 n=qint(q, "n", 3), odd=qint(q, "odd", 3), big=qint(q, "big", 3))),

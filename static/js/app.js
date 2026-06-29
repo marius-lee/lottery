@@ -13,6 +13,7 @@ import { switchChart } from './chart.js';
 import { runAutoCompare } from './ui/compare.js';
 import { refreshRecommend } from './ui/recommend.js';
 import { refreshReviewPanel, runBacktest } from './ui/review.js';
+import './ui/arsenal.js';  // 武器库 — 组合数学+统计检验
 // Side-effect imports: 模块级代码自注册 panel-shown 和 data-changed 监听
 import './ui/omission.js';
 

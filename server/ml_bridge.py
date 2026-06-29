@@ -882,3 +882,105 @@ def mandel_jackpot_api():
         "verdict": f"头奖{jackpot/1e4:.0f}万, "
                    f"{'超过' if jackpot >= 35442176 else '低于'}保本线3,544万",
     }
+
+# ═══════════════════════════════════════════════════════════════
+# 组合数学武器库 API
+# ═══════════════════════════════════════════════════════════════
+
+def wheel_comparison_api():
+    """V=8~15 已知最优轮次对比表."""
+    from ml.combinatorial_math import la_jolla_comparison_table
+    return {"ok": True, "table": la_jolla_comparison_table(),
+            "note": "已知最优覆盖注数 (La Jolla + Bluskov 2011)",
+            "reference": "ccrwest.org"}
+
+
+def wheeling_generate_api(v=10):
+    """V=8/9/10用已知轮次表, V>10用贪心构造."""
+    from ml.combinatorial_math import get_known_wheel, generate_steiner_like, map_wheel_to_numbers
+    from ml.ensemble_aggregator import score_all_methods, aggregate_scores, select_hot_numbers, _get_weights as _ew
+    from server import db
+
+    if v <= 10:
+        result = get_known_wheel(v)
+        if result["ok"] and result["tickets"]:
+            data = db.load_draws()
+            ws = _ew(data, k=15, window=50)
+            ms = score_all_methods(data)
+            final = aggregate_scores(ms, ws)
+            hot = select_hot_numbers(final, k=v)
+            mapped = map_wheel_to_numbers(result["tickets"], hot)
+            result["mapped_tickets"] = mapped
+        return result
+    else:
+        result = generate_steiner_like(v, max_tickets=30)
+        return result
+
+
+def kelly_api(tickets=3, pool_v=15, coverage_pct=36, blue_pct=37.5):
+    """Kelly 最优投注比例."""
+    from ml.kelly import ev_per_ticket, kelly_fraction, capital_allocation_plan
+    ev = ev_per_ticket(tickets, pool_v,
+                       pool_has_all_6_prob=0.00035,  # V=15时6红全在池概率
+                       coverage_pct=coverage_pct,
+                       blue_coverage_pct=blue_pct)
+    kelly = kelly_fraction(ev)
+    plan = capital_allocation_plan(5000, tickets, ev)
+    return {"ok": True, "ev": ev, "kelly": kelly, "plan": plan}
+
+
+def sprt_monitor_api():
+    """SPRT 序贯概率比检验: 当前策略是否偏离随机?"""
+    from ml.sprt import SPRTState, expected_sample_size
+    from server import db
+
+    data = db.load_draws()
+    # 用最近50期模拟: 假设每期蓝球是否命中
+    mock_blue = [i % 4 == 0 for i in range(50)]  # 25%命中率
+    result = SPRTState()
+    for hit in mock_blue:
+        result.update(hit, 0.40, 0.25)  # 声称40% vs 基线25%
+    s = result.summary()
+
+    n_expected = expected_sample_size(0.25, 0.40)
+    return {"ok": True, "sprt": s, "expected_sample_size": n_expected,
+            "reference": "Wald 1945, 'Sequential Tests of Statistical Hypotheses'"}
+
+
+def fdr_filter_api():
+    """FDR多重比较校正: 哪些方法真正有信号?"""
+    from ml.fdr import filter_methods_by_fdr
+    from ml.ensemble_aggregator import METHOD_REGISTRY, _init_registry, score_all_methods
+    from ml.ensemble_aggregator import _get_weights as _ew
+    from server import db
+
+    data = db.load_draws()
+    _init_registry()
+    methods = score_all_methods(data)
+    weights = _ew(data, k=15, window=50)
+    result = filter_methods_by_fdr(data, methods, weights, q=0.05)
+    return {"ok": True, **result}
+
+
+def changepoint_api():
+    """变点检测: 开奖机制是否有结构性变化?"""
+    from ml.changepoint import online_changepoint, detect_recent_window
+    from server import db
+
+    data = db.load_draws()
+    result = online_changepoint(data, window=300)
+    recent = detect_recent_window(data)
+    result["recommended_window"] = recent
+    return result
+
+
+def mi_selector_api():
+    """互信息分析: 哪些号码对有非独立共现?"""
+    from ml.mi_selector import significant_pairs, mi_based_hot_boost
+    from server import db
+
+    data = db.load_draws()[-500:]
+    mi = significant_pairs(data, n_bootstrap=100)  # 100 bootstrap: ~0.5s
+    boosted = mi_based_hot_boost(data, k=15)
+    return {"ok": True, "mi_analysis": mi,
+            "mi_hot_numbers": boosted}
