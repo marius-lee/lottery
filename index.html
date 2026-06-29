@@ -44,7 +44,7 @@
   
   <!-- ═══ 系统声明 ═══ -->
   <div style="margin:0 16px 6px 16px;padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.08);font-size:11px;color:#4ADE80;text-align:center;line-height:1.6;">
-    不预测号码。通过两个组合数学机制提高效率：<br>
+    不预测号码。通过组合数学提高效率：<br>
     <b>① 缩小号码池</b> — 蓝球投票 16→~6 个，红球聚合 33→15 个 &nbsp;|&nbsp;
     <b>② 覆盖最大化</b> — 贪心算法让 <span id="bannerDrawCount">3</span> 注覆盖尽可能大的组合空间
   </div>
@@ -60,10 +60,9 @@
       </div>
     </div>
 
-    <div class="option-grid">
+        <div class="option-grid">
       <!-- ═══ 🔴 红球策略 ═══ -->
       <div class="option-section-label">🔴 红球 — 组合空间过滤</div>
-      <!-- 高级过滤 -->
       <div class="option-card" id="card-advFilter">
         <label class="option-label" for="advFilterToggle">
           <input type="checkbox" id="advFilterToggle" onchange="updateAdvFilter()">
@@ -73,7 +72,6 @@
         </label>
         <div class="option-detail">排除历史上极少出现的红球组合（≥5连号、间距≥24、位置未出现、极端奇偶比、和值异常）。组合池中排除约15万无效注。</div>
       </div>
-      <!-- 分散红球 -->
       <div class="option-card" id="card-diversity">
         <label class="option-label" for="diversityToggle">
           <input type="checkbox" id="diversityToggle" onchange="updateDiversity()">
@@ -83,7 +81,6 @@
         </label>
         <div class="option-detail">任意两注间共享红球不超过2个。贪心优化开启时自动覆盖。</div>
       </div>
-      <!-- 贪心优化 -->
       <div class="option-card" id="card-greedy">
         <label class="option-label" for="greedyToggle">
           <input type="checkbox" id="greedyToggle" onchange="updateGreedy()">
@@ -94,153 +91,58 @@
         </label>
         <div class="option-detail">推荐开启。贪心算法最大化注间Jaccard距离，选出最分散的N注。自动启用分散。</div>
       </div>
-      <!-- 三色分解 -->
-      <div class="option-card" id="card-colorFilter">
-        <label class="option-label" for="colorFilterToggle">
-          <input type="checkbox" id="colorFilterToggle" onchange="updateColorFilter()">
-          <span class="option-icon">🎨</span>
-          <span class="option-name">三色分解</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-colorFilter').classList.toggle('expanded')">▸</span>
+      <div class="option-card" style="border-color:rgba(245,158,11,0.15);">
+        <label>
+          <span style="color:#F59E0B;font-size:10px;">红球选号方法</span>
         </label>
-        <div class="option-detail">吴长坤《双色球擒号绝技》(2010) Ch4 §6：33红球按波色分红/蓝/绿三类，开奖号码需三色俱备（原书声称95%，近500期实测81.4%）。勾选后排除不满足三色的组合。</div>
-      </div>
-      <!-- 方块9 -->
-      <div class="option-card" id="card-block9Filter">
-        <label class="option-label" for="block9FilterToggle">
-          <input type="checkbox" id="block9FilterToggle" onchange="updateBlock9Filter()">
-          <span class="option-icon">🔲</span>
-          <span class="option-name">方块9杀号</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-block9Filter').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">吴长坤 2010 Ch6 §1：33红球行列图上13个3×3方块，约80%期有空方块（实测68%），上期空方块本期继续杀。勾选后排除选为空方块内的号码。</div>
-      </div>
-      <!-- 彭浩通道 -->
-      <div class="option-card" id="card-pengChannel">
-        <label class="option-label" for="pengChannelFilterToggle">
-          <input type="checkbox" id="pengChannelFilterToggle" onchange="updatePengChannelFilter()">
-          <span class="option-icon">📊</span>
-          <span class="option-name">彭浩通道</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-pengChannel').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">彭浩《双色球Excel全攻略》(2010) Ch5 §3：MA9+MA18双通道。每位置号码限在MA通道范围内，排除不符合位置结构的组合。</div>
-      </div>
-      <!-- 跨度过滤 -->
-      <div class="option-card" id="card-spreadFilter">
-        <label class="option-label" for="spreadFilterToggle">
-          <input type="checkbox" id="spreadFilterToggle" onchange="updateSpreadFilter()">
-          <span class="option-icon">↕</span>
-          <span class="option-name">跨度过滤</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-spreadFilter').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">红球跨度（max-min）历史P5-P95范围约束。</div>
-      </div>
-      <!-- AC值过滤 -->
-      <div class="option-card" id="card-acFilter">
-        <label class="option-label" for="acFilterToggle">
-          <input type="checkbox" id="acFilterToggle" onchange="updateAcFilter()">
-          <span class="option-icon">📐</span>
-          <span class="option-name">AC值过滤</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-acFilter').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">算术复杂性 (AC值): 排除 AC值&lt;4 或 &gt;10 的组合 (双色球AC值通常4-10)。</div>
-      </div>
-      <!-- 遗漏比过滤 -->
-      <div class="option-card" id="card-omissionFilter">
-        <label class="option-label" for="omissionFilterToggle">
-          <input type="checkbox" id="omissionFilterToggle" onchange="updateOmissionFilter()">
-          <span class="option-icon">⏱</span>
-          <span class="option-name">遗漏比过滤</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-omissionFilter').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">彩天使 2009：排除遗漏比≥3.0的过冷号码组合。</div>
-      </div>
-      <!-- 间距过滤 -->
-      <div class="option-card" id="card-gapFilter">
-        <label class="option-label" for="gapFilterToggle">
-          <input type="checkbox" id="gapFilterToggle" onchange="updateGapFilter()">
-          <span class="option-icon">🕳</span>
-          <span class="option-name">间距过滤</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-gapFilter').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">排除相邻间距≥15的组合。</div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <label style="font-size:10px;color:#94A3B8;cursor:pointer;">
+            <input type="radio" name="redMode" value="pool" checked onchange="updateRedMode()"> 池采样
+          </label>
+          <label style="font-size:10px;color:#94A3B8;cursor:pointer;">
+            <input type="radio" name="redMode" value="exact_cover" onchange="updateRedMode()"> 精确覆盖
+          </label>
+          <label style="font-size:10px;color:#94A3B8;cursor:pointer;">
+            <input type="radio" name="redMode" value="diffset" onchange="updateRedMode()"> 差集构造
+          </label>
+        </div>
+        <div style="font-size:8px;color:#64748B;margin-top:3px;">池采样=从有效池随机选 | 精确覆盖=La Jolla已知最优表保证最大t-覆盖 | 差集=数论构造保证2-覆盖</div>
       </div>
       <!-- ═══ 🔵 蓝球策略 ═══ -->
-      <div class="option-section-label">🔵 蓝球策略 — 多作者方法投票</div>
-      <div style="font-size:10px;color:#64748B;padding:0 0 8px 0;">
-        不预测蓝球。各方法基于不同排除规则（遗漏、振幅、周期），交叉投票缩小候选池。<br>
-        勾选方法取交集（缩小池子）；交集为空时退到并集（保底覆盖）。
-      </div>
-      <!-- 刘大军五期断蓝 -->
-      <div class="option-card" id="card-liuBlue">
-        <label class="option-label" for="liuBlueToggle">
-          <input type="checkbox" id="liuBlueToggle" onchange="updateLiuBlue()">
-          <span class="option-icon">🧿</span>
-          <span class="option-name">刘大军 五期断蓝</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-liuBlue').classList.toggle('expanded')">▸</span>
+      <div class="option-section-label">🔵 蓝球 — 频率缩小池</div>
+      <div class="option-card" id="card-freqBlue">
+        <label class="option-label" for="freqBlueToggle">
+          <input type="checkbox" id="freqBlueToggle" onchange="updateFreqBlue()">
+          <span class="option-icon">🎯</span>
+          <span class="option-name">蓝球缩小池</span>
+          <span class="option-tag">推荐</span>
+          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-freqBlue').classList.toggle('expanded')">▸</span>
         </label>
-        <div class="option-detail">刘大军 2010：五期内已出蓝球不选，遗漏≥5期的蓝球。</div>
+        <div class="option-detail">推荐开启。Laplace频率top-6蓝球，将蓝球池从16个缩小到6个(命中率≈37.5%)。替代7种彩票书籍作者方法的更诚实机制。</div>
       </div>
-      <!-- 吴明蓝球 -->
-      <div class="option-card" id="card-wumingBlue">
-        <label class="option-label" for="wumingBlueToggle">
-          <input type="checkbox" id="wumingBlueToggle" onchange="updateWumingBlue()">
-          <span class="option-icon">🌊</span>
-          <span class="option-name">吴明 蓝球分析</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingBlue').classList.toggle('expanded')">▸</span>
+      <div class="option-card" style="border-color:rgba(167,139,250,0.15);">
+        <label>
+          <span style="color:#A78BFA;font-size:10px;">蓝球选号方法</span>
         </label>
-        <div class="option-detail">吴明 2010：蓝球振幅/遗漏/冷热综合，周期回归窗口蓝球。</div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <label style="font-size:10px;color:#94A3B8;cursor:pointer;opacity:0.4;" id="lblBlueFreq">
+            <input type="radio" name="blueMode" value="freq" checked disabled onchange="updateBlueMode()"> 频率Top-6
+          </label>
+          <label style="font-size:10px;color:#94A3B8;cursor:pointer;opacity:0.4;" id="lblBlueEntropy">
+            <input type="radio" name="blueMode" value="entropy" disabled onchange="updateBlueMode()"> 条件熵Top-6
+          </label>
+        </div>
+        <div style="font-size:8px;color:#64748B;margin-top:3px;">频率=历史出现次数 | 条件熵=给定最近5期上下文，选规律最强的蓝球</div>
       </div>
-      <!-- 吴明顺时针 -->
-      <div class="option-card" id="card-wumingClockwise">
-        <label class="option-label" for="wumingClockwiseToggle">
-          <input type="checkbox" id="wumingClockwiseToggle" onchange="updateWumingClockwise()">
-          <span class="option-icon">🔄</span>
-          <span class="option-name">吴明 顺时针法</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingClockwise').classList.toggle('expanded')">▸</span>
+      <div class="option-card" style="border-color:rgba(34,197,94,0.15);">
+        <label>
+          <span style="color:#22C55E;font-size:10px;">策略自动学习 (Bandit)</span>
         </label>
-        <div class="option-detail">吴明 2010：16蓝球顺时针旋转规律，推测下一蓝球方向。</div>
+        <button class="btn-small" id="banditToggle" onclick="toggleBanditMode()" style="font-size:10px;padding:4px 10px;margin-top:4px;">
+          <span class="btn-icon">🎲</span> 手动选择
+        </button>
+        <div style="font-size:8px;color:#64748B;margin-top:3px;">Thompson抽样在线学习: 自动探索6种(蓝球×红球)策略组合, 收敛到最优</div>
       </div>
-      <!-- 吴明大小单双尾 -->
-      <div class="option-card" id="card-wumingBSD">
-        <label class="option-label" for="wumingBSDToggle">
-          <input type="checkbox" id="wumingBSDToggle" onchange="updateWumingBSD()">
-          <span class="option-icon">🎲</span>
-          <span class="option-name">吴明 大小单双尾</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-wumingBSD').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">吴明 2010：大小/单双/尾数三维分类，状态转移矩阵分类。</div>
-      </div>
-      <!-- 彩乐乐蓝球 -->
-      <div class="option-card" id="card-caileleBlue">
-        <label class="option-label" for="caileleBlueToggle">
-          <input type="checkbox" id="caileleBlueToggle" onchange="updateCaileleBlue()">
-          <span class="option-icon">🎪</span>
-          <span class="option-name">彩乐乐 蓝球</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-caileleBlue').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">彩乐乐 2012：蓝球轨迹/振幅/AC值三项指标筛选。</div>
-      </div>
-      <!-- 公益时报蓝球 -->
-      <div class="option-card" id="card-gongyiBlue">
-        <label class="option-label" for="gongyiBlueToggle">
-          <input type="checkbox" id="gongyiBlueToggle" onchange="updateGongyiBlue()">
-          <span class="option-icon">📰</span>
-          <span class="option-name">公益时报 蓝球</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-gongyiBlue').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">公益时报 2013：蓝球历史遗漏分布与周期回归筛选。</div>
-      </div>
-      <!-- 夏氏加减法 -->
-      <div class="option-card" id="card-xiaBlue">
-        <label class="option-label" for="xiaBlueToggle">
-          <input type="checkbox" id="xiaBlueToggle" onchange="updateXiaBlue()">
-          <span class="option-icon">➕</span>
-          <span class="option-name">夏氏 加减法</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-xiaBlue').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">夏氏 2013：上期蓝球±4生成候选集。</div>
-      </div>
-
     </div>
 
     <!-- 统一出号 -->
@@ -249,40 +151,41 @@
         <button class="btn btn-draw btn-primary-draw" id="drawBtn" onclick="startDraw()">
           <span class="btn-icon">🎰</span> 出号
         </button>
-        <button class="btn btn-luck btn-primary-draw" id="luckBtn" onclick="startLuckDraw()">
-          <span class="btn-icon">🧿</span> 幸运开奖
+        <button class="btn-engine btn-engine-active" id="ensembleBtn" onclick="ensembleDraw()" title="组合覆盖设计 + 贪心多样化">
+          <span class="btn-icon">🧠</span> 聚合覆盖
         </button>
-        <button class="btn btn-save btn-primary-draw" id="saveBtn" onclick="saveCurrentDraw()" disabled>
-          <span class="btn-icon">💾</span> 确定保存
+        <button class="btn btn-save" id="saveBtn" onclick="saveCurrentDraw()" disabled>
+          <span class="btn-icon">💾</span> 保存
         </button>
-      </div>
-      <div class="draw-toolbar-divider">
-        <span>号码池策略</span>
       </div>
       <div class="draw-toolbar-secondary">
-        <button class="btn-engine" id="ensembleBtn" onclick="ensembleDraw()" title="5方法聚合评分 → 贪心覆盖设计">
-          <span class="btn-engine-icon">🧠</span>聚合覆盖
+        <button class="btn-engine" id="biasBtn" onclick="biasDraw()" title="Dirichlet后验 + Thompson采样 + Gumbel-Max">
+          <span class="btn-icon">🎯</span> 偏差增强
         </button>
-        <button class="btn-engine" id="biasBtn" onclick="biasDraw()" title="Dirichlet后验 → Thompson采样">
-          <span class="btn-engine-icon">🎯</span>偏差采样
+        <button class="btn-engine btn-engine-active" id="blBtn" onclick="blDraw()" title="多方法评分 + FDR校正 + 覆盖设计">
+          <span class="btn-icon">⚖</span> B-L融合
         </button>
-        <button class="btn-engine" id="blBtn" onclick="blDraw()" title="多方法观点贝叶斯加权">
-          <span class="btn-engine-icon">⚖️</span>B-L加权
-        </button>
-        <button class="btn-engine" id="posBtn" onclick="posDraw()" title="6个位置独立选号 + 约束采样">
-          <span class="btn-engine-icon">📐</span>分位采样
-        </button>
-        <button class="btn-engine" id="advBtn" onclick="advancedDraw()" title="5方法聚合 + 覆盖设计">
-          <span class="btn-engine-icon">🧬</span>多策略
+        <button class="btn-engine" id="positionBtn" onclick="positionDraw()" title="6位置独立最优方法 + 覆盖组合">
+          <span class="btn-icon">🎯</span> 分位策略
         </button>
         <button class="btn-engine btn-engine-mandel" id="mandelBtn" onclick="togglePanel('mandel')" title="Stefan Mandel全买覆盖策略">
-          <span class="btn-engine-icon">🧮</span>Mandel
+          <span class="btn-icon">🧮</span> Mandel
         </button>
       </div>
     </div>
     <div id="mergeStatus" style="text-align:center;font-size:11px;color:#64748B;margin-top:6px;"></div>
 
   </section>
+
+  <!-- ===== Monitor Bar ===== -->
+  <div id="monitorBar" style="margin:0 16px 8px 16px; padding:6px 10px; border-radius:6px; background:rgba(124,58,237,0.04); border:1px solid rgba(124,58,237,0.08); font-size:11px; color:#4ADE80; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <span style="color:#A78BFA;font-weight:600;">策略监控</span>
+    <span id="monitorHealth" style="color:#4ADE80;">加载中...</span>
+    <span id="monitorSamples" style="color:#4ADE80;"></span>
+    <button class="btn-small" onclick="toggleAutoKelly()" style="font-size:11px;padding:3px 8px;margin-left:auto;" title="开启后Kelly自动调整注数"><span id="autoKellyLabel" style="color:#4ADE80;">手动</span></button>
+    <button class="btn-small" onclick="toggleMonitorDetail()" style="font-size:11px;padding:3px 8px;">详情</button>
+  </div>
+  <div id="monitorDetail" style="display:none;margin:0 16px 8px 16px; padding:10px 12px; border-radius:8px; background:rgba(30,30,54,0.8); border:1px solid rgba(124,58,237,0.1); font-size:10px; color:#94A3B8; line-height:1.6; max-height:300px; overflow-y:auto;"></div>
 
   <!-- ===== Stage ===== -->
   <div id="drawProgress" style="text-align:center;font-size:12px;color:#94A3B8;margin:0 16px 4px 16px;"></div>
@@ -293,30 +196,17 @@
 
   <!-- ===== Panel Nav ===== -->
   <nav class="panel-nav" role="tablist">
-    <button class="panel-tab" id="omissionToggle" onclick="togglePanel('omission')" role="tab">遗漏分析</button>
-    <button class="panel-tab" id="analysisToggle" onclick="togglePanel('analysis')" role="tab">走势分析</button>
-    <button class="panel-tab" id="recommendToggle" onclick="togglePanel('recommend')" role="tab">推荐方案</button>
-    <button class="panel-tab" id="compareToggle" onclick="togglePanel('compare')" role="tab">开奖对比</button>
-    <button class="panel-tab" id="reviewToggle" onclick="togglePanel('review')" role="tab">复盘跟踪</button>
-    <button class="panel-tab" id="zoneBreakToggle" onclick="togglePanel('zoneBreak')" role="tab">断区转换</button>
-    <span style="color:#475569;margin:0 2px;font-size:12px;">│</span>
-    <select id="authorSelect" onchange="switchAuthor(this.value)" style="padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:#14142B;color:#E2E8F0;font-size:13px;cursor:pointer;font-family:inherit;">
-      <option value="">出号方法 ▾</option>
-      <option value="weier">微尔选号</option>
-      <option value="zhang">张委铭</option>
-      <option value="lizhilin">李志林</option>
-      <option value="peng">彭浩</option>
-      <option value="jiangjialin">蒋加林</option>
-      <option value="wuming">吴明</option>
-      <option value="lixiangchun">李相春</option>
-      <option value="liudajun">刘大军</option>
-      <option value="zeng">曾献忠</option>
-      <option value="yang">杨情友</option>
-      <option value="experiments">🔬 A/B实验</option>
-    </select>
-    <button class="panel-tab" id="helpToggle" onclick="togglePanel('help')" role="tab">说明</button>
-    <span style="color:#475569;margin:0 2px;font-size:12px;">│</span>
-    <button class="panel-tab" id="arsenalToggle" onclick="togglePanel('arsenal')" role="tab">武器库</button>
+    <span class="panel-nav-group">
+      <button class="panel-tab" id="compareToggle" onclick="togglePanel('compare')" role="tab">开奖对比</button>
+      <button class="panel-tab" id="reviewToggle" onclick="togglePanel('review')" role="tab">复盘跟踪</button>
+    </span>
+    <span class="panel-nav-sep">|</span>
+    <span class="panel-nav-group">
+      <span class="panel-nav-label">参考</span>
+      <button class="panel-tab" id="arsenalToggle" onclick="togglePanel('arsenal')" role="tab">武器库</button>
+      <button class="panel-tab" id="traditionalToggle" onclick="togglePanel('traditional')" role="tab">传统方法</button>
+      <button class="panel-tab" id="helpToggle" onclick="togglePanel('help')" role="tab">说明</button>
+    </span>
   </nav>
 
   <!-- ===== Omission ===== -->
@@ -400,6 +290,48 @@
   <!-- ===== Zone Break Panel ===== -->
   <div class="content-panel" id="zoneBreakPanel">
     <div id="zoneBreakContent" style="padding:8px;"></div>
+  </div>
+
+  <!-- ===== Traditional Methods Panel ===== -->
+  <div class="content-panel" id="traditionalPanel">
+    <div style="padding:8px 12px;font-size:11px;color:#94A3B8;margin-bottom:8px;line-height:1.5;background:rgba(245,158,11,0.05);border-radius:8px;">
+      <b>📚 传统方法参考</b> — 以下方法来自公开出版的彩票书籍和文献（2010-2014）。<br>
+      这些方法不直接参与主出号流程，仅作分析参考和方法存档。<br>
+      经统计回测，无一能在双色球上产生超越随机的稳定预测优势。
+    </div>
+    <div class="tab-bar" style="margin-bottom:8px;flex-wrap:wrap;">
+      <button class="tab-btn active" onclick="switchTraditionalTab('weier', this)">微尔选号</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('zhang', this)">张委铭</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('lizhilin', this)">李志林</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('peng', this)">彭浩</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('jiangjialin', this)">蒋加林</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('wuming', this)">吴明</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('lixiangchun', this)">李相春</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('liudajun', this)">刘大军</button>
+      <button class="tab-btn" onclick="switchTraditionalTab('zeng', this)">曾献忠</button>
+      <button class="tab-btn" id="tradFiltersToggle" onclick="toggleTraditionalFilters()" style="font-size:10px;">▸ 辅助过滤</button>
+    <div id="tradFiltersWrap" style="display:none;flex-wrap:wrap;gap:3px;margin-bottom:10px;margin-top:6px;">
+      <button class="tab-btn" onclick="switchTraditionalFilter('color')" style="font-size:10px;">三色</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('block9')" style="font-size:10px;">方块9</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('pengchan')" style="font-size:10px;">通道</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('spread')" style="font-size:10px;">跨度</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('ac')" style="font-size:10px;">AC值</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('omission')" style="font-size:10px;">遗漏比</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('gap')" style="font-size:10px;">间距</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('liuBlue')" style="font-size:10px;">五期断蓝</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('wumingBlue')" style="font-size:10px;">吴明蓝球</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('wumingClockwise')" style="font-size:10px;">顺时针</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('wumingBSD')" style="font-size:10px;">大小单双</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('caileleBlue')" style="font-size:10px;">彩乐乐</button>
+      <button class="tab-btn" onclick="switchTraditionalFilter('gongyiBlue')" style="font-size:10px;">公益时报</button>
+      <button class="tab-btn" onclick="switchTraditionalPanel('omission')" style="font-size:10px;">遗漏分析</button>
+      <button class="tab-btn" onclick="switchTraditionalPanel('analysis')" style="font-size:10px;">走势分析</button>
+      <button class="tab-btn" onclick="switchTraditionalPanel('recommend')" style="font-size:10px;">推荐方案</button>
+      <button class="tab-btn" onclick="switchTraditionalPanel('zoneBreak')" style="font-size:10px;">断区转换</button>
+    </div>
+    </div>
+    <div id="traditionalContent" style="min-height:200px;"></div>
+    <div id="filterInfoPanel" style="display:none;padding:12px;font-size:11px;color:#94A3B8;line-height:1.6;background:rgba(245,158,11,0.05);border-radius:8px;margin-top:8px;"></div>
   </div>
 
   <!-- ===== Weier Panel ===== -->
@@ -509,21 +441,40 @@
 
   <!-- ===== Arsenal Panel ===== -->
   <div class="content-panel" id="arsenalPanel">
-    <div class="tab-bar" style="margin-bottom:10px;">
-      <button class="tab-btn active" onclick="switchArsenalTab('wheeling', this)">🧮 轮次表</button>
+    <div class="tab-bar" style="margin-bottom:10px;flex-wrap:wrap;">
+      <button class="tab-btn active" onclick="switchArsenalTab('nist', this)">🎲 NIST</button>
+      <button class="tab-btn" onclick="switchArsenalTab('condentropy', this)">🔣 条件熵</button>
+      <button class="tab-btn" onclick="switchArsenalTab('exactcover', this)">🎯 精确覆盖</button>
+      <button class="tab-btn" onclick="switchArsenalTab('diffset', this)">🔢 差集</button>
+      <button class="tab-btn" onclick="switchArsenalTab('bandit', this)">🎰 Bandit</button>
+      <span style="color:#475569;margin:0 2px;font-size:10px;">│</span>
+      <button class="tab-btn" onclick="switchArsenalTab('wheeling', this)">🧮 轮次表</button>
       <button class="tab-btn" onclick="switchArsenalTab('kelly', this)">💰 Kelly</button>
       <button class="tab-btn" onclick="switchArsenalTab('sprt', this)">📊 SPRT</button>
       <button class="tab-btn" onclick="switchArsenalTab('fdr', this)">🔬 FDR</button>
       <button class="tab-btn" onclick="switchArsenalTab('mi', this)">🔗 互信息</button>
       <button class="tab-btn" onclick="switchArsenalTab('changepoint', this)">📈 变点</button>
     </div>
-    <div class="tab-content active" id="tab-arsenal-wheeling"><div id="arsenalWheelingContent"></div></div>
+    <div class="tab-content active" id="tab-arsenal-nist"><div id="arsenalNistContent"></div></div>
+    <div class="tab-content" id="tab-arsenal-condentropy"><div id="arsenalCondentropyContent"></div></div>
+    <div class="tab-content" id="tab-arsenal-exactcover"><div id="arsenalExactcoverContent"></div></div>
+    <div class="tab-content" id="tab-arsenal-diffset"><div id="arsenalDiffsetContent"></div></div>
+    <div class="tab-content" id="tab-arsenal-bandit"><div id="arsenalBanditContent"></div></div>
+    <div class="tab-content" id="tab-arsenal-wheeling"><div id="arsenalWheelingContent"></div></div>
     <div class="tab-content" id="tab-arsenal-kelly"><div id="arsenalKellyContent"></div></div>
     <div class="tab-content" id="tab-arsenal-sprt"><div id="arsenalSprtContent"></div></div>
     <div class="tab-content" id="tab-arsenal-fdr"><div id="arsenalFdrContent"></div></div>
     <div class="tab-content" id="tab-arsenal-mi"><div id="arsenalMiContent"></div></div>
     <div class="tab-content" id="tab-arsenal-changepoint"><div id="arsenalChangepointContent"></div></div>
+    <div class="tab-content" id="tab-arsenal-engines"><div id="arsenalEnginesContent"></div></div>
+    <div style="margin-top:12px;font-size:9px;color:#475569;text-align:center;">
+      偏差采样 · B-L加权 · 分位采样 — 不同选号策略, 底层均为覆盖设计
+    </div>
   </div>
+
+
+  <!-- ===== Hidden author panel storage ===== -->
+  <div id="authorPanelStore" style="display:none;"></div>
 
   <!-- ===== Help ===== -->
   <div class="content-panel" id="helpPanel">

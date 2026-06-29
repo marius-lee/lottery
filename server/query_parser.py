@@ -30,3 +30,10 @@ def qlist(query: dict, key: str, sep: str = ',') -> List[int]:
 def qstr(query: dict, key: str, default: str = '') -> str:
     """解析字符串查询参数."""
     return query.get(key, default)
+
+def qfloat(query: dict, key: str, default: float = 0.0) -> float:
+    """解析浮点查询参数."""
+    try:
+        return float(query.get(key, str(default)))
+    except (ValueError, TypeError):
+        return default

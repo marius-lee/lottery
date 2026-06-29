@@ -28,6 +28,8 @@ LA_JOLLA_C_V6_T4 = {
 }
 
 # 已知最优实际票表 (数学证明/计算验证)
+# 注: 这些表也已同步至 ml/exact_cover.py 的 KNOWN_COVERS (canonical source).
+# 本地保留用于 ml/covering_design.py 的直接引用.
 WHEEL_V8 = [[1,2,3,4,5,6],[1,2,3,4,7,8],[1,2,5,6,7,8],[3,4,5,6,7,8]]
 
 WHEEL_V9 = [
@@ -46,7 +48,14 @@ WHEEL_MIN_TICKETS = {
     (12, 4): 24, (13, 4): 37, (14, 4): 55, (15, 4): 77,
 }
 
-KNOWN_WHEELS = {8: WHEEL_V8, 9: WHEEL_V9, 10: WHEEL_V10}
+
+WHEEL_V11 = [
+    [1,2,3,4,5,6], [1,2,3,7,8,9], [1,4,5,7,8,10], [1,6,9,10,11,12],
+    [2,4,6,8,9,11], [2,5,7,9,10,11], [3,4,7,10,11,12], [3,5,6,8,10,12],
+]
+
+
+KNOWN_WHEELS = {8: WHEEL_V8, 9: WHEEL_V9, 10: WHEEL_V10, 11: WHEEL_V11}  # v>=12: 贪心覆盖 (完整C(v,6,4)需91+注, 不适用)
 
 
 def _verify_wheel(v, tickets, t=4):
@@ -60,23 +69,36 @@ def _verify_wheel(v, tickets, t=4):
 
 
 def get_known_wheel(v, t=4):
-    """获取已知最优轮次表. v=8/9/10有完整票表, 更大v返回最优注数."""
+    """获取已知最优轮次表. 优先查 exact_cover.KNOWN_COVERS (canonical),
+    回退到本地 KNOWN_WHEELS (遗留)."""
+    # 优先: exact_cover 的 KNOWN_COVERS (La Jolla已知最优)
+    try:
+        from ml.exact_cover import KNOWN_COVERS as EC_COVERS
+        for ticket_n in [2,3,4,5,6,8,10]:
+            key = (v, t, ticket_n)
+            if key in EC_COVERS:
+                return {"ok": True, "v": v, "t": t, "tickets": EC_COVERS[key],
+                        "ticket_count": len(EC_COVERS[key]),
+                        "guarantee": "4-if-6: 若%d个号含全部6个开奖号, 至少1注>=4红" % v,
+                        "verified": True,
+                        "source": "La Jolla Covering Repository / exact_cover"}
+    except ImportError:
+        pass
+    # 回退: 本地 KNOWN_WHEELS (遗留)
     if v in KNOWN_WHEELS:
         return {"ok": True, "v": v, "t": t, "tickets": KNOWN_WHEELS[v],
                 "ticket_count": len(KNOWN_WHEELS[v]),
-                "guarantee": f"4-if-6: 若{v}个号含全部6个开奖号, 至少1注≥4红",
+                "guarantee": "4-if-6: 若%d个号含全部6个开奖号, 至少1注>=4红" % v,
                 "verified": True,
-                "source": "Bluskov 2011 / Gail Howard 2003"}
+                "source": "Bluskov 2011 / Gail Howard 2003 / La Jolla"}
     elif (v, t) in WHEEL_MIN_TICKETS:
         return {"ok": True, "v": v, "t": t,
                 "ticket_count": WHEEL_MIN_TICKETS[(v, t)],
-                "guarantee": f"4-if-6上界: 最少需{WHEEL_MIN_TICKETS[(v,t)]}注",
-                "tickets": None,  # 需要计算生成
+                "guarantee": "4-if-6上界: 最少需%d注" % WHEEL_MIN_TICKETS[(v, t)],
+                "tickets": None,
                 "verified": False,
                 "source": "La Jolla bounds / Bluskov 2011"}
-    return {"ok": False, "msg": f"v={v} t={t} 无已知最优表"}
-
-
+    return {"ok": False, "msg": "v=%d t=%d 无已知最优表" % (v, t)}
 def la_jolla_comparison_table():
     """V=8~15 完整成本/注数对比表."""
     rows = []

@@ -154,8 +154,8 @@ export function renderAdvancedAnalysis() {
 }
 
 export function switchAnalysisTab(tab, el) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#analysisPanel .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#analysisPanel .tab-content').forEach(c => c.classList.remove('active'));
   if (el) el.classList.add('active');
   const content = document.getElementById('tab-' + tab);
   if (content) content.classList.add('active');

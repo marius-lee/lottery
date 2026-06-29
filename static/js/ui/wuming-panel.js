@@ -24,12 +24,12 @@ window._showWuMingPanel = function(){
 
   function render(p5, c9, z6, rp){
     var h = '<div class="weier-container">';
-    h += '<h5 style="color:#3B82F6;font-size:13px;margin:0 0 6px 0;">📖 吴明·四书集成</h5>';
+    h += '<h5 style="color:#3B82F6;font-size:16px;margin:0 0 6px 0;">📖 吴明·四书集成</h5>';
 
     // ═══ 红球区域 ═══
     h += '<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;background:rgba(239,68,68,0.04);">';
-    h += '<span style="font-size:11px;color:#EF4444;font-weight:600;">🔴 红球方法</span>';
-    h += '<div style="font-size:10px;color:#94A3B8;margin-top:4px;line-height:1.6;">';
+    h += '<span style="font-size:14px;color:#EF4444;font-weight:600;">🔴 红球方法</span>';
+    h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;line-height:1.6;">';
 
     if(p5 && p5.ok){
       h += '<span style="display:inline-block;margin:2px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.08);">5期热号池: <b>'+p5.pool_size+'个</b> '+p5.direction+' '+p5.recommend+'</span> ';
@@ -47,18 +47,18 @@ window._showWuMingPanel = function(){
 
     // ═══ 蓝球区域 ═══
     h += '<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;background:rgba(59,130,246,0.04);">';
-    h += '<span style="font-size:11px;color:#3B82F6;font-weight:600;">🔵 蓝球方法</span>';
+    h += '<span style="font-size:14px;color:#3B82F6;font-weight:600;">🔵 蓝球方法</span>';
     h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">';
-    h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="wumDeviation" checked><span>背离率(蓝球大法)</span></label>';
-    h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="wumClockwise"><span>顺时针(揭秘)</span></label>';
-    h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="wumBSD"><span>大小单双尾(揭秘)</span></label>';
+    h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="wumDeviation" checked><span>背离率(蓝球大法)</span></label>';
+    h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="wumClockwise"><span>顺时针(揭秘)</span></label>';
+    h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="wumBSD"><span>大小单双尾(揭秘)</span></label>';
     h += '</div></div>';
 
     // ═══ 出号 ═══
     h += '<div style="display:flex;align-items:center;gap:8px;">';
-    h += '<span style="font-size:11px;color:#94A3B8;">红球:</span>';
-    h += '<label style="font-size:10px;color:#E2E8F0;cursor:pointer;"><input type="checkbox" id="wumRedMethods" checked> 5期热号+9冷号+6区间</label>';
-    h += '<button class="btn btn-draw" onclick="window._wumingDraw()" style="font-size:12px;padding:6px 16px;margin-left:auto;">吴明出号</button>';
+    h += '<span style="font-size:14px;color:#94A3B8;">红球:</span>';
+    h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;"><input type="checkbox" id="wumRedMethods" checked> 5期热号+9冷号+6区间</label>';
+    h += '<button class="btn btn-draw" onclick="window._wumingDraw()" style="font-size:15px;padding:6px 16px;margin-left:auto;">吴明出号</button>';
     h += '</div>';
 
     h += '<div id="wumingResult" style="margin-top:10px;"></div>';
@@ -107,7 +107,7 @@ window._wumingDraw = async function(){
       }
     }
 
-    var h = '<div style="font-size:10px;color:#94A3B8;margin-bottom:4px;">红球池: '+reds.pool_valid_reds+'注 | 蓝球候选: '+blueCandidates.length+'个</div>';
+    var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">红球池: '+reds.pool_valid_reds+'注 | 蓝球候选: '+blueCandidates.length+'个</div>';
     h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
     for(var i=0; i<Math.min(redTickets.length, n); i++){
       var blue = blueCandidates[i % blueCandidates.length] || '?';

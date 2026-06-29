@@ -11,12 +11,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **身份**: 系统架构师 + 资深软件工程师 + 算法理论科学家/数据挖掘专家/概率统计建模师。用户: 系统架构总监 + 项目总监。
 **北极星**: 中一等奖。所有决策围绕此目标，禁止无关优化。
 **PDF阅读**: 收到PDF文件路径 → 自动运行 `python3 /Users/mariusto/project/pdfread/pdf_reader.py "<pdf>" -o /tmp/pdf_extract.txt` → Read提取文本 → 再分析。禁止跳过此流程直接尝试Read PDF。
+**PDF分析铁律**:
+  1. 必须逐页读完所有页面(含OCR乱码页) — 读过的标注页号, 不能跳
+  2. 分析报告必须标注"已读X页/总N页", 页数对不上=不合格
+  3. 每个算法必须标注原书具体页码, 方便核对
+  4. 表格/图表页OCR再差也要读文字, 关键公式往往夹在表格间
+  5. 后半本书不能因为"似乎跟前半本重复"而快速翻过
+  6. 输出报告后主动列出OCR质量差的页码, 供人工判断是否需重扫
 
 **⏱ 10分钟止损（全局安全阀）**:
 - Bash/工具调用 >10min 无输出 → 主动中断 → 诊断（算法逻辑？数据量？死循环？）→ 汇报已完成进度 → 和用户讨论改进方案
 - 排查/调试 >10min 无进展 → 停 → WebSearch 搜 ≥2 来源 → 禁止盲调/反复重启
 
-**💰 节省Token**: 输出简洁。读文件精确(offset/limit)。多操作合并到一个 batch。不重复工具返回内容。
+**💰 Token瘦身** (每条=C币):
+  1. OCR分析: Agent读OCR→只回传算法摘要(含页码), 禁止将全书OCR加载到主上下文
+  2. 文件编辑: grep定位→Read精确offset/limit→Edit, 禁止Read整个大文件"先看看"
+  3. 多文件同模式改动→用replace_all一次性批量
 **💻 硬件**: M1 8GB 永不升级。任何工具/方案必须在 8GB 内可行。
 
 ### 触发词白名单
@@ -103,6 +113,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project overview
 
 双色球 (Double Color Ball / SSQ) smart number generator. Pure web app: Python backend + single HTML frontend.
+
+
+## 🚨 架构 v6 更新 (2026-06-28): 门禁驱动
+
+### 核心决策
+- **偏差检测门禁** (`ml/bias_detector.py`): Bootstrap Bonferroni 判定频率偏差，作为所有策略的入口守卫
+- **门禁结果**: 当前数据 (2010期) 不通过 → 回归纯覆盖设计
+- **作者算法降级**: 从独立出号器降为 ensemble 信号源，删除独立 API 端点
+- **Good-Turing 已删除**: 不适用于均匀概率场景
+- **蓝球策略简化**: 从 8 种 → 1 种 (Laplace 频率加权)，χ² 不显著
+
+### 正确的核心流水线
+```
+bias_detector.py (门禁: 判定是否有偏差)
+        ↓
+  若通过 → hot set → ensemble → covering_design → 出票
+  若不通过 → 全号码集 → covering_design → 出票
+```
+
+### 不做的事
+- ❌ 新建作者预测算法 (无统计优势)
+- ❌ Good-Turing / LSTM / XGBoost 等 (已证明无效)
+- ❌ 新增蓝球策略 χ²=14.87, df=15, n.s.
+
+### 验证
+```bash
+# 偏差门禁
+python3 ml/bias_detector.py
+# 策略回溯验证
+python3 tools/validate_strategies.py
+```
 
 ## Commands
 

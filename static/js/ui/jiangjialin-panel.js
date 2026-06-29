@@ -10,29 +10,29 @@ window._showJiangJiaLinPanel = function(){
   var el = document.getElementById('jiangjialinContent');
   if(!el) return;
   var h = '<div class="weier-container">';
-  h += '<h5 style="color:#A78BFA;font-size:13px;margin:0 0 8px 0;">📐 蒋加林·排列型思维 [2010]</h5>';
-  h += '<div style="font-size:10px;color:#64748B;margin-bottom:8px;">将33选6按6个位置逐一分析 · 位间隔→位跨度→位形态 多级过滤</div>';
+  h += '<h5 style="color:#A78BFA;font-size:16px;margin:0 0 8px 0;">📐 蒋加林·排列型思维 [2010]</h5>';
+  h += '<div style="font-size:16px;color:#64748B;margin-bottom:8px;">将33选6按6个位置逐一分析 · 位间隔→位跨度→位形态 多级过滤</div>';
 
   h += '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">';
-  h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
+  h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
   h += '<input type="checkbox" id="jjGap" checked><span>位间隔过滤</span></label>';
-  h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
+  h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
   h += '<input type="checkbox" id="jjSpan" checked><span>位跨度过滤</span></label>';
-  h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
+  h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
   h += '<input type="checkbox" id="jjPattern" checked><span>位形态过滤</span></label>';
-  h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
+  h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
   h += '<input type="checkbox" id="jjShrink" checked><span>超级缩水</span></label>';
   h += '</div>';
 
   h += '<div style="display:flex;align-items:center;gap:8px;">';
-  h += '<span style="font-size:11px;color:#94A3B8;">蓝球:</span>';
-  h += '<select id="jjBlueMode" style="font-size:11px;padding:4px 8px;border-radius:4px;background:#1E1E36;color:#E2E8F0;border:1px solid rgba(255,255,255,0.1);">';
+  h += '<span style="font-size:14px;color:#94A3B8;">蓝球:</span>';
+  h += '<select id="jjBlueMode" style="font-size:14px;padding:4px 8px;border-radius:4px;background:#1E1E36;color:#E2E8F0;border:1px solid rgba(255,255,255,0.1);">';
   h += '<option value="mod3">除3余数归类</option>';
   h += '<option value="diagonal">斜边码</option>';
   h += '<option value="sametail">同尾码</option>';
   h += '<option value="random">随机</option>';
   h += '</select>';
-  h += '<button class="btn btn-draw" onclick="window._jjDraw()" style="font-size:12px;padding:6px 16px;margin-left:auto;">蒋加林出号</button>';
+  h += '<button class="btn btn-draw" onclick="window._jjDraw()" style="font-size:15px;padding:6px 16px;margin-left:auto;">蒋加林出号</button>';
   h += '</div>';
 
   h += '<div id="jjResult" style="margin-top:10px;"></div>';
@@ -64,7 +64,7 @@ window._jjDraw = async function(){
     return;
   }
 
-  var h = '<div style="font-size:10px;color:#94A3B8;margin-bottom:4px;">候选池: '+data.candidate_count+' → 过滤后: '+data.after_filter+'</div>';
+  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">候选池: '+data.candidate_count+' → 过滤后: '+data.after_filter+'</div>';
   h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
   (data.tickets||[]).forEach(function(t){
     var reds = t.reds.map(function(x){return String(x).padStart(2,'0')}).join(' ');

@@ -4,7 +4,7 @@ import json
 import urllib.parse
 from pathlib import Path
 
-from server.router import qbool, qint, qlist, qstr
+from server.query_parser import qbool, qint, qlist, qstr, qfloat
 from server import db, fetcher, recommend
 
 ROOT = Path(__file__).parent.parent
@@ -90,16 +90,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/recommend": self._handle_recommend,
             "/api/rules/status": lambda: self._json({"ok": True, **self.ml_bridge.get_rule_status()}),
             "/api/zone-break/data": lambda: self._json(self.ml_bridge.get_zone_break_data()),
-            "/api/weier/conditions": lambda: self._json(self.ml_bridge.get_weier_conditions()),"/api/backtest/run": lambda: self._json(self.ml_bridge.run_backtest()),
+            "/api/weier/conditions": lambda: self._json(self.ml_bridge.get_weier_conditions()),
+            "/api/backtest/run": lambda: self._json(self.ml_bridge.run_backtest()),
             "/api/backtest/results": lambda: self._json({
-            "ok": True, "results": self.ml_bridge.get_backtest_results()}),
+                "ok": True, "results": self.ml_bridge.get_backtest_results()}),
             "/api/backtest/weights": lambda: self._json(
-            self.ml_bridge.get_strategy_weights()),
+                self.ml_bridge.get_strategy_weights()),
             "/api/integration/status": lambda: self._json(self.ml_bridge.integration_status_api()),
             "/api/bias/draw": lambda: self._json(self.ml_bridge.bias_draw(n=qint(q, "n", 3))),
             "/api/bl/draw": lambda: self._json(self.ml_bridge.bl_draw(n=qint(q, "n", 3))),
             "/api/position/draw": lambda: self._json(self.ml_bridge.position_draw(n=qint(q, "n", 3))),
-"/api/ensemble/draw": lambda: self._json(self.ml_bridge.ensemble_draw(n=qint(q, "n", 3), method=qstr(q, "method", "ensemble"), fdr=qbool(q, "fdr", True))),
+"/api/ensemble/draw": lambda: self._json(self.ml_bridge.ensemble_draw(
+                n=qint(q, "n", 3), method=qstr(q, "method", "ensemble"),
+                fdr=qbool(q, "fdr", True))),
+            "/api/monitor": lambda: self._json(self.ml_bridge.monitor_api(
+                tickets=qint(q, "n", 3), pool_v=qint(q, "v", 15),
+                pool_blue=qint(q, "blue", 6), capital=qint(q, "cap", 5000))),
             "/api/advanced/generate": lambda: self._json(
                 self.ml_bridge.advanced_generate(n=qint(q, "n", 3))),
             "/api/claims/summary": lambda: self._json(self.ml_bridge.claims_summary_api()),
@@ -116,6 +122,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 tickets=qint(q, "n", 3), pool_v=qint(q, "v", 15),
                 coverage_pct=float(q.get("cov", 36)), blue_pct=float(q.get("blue", 37.5)))),
             "/api/sprt/monitor": lambda: self._json(self.ml_bridge.sprt_monitor_api()),
+            "/api/nist/test": lambda: self._json(self.ml_bridge.nist_api()),
+            "/api/exact-cover/solve": lambda: self._json(self.ml_bridge.exact_cover_api(
+                v=qint(q, "v", 15), t=qint(q, "t", 4), n=qint(q, "n", 3))),
+            "/api/exact-cover/compare": lambda: self._json(self.ml_bridge.exact_cover_compare_api(
+                n=qint(q, "n", 3))),
+            "/api/cond-entropy/analyze": lambda: self._json(self.ml_bridge.cond_entropy_api()),
+            "/api/cond-entropy/blue": lambda: self._json(self.ml_bridge.cond_entropy_blue_api(
+                n=qint(q, "n", 6))),
+            "/api/diffset/table": lambda: self._json(self.ml_bridge.diffset_table_api()),
+            "/api/bandit/select": lambda: self._json(self.ml_bridge.bandit_select_api(
+                n=qint(q, "n", 3))),
+            "/api/bandit/feedback": lambda: self._json(self.ml_bridge.bandit_feedback_api(
+                score=qfloat(q, "score", 0), arm_id=qstr(q, "arm_id", ""))),
+            "/api/bandit/summary": lambda: self._json(self.ml_bridge.bandit_summary_api()),
             "/api/fdr/filter": lambda: self._json(self.ml_bridge.fdr_filter_api()),
             "/api/changepoint/detect": lambda: self._json(self.ml_bridge.changepoint_api()),
             "/api/mi/analyze": lambda: self._json(self.ml_bridge.mi_selector_api()),
@@ -239,40 +259,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
         q = _parse_query(path)
         n = qint(q, "n", 3)
         soft = qbool(q, "adv_filter") or qbool(q, "soft")
-        liu_blue = qbool(q, "liu_blue")
-        cailele_blue = qbool(q, "cailele_blue")
-        gongyi_blue = qbool(q, "gongyi_blue")
-        wuming_blue = qbool(q, "wuming_blue")
-        if qbool(q, "smart_blue") or qbool(q, "pattern"):
-            liu_blue = cailele_blue = gongyi_blue = wuming_blue = True
-        five_period = qbool(q, "five_period", liu_blue)
+        five_period = qbool(q, "five_period")
         pattern_rules = qbool(q, "pattern_rules")
         luck_mode = {0: 'off', 2: 'pure'}.get(qint(q, "luck"), 'off')
         mo = qint(q, "max_overlap", -1)
         max_overlap = None if mo < 0 else mo
         diversity_mode = {0: None, 1: 'greedy'}.get(qint(q, "div"), None)
-        from ml.micro_portfolio import FilterConfig
-        filter_config = FilterConfig(
-            color_filter=qbool(q, "color_filter"),
-            block9_filter=qbool(q, "block9_filter"),
-            spread_filter=qbool(q, "spread_filter"),
-            ac_filter=qbool(q, "ac_filter"),
-            peng_channel_filter=qbool(q, "peng_channel"),
-            gap_filter=qbool(q, "gap_filter"),
-            omission_filter=qbool(q, "omission_filter"),
-            coincidence_filter=qbool(q, "coincidence_filter"),
-            wuming_clockwise=qbool(q, "wuming_clockwise"),
-            wuming_bsd=qbool(q, "wuming_bsd"))
         author_mode = q.get("author", None)
         return self._json(self.ml_bridge.micro_3_tickets(
             n=n, soft=soft, luck_mode=luck_mode,
             max_overlap=max_overlap, diversity_mode=diversity_mode,
             five_period=five_period, backtest_rank=qbool(q, "backtest"),
-            param_filter=soft, pattern_rules=pattern_rules,
-            liu_blue=liu_blue, cailele_blue=cailele_blue,
-            gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
+            pattern_rules=pattern_rules,
             author_mode=author_mode,
-            filter_config=filter_config))
+            use_freq_blue=qbool(q, 'freq_blue'), blue_mode=qstr(q, 'blue_mode', 'freq'),
+            red_mode=qstr(q, 'red_mode', 'pool'),
+            strategy_mode=qstr(q, 'strategy', None)))
     def _handle_zhang_get(self, path):
         clean = path.split("?")[0]
         q = _parse_query(path)
@@ -313,10 +315,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _handle_blue_get(self, path):
         q = _parse_query(path)
         return self._json(self.ml_bridge.blue_pick(
-            liu_blue=qbool(q, "liu_blue"), cailele_blue=qbool(q, "cailele_blue"),
-            gongyi_blue=qbool(q, "gongyi_blue"), wuming_blue=qbool(q, "wuming_blue"),
-            wuming_clockwise=qbool(q, "wuming_clockwise"), wuming_bsd=qbool(q, "wuming_bsd"),
-            xia_blue=qbool(q, "xia_blue")))
+            use_freq_blue=qbool(q, "freq_blue", True),
+            five_period=qbool(q, "five_period"),
+            pattern_rules=qbool(q, "pattern_rules")))
 
     # ── 子路由: 红球独立出号 ──
 
@@ -328,13 +329,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         mo = qint(q, "max_overlap", -1)
         max_overlap = None if mo < 0 else mo
         return self._json(self.ml_bridge.red_pick(
-            n=qint(q, "n", 3), soft=soft, param_filter=soft,
-            color_filter=qbool(q, "color_filter"), block9_filter=qbool(q, "block9_filter"),
-            spread_filter=qbool(q, "spread_filter"), ac_filter=qbool(q, "ac_filter"),
-            peng_channel_filter=qbool(q, "peng_channel"),
-            gap_filter=qbool(q, "gap_filter"),
-            omission_filter=qbool(q, "omission_filter"),
-            coincidence_filter=qbool(q, "coincidence_filter"),
+            n=qint(q, "n", 3), soft=soft,
             diversity_mode=diversity_mode, max_overlap=max_overlap))
     def _handle_covering_get(self, path):
         q = _parse_query(path)
@@ -374,12 +369,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── 子路由: 预测日志 ──
 
     def _handle_prediction_log_get(self, path):
-        q = _parse_query(path)
-        if qbool(q, "stats"):
-            return self._json({"ok": True, "stats": db.prediction_log_stats()})
-        period = qint(q, "period", 0) or None
-        return self._json({"ok": True, "entries": db.load_prediction_log(
-            limit=qint(q, "limit", 100), period=period)})
+        try:
+            q = _parse_query(path)
+            if qbool(q, "stats"):
+                return self._json({"ok": True, "stats": db.prediction_log_stats()})
+            period = qint(q, "period", 0) or None
+            return self._json({"ok": True, "entries": db.load_prediction_log(
+                limit=qint(q, "limit", 100), period=period)})
+        except Exception as e:
+            import traceback
+            return self._json({"ok": False, "msg": f"prediction_log error: {e}", "trace": traceback.format_exc()})
 
     # ── 子路由: 统计 ──
 

@@ -95,7 +95,36 @@ def init_db():
             created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         );
         CREATE INDEX IF NOT EXISTS idx_pred_log_period ON prediction_log(period);
+
+        -- v2 schema improvements
+        CREATE TABLE IF NOT EXISTS schema_version (
+            version     INTEGER PRIMARY KEY,
+            description TEXT    NOT NULL,
+            applied_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_draws_period_desc ON draws(period DESC);
+        CREATE INDEX IF NOT EXISTS idx_user_picks_period ON user_picks(period);
+        CREATE INDEX IF NOT EXISTS idx_strategy_picks_period ON strategy_picks(period);
+
+        CREATE TABLE IF NOT EXISTS red_freq (
+            num              INTEGER PRIMARY KEY,
+            count            INTEGER NOT NULL DEFAULT 0,
+            last_seen_period INTEGER,
+            updated_at       TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+
+
     """)
+    conn.commit()
+
+    # v2 migration: idempotent ALTER TABLE
+    for col in ['source_type']:
+        try: conn.execute(f"ALTER TABLE user_picks ADD COLUMN {col} TEXT DEFAULT 'user'")
+        except Exception: pass
+    for col in ['pred_r1','pred_r2','pred_r3','pred_r4','pred_r5','pred_r6']:
+        try: conn.execute(f"ALTER TABLE prediction_log ADD COLUMN {col} INTEGER")
+        except Exception: pass
     conn.commit()
     conn.close()
     init_performance_log()
@@ -110,6 +139,17 @@ def upsert_draws(rows, source_name="中彩网"):
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))",
         [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], source_name) for r in rows],
     )
+    conn.commit()
+
+    # v2: refresh red_freq materialized table
+    all_rows = conn.execute('SELECT r1,r2,r3,r4,r5,r6,period FROM draws ORDER BY period').fetchall()
+    freq = {n: [0, 0] for n in range(1, 34)}
+    for row in all_rows:
+        for col in range(6):
+            n = row[col]; freq[n][0] += 1; freq[n][1] = row[6]
+    conn.execute('DELETE FROM red_freq')
+    conn.executemany('INSERT INTO red_freq (num,count,last_seen_period) VALUES (?,?,?)',
+        [(n, freq[n][0], freq[n][1]) for n in range(1, 34)])
     conn.commit()
     conn.close()
 
@@ -221,10 +261,11 @@ def flush_cache():
 
 def insert_user_pick(period, reds, blue, strategy="", score=0):
     conn = get_db()
+    source_type = 'strategy' if strategy else 'user'
     conn.execute(
-        "INSERT INTO user_picks (period, r1, r2, r3, r4, r5, r6, blue, strategy, score) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [period] + reds + [blue, strategy, score],
+        "INSERT INTO user_picks (period, r1, r2, r3, r4, r5, r6, blue, strategy, score, source_type) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [period] + reds + [blue, strategy, score, source_type],
     )
     conn.commit()
     conn.close()
@@ -265,13 +306,28 @@ def load_strategy_weights():
     return weights, perf
 
 
+
+def load_backtest_results(limit=20):
+    """获取最近回测结果."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT strategy, avg_red_hit, blue_hit_rate, max_hit, test_count, weight, window_size, created_at "
+        "FROM backtest_results ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 # ============ Prediction Log ============
 
 def save_prediction_log(entries):
     conn = get_db()
     conn.executemany(
-        "INSERT INTO prediction_log (period, source, reds_json, blue) VALUES (?, ?, ?, ?)",
-        [(e["period"], e["source"], e["reds_json"], e["blue"]) for e in entries],
+        "INSERT INTO prediction_log (period, source, reds_json, blue, pred_r1, pred_r2, pred_r3, pred_r4, pred_r5, pred_r6) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [(e["period"], e["source"], e["reds_json"], e["blue"],
+          e.get("pred_r1", 0), e.get("pred_r2", 0), e.get("pred_r3", 0),
+          e.get("pred_r4", 0), e.get("pred_r5", 0), e.get("pred_r6", 0))
+         for e in entries],
     )
     conn.commit()
     conn.close()

@@ -23,17 +23,209 @@ var _authorHandlers = {
   experiments: function(){ window.runExperiments&&window.runExperiments(); }
 };
 
-window.switchAuthor = function(author){
-  if(!author) return;
-  window.store.currentAuthor = author;
-  document.getElementById('authorSelect').value = author;
-  var tabBtns = document.querySelectorAll('.panel-tab[role=tab]');
+
+
+// ═══════════════════════════════════════════════════════════════
+// 已归档红球过滤策略 — 来自彩票书籍 (2003-2010)
+// ═══════════════════════════════════════════════════════════════
+
+var _filterInfo = {
+  color: {
+    title: '三色分解 (吴长坤 2010)',
+    desc: '33红球按波色分红(12个)/蓝(10个)/绿(11个)三类，要求6红含全部三色。<br>'
+        + '原书声称95%可过，近500期实测<B style="color:#EF4444;">81.4%</b>——意味着<B style="color:#EF4444;">排除18.6%可能中奖组合</b>。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> 无统计依据证明下一期必然三色俱全。是典型的事后拟合书规则。'
+  },
+  block9: {
+    title: '方块9杀号 (吴长坤 2010 Ch6§1)',
+    desc: '33红球行列图上13个3×3方块，上期空方块本期继续杀。<br>'
+        + '原书声称80%有空方块，实测<B style="color:#EF4444;">68%</b>——即<B style="color:#EF4444;">32%的概率误杀</b>。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> 空方块不持续的概率为32%。每次勾选，有1/3概率主动排除有效号码。'
+  },
+  pengchan: {
+    title: '彭浩通道 (彭浩 2010 Ch5§3)',
+    desc: '6个红球位置各自限制在MA9+MA18双通道范围内。<br>'
+        + 'MA(移动平均)本身是滞后指标——通道基于过去，开奖是未来。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> MA通道不能预测下一期号码落在哪里。纯technical analysis迁移到彩票的误用。'
+  },
+  spread: {
+    title: '跨度过滤 (李相春 2003 p55-57)',
+    desc: '红球跨度指数spread=(max-min)/(33-6)×10，排除&lt;3或&gt;10。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> 跨度指数是描述性统计，无预测力。2003年书籍公式，未经过统计检验。'
+  },
+  ac: {
+    title: 'AC值过滤 (李相春 2003 / 刘大军 2010)',
+    desc: '算术复杂性Arithmetic Complexity，排除AC值&lt;4或&gt;10。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> AC值是组合的数学性质，但无法用于预测。所有组合AC值均匀分布在4-10区间内，过滤无意义。'
+  },
+  omission: {
+    title: '遗漏比过滤 (彩天使 2009 p90)',
+    desc: '排除遗漏比&gt;5的极寒号码组合。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> 排除冷号=赌徒谬误的反面。号码独立，上期未出不意味本期不会出。排除冷号降低覆盖。'
+  },
+
+  "liuBlue": {
+    title: '刘大军 五期断蓝 (2011)',
+    desc: '近5期蓝球均值±4作为选号范围，范围外排除。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> 均值是描述性统计，没有预测力。任何落在均值±4外的蓝球都是"不该出"的——但事实上它们确实会出。'
+  },
+  "wumingBlue": {
+    title: '吴明 蓝球分析 (2006)',
+    desc: '背离率(遗漏/16>400%→关注)、大小极值(连出5期→反转)、4区间极值(连出3期→反转)、除4余数极值。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> 极值反转=赌徒谬误。号码独立，上一期出了不等于下一期不会出。'
+  },
+  "wumingClockwise": {
+    title: '吴明 顺时针法 (2010)',
+    desc: '16蓝球按4个顺时针区域排列(1-12-11-10等)，上期蓝球所在区域排除。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> 顺时针排列是人工构造的空间布局，与号码出现概率无关。纯主观分类。'
+  },
+  "wumingBSD": {
+    title: '吴明 大小单双尾 (2010)',
+    desc: '16蓝球按大/小 × 单/双 × 尾数 交叉分类为4组，上期所在组排除。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> 分类方案是主观设计的。任何4组×4个的划分都会产生"37.5%排除率"的错觉。'
+  },
+  "caileleBlue": {
+    title: '彩乐乐 蓝球 (2017)',
+    desc: '奇偶形态(max连续6/5期)、大小形态(max连续5/4期)、尾数驱码(查表排除)。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> 连续检测+"查表"是最典型的彩票书籍模式——任意规则，无统计基础。'
+  },
+  "gongyiBlue": {
+    title: '公益时报 蓝球 (2010)',
+    desc: '期次转换法(双重012路码型→排除) + 代码对称法(除5余数对称→回补)。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> 012路/除5余数是纯数学变换。任何变换都不会改变号码独立同分布的性质。'
+  },
+  "xiaBlue": {
+    title: '夏氏 加减法 (2013)',
+    desc: '|蓝_{t-1} - 蓝_t| ± 4 = 预测范围。声称90%准确率。<br>'
+        + '<b style="color:#FBBF24;">无效原因:</b> ±4范围覆盖8-9个号码(=50-56%池)，"准确率"不过是大概率事件的同义反复。任何方法声称>50%都是池子大而已。'
+  },
+  gap: {
+    title: '间距过滤 (李相春 2004 p114-119)',
+    desc: '最大间距5-17 + 平均间距4-7约束。<br>'
+        + '<B style="color:#FBBF24;">无效原因:</b> 间距是纯描述性统计，落入任何区间的概率均匀。排除边缘区间只降低覆盖度。'
+  }
+};
+
+window.switchTraditionalFilter = function(filter){
+  // Deactivate all tab buttons
+  var tabBtns = document.querySelectorAll('#traditionalPanel .tab-btn');
   tabBtns.forEach(function(b){ b.classList.remove('active'); });
-  var panels = document.querySelectorAll('.content-panel');
-  panels.forEach(function(p){ p.classList.remove('show'); });
-  var panelEl = document.getElementById(author+'Panel');
-  if(panelEl) panelEl.classList.add('show');
+  if(event && event.target) event.target.classList.add('active');
+  
+  var info = _filterInfo[filter];
+  var infoPanel = document.getElementById('filterInfoPanel');
+  var content = document.getElementById('traditionalContent');
+  var store = document.getElementById('authorPanelStore');
+  
+  if(!info || !infoPanel || !content) return;
+  
+  // Hide author panels
+  ['weier','zhang','lizhilin','peng','jiangjialin','wuming','lixiangchun','liudajun','zeng'].forEach(function(a){
+    var panel = document.getElementById(a + 'Panel');
+    if(panel) panel.classList.remove('show');
+  });
+  
+  // Hide all author panels
+  ['weier','zhang','lizhilin','peng','jiangjialin','wuming','lixiangchun','liudajun','zeng'].forEach(function(a){
+    var panel = document.getElementById(a + 'Panel');
+    if(panel) panel.classList.remove('show');
+  });
+  
+  // Move any author panel back to storage
+  var currentPanel = content.querySelector('.content-panel');
+  if(currentPanel && store){
+    currentPanel.classList.remove('show');
+    store.appendChild(currentPanel);
+  }
+  
+  infoPanel.style.display = 'block';
+  infoPanel.innerHTML = '<b style="color:#FBBF24;">' + info.title + '</b><br><br>' + info.desc
+    + '<br><br><span style="font-size:10px;color:#64748B;">此策略已从主界面移除。'
+    + '来自彩票书籍的启发性规则，未经统计检验，'
+    + '无一能通过OOS(样本外)验证产生超越随机的预测优势。</span>';
+};
+
+
+window.switchTraditionalPanel = function(panelName){
+  // Deactivate all tab buttons
+  var tabBtns = document.querySelectorAll('#traditionalPanel .tab-btn');
+  tabBtns.forEach(function(b){ b.classList.remove('active'); });
+  if(event && event.target) event.target.classList.add('active');
+  
+  var content = document.getElementById('traditionalContent');
+  var filterInfo = document.getElementById('filterInfoPanel');
+  var store = document.getElementById('authorPanelStore');
+  if(!content) return;
+  
+  // Hide filter info
+  if(filterInfo) filterInfo.style.display = 'none';
+  
+  // Move any currently displayed panel back to storage
+  var currentPanel = content.querySelector('.content-panel');
+  if(currentPanel && store){
+    currentPanel.classList.remove('show');
+    store.appendChild(currentPanel);
+  }
+  
+  // Get the requested panel
+  var targetPanel = document.getElementById(panelName + 'Panel');
+  if(!targetPanel) return;
+  
+  // Store original parent if not already stored
+  if(!targetPanel._originalParent){
+    targetPanel._originalParent = targetPanel.parentElement;
+  }
+  
+  // Show panel and move into traditionalContent
+  targetPanel.classList.add('show');
+  targetPanel.dispatchEvent(new CustomEvent('panel-shown'));
+  content.appendChild(targetPanel);
+};
+
+window.switchTraditionalTab = function(author, btn){
+  // Deactivate all tab buttons in traditional panel
+  var tabBtns = document.querySelectorAll('#traditionalPanel .tab-btn');
+  tabBtns.forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  
+  var targetContent = document.getElementById('traditionalContent');
+  var store = document.getElementById('authorPanelStore');
+  if(!targetContent || !store) return;
+  
+  // Move currently displayed panel back to storage
+  var currentPanel = targetContent.querySelector('.content-panel');
+  if(currentPanel){
+    currentPanel.classList.remove('show');
+    store.appendChild(currentPanel);
+  }
+  
+  // Move selected panel from wherever it is to traditionalContent
+  var targetPanel = document.getElementById(author + 'Panel');
+  if(!targetPanel) return;
+  
+  targetPanel.classList.add('show');
+  // If panel is not already in targetContent, move it there
+  if(targetPanel.parentElement !== targetContent){
+    targetContent.appendChild(targetPanel);
+  }
+  
+  // Call the author handler to load panel content
   if(_authorHandlers[author]) _authorHandlers[author]();
+  // Dispatch panel-shown
+  targetPanel.dispatchEvent(new CustomEvent('panel-shown'));
+  window.store.currentAuthor = author;
+};
+
+window.switchAuthor = function(author){
+  // [已迁移] 传统方法面板统一收纳入「传统方法」tab
+  // 此函数保留向后兼容，委托给 switchTraditionalTab
+  if(!author) return;
+  window.switchTraditionalTab(author);
+  // 确保传统方法面板可见
+  var tradPanel = document.getElementById('traditionalPanel');
+  if(tradPanel && !tradPanel.classList.contains('show')){
+    document.getElementById('traditionalToggle').click();
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -92,14 +284,6 @@ function renderTickets(stage, d){
 
 // ═══════════════════════════════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════════════
-// 引擎按钮 (占位 — 后端模块开发中)
-// ═══════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════
-// 高级引擎按钮 — 4个独立出号策略
-// ═══════════════════════════════════════════════════════════════
-
 window.ensembleDraw = async function(){
   var stage = document.getElementById('stage');
   var btn = document.getElementById('ensembleBtn');
@@ -129,6 +313,7 @@ window.ensembleDraw = async function(){
   if(btn) btn.disabled = false;
 };
 
+// [已归档] 偏差增强 — Thompson采样无预测优势
 window.biasDraw = async function(){
   var stage = document.getElementById('stage');
   var btn = document.getElementById('biasBtn');
@@ -161,6 +346,7 @@ window.biasDraw = async function(){
   if(btn) btn.disabled = false;
 };
 
+// B-L融合 — 多方法评分+FDR校正+覆盖设计
 window.blDraw = async function(){
   var stage = document.getElementById('stage');
   var btn = document.getElementById('blBtn');
@@ -177,6 +363,10 @@ window.blDraw = async function(){
     infoHtml += '<b>⚖️ ' + (d.algorithm||'B-L加权') + '</b>';
     if(d.coverage_pct) infoHtml += ' · 覆盖率' + d.coverage_pct + '%';
     infoHtml += ' · 成本¥' + (d.cost_rmb||0);
+    // FDR显著方法
+    if(d.fdr_significant !== undefined){
+      infoHtml += '<br><span style="font-size:9px;">FDR显著: ' + d.fdr_significant + '个方法</span>';
+    }
     // 方法权重
     if(d.method_weights){
       var mw = d.method_weights;
@@ -193,7 +383,8 @@ window.blDraw = async function(){
   if(btn) btn.disabled = false;
 };
 
-window.posDraw = async function(){
+// 分位策略 — 6位置独立最优方法+覆盖组合
+window.positionDraw = async function(){
   var stage = document.getElementById('stage');
   var btn = document.getElementById('posBtn');
   var n = parseInt(document.getElementById('drawCount')?.value || 3);
@@ -231,36 +422,5 @@ window.posDraw = async function(){
 // 智能引擎 (5算法协同)
 // ═══════════════════════════════════════════════════════════════
 
-window.advancedDraw = async function(){
-  var stage = document.getElementById('stage');
-  var status = document.getElementById('mergeStatus');
-  var btn = document.getElementById('advBtn');
-  var n = parseInt(document.getElementById('drawCount')?.value || 3);
 
-  if(btn) btn.disabled = true;
-  stage.innerHTML = '<div style="text-align:center;padding:20px;color:#EC4899;">🧬 智能引擎 — 粒子滤波+熵值选号+Kelly注数</div>';
-  if(status) status.innerHTML = '';
-
-  var ac = new AbortController();
-  var timer = setTimeout(function(){ ac.abort(); }, 15000);
-  try {
-    var r = await fetch('/api/advanced/generate?n=' + n, {signal: ac.signal});
-    var d = await r.json();
-    if(!d.ok){
-      stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (d.msg || '启动失败') + '</div>';
-      if(btn) btn.disabled = false;
-      return;
-    }
-    var infoHtml = '<div style="font-size:10px;margin-bottom:8px;text-align:center;padding:6px 10px;border-radius:6px;background:rgba(236,72,153,0.1);color:#F472B6;line-height:1.6;">';
-    infoHtml += '<b>🧬 ' + (d.algorithm || '多策略覆盖') + '</b> · 成本¥' + (d.cost_rmb||0);
-    infoHtml += '</div>';
-    stage.innerHTML = infoHtml;
-    renderTickets(stage, d);
-    var saveBtn = document.getElementById('saveBtn');
-    if(saveBtn) saveBtn.disabled = false;
-  } catch(e) {
-    clearTimeout(timer);
-    stage.innerHTML = '<div style="color:#EF4444;text-align:center;padding:20px;">' + (e.name==='AbortError'?'超时 (15s)':'请求失败') + '</div>';
-  }
-  if(btn) btn.disabled = false;
-};
+;

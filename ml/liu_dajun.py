@@ -5,8 +5,7 @@
   2014《双色球终极战法》(第二版): 断区转换法 (已在 zone_break)
 """
 
-import math
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from collections import Counter
 
 

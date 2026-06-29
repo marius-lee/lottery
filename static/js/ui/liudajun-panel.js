@@ -9,19 +9,19 @@ window._showLiuDaJunPanel = function(){
   if(!el) return;
 
   var h = '<div class="weier-container">';
-  h += '<h5 style="color:#FBBF24;font-size:13px;margin:0 0 2px 0;">📊 刘大军 趋势分析 [2010-2014]</h5>';
-  h += '<div style="font-size:10px;color:#64748B;margin-bottom:10px;">定尾选号+重合码{1,3,6,8}+三效应连锁+五期断蓝+断区转换</div>';
+  h += '<h5 style="color:#FBBF24;font-size:16px;margin:0 0 2px 0;">📊 刘大军 趋势分析 [2010-2014]</h5>';
+  h += '<div style="font-size:16px;color:#64748B;margin-bottom:10px;">定尾选号+重合码{1,3,6,8}+三效应连锁+五期断蓝+断区转换</div>';
 
   // 定尾信号区
-  h += '<div id="ljdSignal" style="font-size:11px;">';
+  h += '<div id="ljdSignal" style="font-size:14px;">';
   h += '<span style="color:#64748B;">定尾信号加载中...</span>';
   h += '</div>';
 
   // 过滤 + 出号
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;">';
-  h += '<span style="font-size:10px;color:#94A3B8;">过滤:</span>';
-  h += '<label style="font-size:10px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="ljdCoincidence"><span>🔗重合码</span></label>';
-  h += '<button class="btn btn-draw" onclick="window._ljdDraw()" style="font-size:11px;padding:5px 16px;margin-left:auto;">刘大军综合出号</button>';
+  h += '<span style="font-size:16px;color:#94A3B8;">过滤:</span>';
+  h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="ljdCoincidence"><span>🔗重合码</span></label>';
+  h += '<button class="btn btn-draw" onclick="window._ljdDraw()" style="font-size:14px;padding:5px 16px;margin-left:auto;">刘大军综合出号</button>';
   h += '</div>';
 
   h += '<div id="ljdResult" style="margin-top:10px;"></div>';
@@ -64,17 +64,17 @@ window._ljdLoadSignals = async function(){
   (d.positions||[]).forEach(function(p){
     var rec = p.coincidence.length > 0 ? p.coincidence : p.recommended.slice(0,3);
     h += '<div style="padding:4px 6px;border-radius:3px;background:rgba(255,255,255,0.03);">';
-    h += '<div style="color:#64748B;font-size:9px;">'+p.name+'</div>';
+    h += '<div style="color:#64748B;font-size:15px;">'+p.name+'</div>';
     rec.forEach(function(t){
       var isCoin = [1,3,6,8].indexOf(t) >= 0;
-      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-weight:700;font-size:10px;margin:1px;'+(isCoin?'background:rgba(251,191,36,0.2);color:#FBBF24;':'background:rgba(148,163,184,0.1);color:#94A3B8;')+'">'+t+'</span>';
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:16px;margin:1px;'+(isCoin?'background:rgba(251,191,36,0.2);color:#FBBF24;':'background:rgba(148,163,184,0.1);color:#94A3B8;')+'">'+t+'</span>';
     });
     h += '</div>';
   });
   h += '</div>';
 
   // ── 尾数热度 ──
-  h += '<div style="font-size:9px;color:#475569;">';
+  h += '<div style="font-size:15px;color:#475569;">';
   h += '热度: <span style="color:#34D399;">热</span>=高频 <span style="color:#FBBF24;">温</span>=中频 <span style="color:#64748B;">冷</span>=低频 ';
   h += '| 黄色数字=重合码{1,3,6,8}';
   h += '</div>';
@@ -108,7 +108,7 @@ window._ljdDraw = async function(){
     return;
   }
 
-  var h = '<div style="font-size:10px;color:#94A3B8;margin-bottom:4px;">算法: '+data.algorithm+'</div>';
+  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">算法: '+data.algorithm+'</div>';
   h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
   (data.tickets||[]).forEach(function(t){
     var reds = t.reds.map(function(x){return String(x).padStart(2,'0')}).join(' ');

@@ -1,7 +1,11 @@
 /** 武器库面板 — 组合数学 + 统计检验 + 信息论 */
-import { store, subscribe } from '../store.js';
 
 const API = {
+  nist: '/api/nist/test',
+  condentropy: '/api/cond-entropy/analyze',
+  exactcover: '/api/exact-cover/compare',
+  diffset: '/api/diffset/table',
+  bandit: '/api/bandit/summary',
   wheeling: '/api/wheeling/compare',
   kelly: '/api/kelly',
   sprt: '/api/sprt/monitor',
@@ -12,26 +16,11 @@ const API = {
 
 const panelEl = document.getElementById('arsenalPanel');
 if (panelEl) {
-  panelEl.addEventListener('panel-shown', () => loadWheeling());
+  panelEl.addEventListener('panel-shown', () => loadNist());
 }
 
 // ═══ Tab switching ═══
-window.switchArsenalTab = function(tab, el) {
-  document.querySelectorAll('#arsenalPanel .tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#arsenalPanel .tab-content').forEach(c => c.classList.remove('active'));
-  if (el) el.classList.add('active');
-  const content = document.getElementById('tab-arsenal-' + tab);
-  if (content) content.classList.add('active');
-  
-  switch(tab) {
-    case 'wheeling': loadWheeling(); break;
-    case 'kelly': loadKelly(); break;
-    case 'sprt': loadSprt(); break;
-    case 'fdr': loadFdr(); break;
-    case 'mi': loadMi(); break;
-    case 'changepoint': loadChangepoint(); break;
-  }
-};
+// switchArsenalTab defined below
 
 function T(tag, attrs, ...children) {
   const el = document.createElement(tag);
@@ -295,4 +284,241 @@ window.applyMiDraw = async function() {
     renderTickets(stage, d);
     document.getElementById('saveBtn').disabled = false;
   } catch(e){ stage.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
+};
+
+// ═══ Archived Engines ═══
+async function loadEngines() {
+  const el = document.getElementById('arsenalEnginesContent');
+  if(!el) return;
+
+  let h = '<div style="font-size:11px;line-height:1.7;color:#94A3B8;">';
+  h += '<b>已归档的选号策略</b> — 均用不同统计方法选热号, 底层统一贪心覆盖设计.<br>';
+  h += '<span style="font-size:10px;">OOS回测确认无方法显著优于基线; 保留供参考/对比.</span>';
+  h += '</div>';
+
+  h += '<div style="display:grid;gap:6px;margin-top:8px;">';
+
+  // Bias
+  h += '<div style="padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(124,58,237,0.08);">';
+  h += '<b style="font-size:12px;">🎯 偏差采样</b> <span style="font-size:9px;color:#64748B;">Dirichlet后验→Thompson→Gumbel-Max</span><br>';
+  h += '<span style="font-size:9px;color:#475569;">文献: Thompson 1933; Gumbel 1954. 对彩票无证明优势.</span><br>';
+  h += '<button class="btn-small" onclick="applyArchivedEngine(\'bias\')" style="margin-top:4px;">试用</button>';
+  h += '</div>';
+
+  // B-L
+  h += '<div style="padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(124,58,237,0.08);">';
+  h += '<b style="font-size:12px;">⚖️ B-L加权</b> <span style="font-size:9px;color:#64748B;">多方法观点贝叶斯融合</span><br>';
+  h += '<span style="font-size:9px;color:#475569;">文献: Black & Litterman 1992. 对频率数据无证明优势.</span><br>';
+  h += '<button class="btn-small" onclick="applyArchivedEngine(\'bl\')" style="margin-top:4px;">试用</button>';
+  h += '</div>';
+
+  // Position
+  h += '<div style="padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(124,58,237,0.08);">';
+  h += '<b style="font-size:12px;">📐 分位采样</b> <span style="font-size:9px;color:#64748B;">每位置独立最优方法+约束采样</span><br>';
+  h += '<span style="font-size:9px;color:#475569;">6位置独立建模. OOS无显著提升.</span><br>';
+  h += '<button class="btn-small" onclick="applyArchivedEngine(\'pos\')" style="margin-top:4px;">试用</button>';
+  h += '</div>';
+
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+window.applyArchivedEngine = async function(type) {
+  var stage = document.getElementById('stage');
+  var n = parseInt(document.getElementById('drawCount')?.value || 3);
+  var labels = {bias:'偏差采样', bl:'B-L加权', pos:'分位采样'};
+  var urls = {bias:'/api/bias/draw', bl:'/api/bl/draw', pos:'/api/position/draw'};
+  stage.innerHTML = '<div style="text-align:center;padding:20px;color:#94A3B8;">' + (labels[type]||'') + '...</div>';
+  try {
+    var r = await fetch((urls[type]||'') + '?n=' + n);
+    var d = await r.json();
+    if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;">'+ (d.msg||'失败') +'</div>'; return; }
+    stage.innerHTML = '<div style="font-size:10px;text-align:center;padding:6px;border-radius:6px;background:rgba(120,120,120,0.1);color:#94A3B8;"><b>' + (d.algorithm||labels[type]) + '</b> · 成本¥' + (d.cost_rmb||0) + '</div>';
+    renderTickets(stage, d);
+    document.getElementById('saveBtn').disabled = false;
+  } catch(e){ stage.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
+};
+
+
+// ═══════════════════════════════════════════════════════════
+// NIST 随机性检验
+// ═══════════════════════════════════════════════════════════
+
+window.API_NIST = '/api/nist/test';
+
+async function loadNist() {
+  var el = document.getElementById('arsenalNistContent');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">NIST SP 800-22 检验运行中...</div>';
+  try {
+    var r = await fetch(window.API_NIST);
+    var d = await r.json();
+    if (!d.ok) { el.innerHTML = '<div style="color:#EF4444;">数据不足, 需>100期</div>'; return; }
+    var rows = d.results.map(function(item) {
+      var color = item.passed ? '#22C55E' : '#EF4444';
+      return '<tr><td>' + item.test + '</td>' +
+        '<td style="color:' + color + ';">' + (item.passed ? '通过' : '⚠ 未通过') + '</td>' +
+        '<td>' + item.p_value + '</td>' +
+        '<td>' + (item.detail || '') + '</td></tr>';
+    }).join('');
+    el.innerHTML =
+      '<div style="color:#FBBF24;margin-bottom:8px;font-size:12px;">' + d.verdict + '</div>' +
+      '<div style="font-size:10px;color:#64748B;margin-bottom:8px;">通过 ' + d.passed + '/' + d.total + ' (' + d.pass_rate_pct + '%) | ' +
+        (d.bias_weighting_advice || '') + '</div>' +
+      '<table style="font-size:10px;width:100%;border-collapse:collapse;">' +
+      '<thead><tr style="color:#94A3B8;"><th>检验</th><th>状态</th><th>p值</th><th>详情</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 条件熵号码池
+// ═══════════════════════════════════════════════════════════
+
+async function loadCondentropy() {
+  var el = document.getElementById('arsenalCondentropyContent');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">条件熵分析中...</div>';
+  try {
+    var r = await fetch('/api/cond-entropy/analyze');
+    var d = await r.json();
+    if (!d.ok) { el.innerHTML = '<div style="color:#EF4444;">数据不足</div>'; return; }
+    var redTags = d.red_top15.map(function(n) { return '<span class="ball-red">' + n + '</span>'; }).join(' ');
+    var blueTags = d.blue_top6.map(function(n) { return '<span class="ball-blue">' + n + '</span>'; }).join(' ');
+    var clustersHtml = (d.red_clusters || []).map(function(c, i) {
+      return '<div style="margin-bottom:2px;"><b>簇' + (i+1) + ':</b> ' + c.join(',') + '</div>';
+    }).join('');
+    el.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">' +
+      '<div><b style="color:#A78BFA;">基线熵</b></div><div>' + d.baseline_entropy + '</div>' +
+      '<div><b style="color:#A78BFA;">熵降低</b></div><div style="color:#22C55E;">' + d.entropy_reduction_pct + '%</div>' +
+      '<div><b style="color:#A78BFA;">红球Top15</b></div><div>' + redTags + '</div>' +
+      '<div><b style="color:#A78BFA;">蓝球Top6</b></div><div>' + blueTags + '</div>' +
+      '</div>' +
+      '<div style="margin-top:8px;"><b style="color:#A78BFA;">互信息聚类 (5簇)</b></div>' +
+      '<div style="font-size:10px;color:#94A3B8;">' + clustersHtml + '</div>' +
+      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 精确覆盖
+// ═══════════════════════════════════════════════════════════
+
+async function loadExactcover() {
+  var el = document.getElementById('arsenalExactcoverContent');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">精确覆盖比较中...</div>';
+  try {
+    var r = await fetch('/api/exact-cover/compare?n=3');
+    var d = await r.json();
+    if (!d.ok) { el.innerHTML = '<div style="color:#EF4444;">失败</div>'; return; }
+    var rows = d.results.map(function(r) {
+      return '<tr><td>v=' + r.v + '</td><td>' + r.n + '注</td>' +
+        '<td style="color:#22C55E;">' + r.coverage_pct + '%</td>' +
+        '<td>' + r.source + '</td><td>' + r.covered_t + '/' + r.total_t + '</td></tr>';
+    }).join('');
+    el.innerHTML =
+      '<div style="color:#A78BFA;margin-bottom:8px;">精确覆盖 — La Jolla已知最优表</div>' +
+      '<table style="font-size:10px;width:100%;">' +
+      '<thead><tr style="color:#94A3B8;"><th>V</th><th>注数</th><th>覆盖率</th><th>来源</th><th>覆盖t元组</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 差集构造
+// ═══════════════════════════════════════════════════════════
+
+async function loadDiffset() {
+  var el = document.getElementById('arsenalDiffsetContent');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">差集构造分析中...</div>';
+  try {
+    var r = await fetch('/api/diffset/table');
+    var d = await r.json();
+    if (!d.ok) { el.innerHTML = '<div style="color:#EF4444;">失败</div>'; return; }
+    var rows = d.results.map(function(r) {
+      return '<tr><td>v=' + r.v + '</td><td>' + r.n_blocks + '块</td>' +
+        '<td style="color:#A78BFA;">' + r.coverage_2_pct + '%</td>' +
+        '<td>' + r.pairs_covered + '/' + r.pairs_total + '</td></tr>';
+    }).join('');
+    el.innerHTML =
+      '<div style="color:#A78BFA;margin-bottom:8px;">差集构造 — 数论保证 (Singer + Hadamard)</div>' +
+      '<table style="font-size:10px;width:100%;">' +
+      '<thead><tr style="color:#94A3B8;"><th>V</th><th>块数</th><th>2-覆盖</th><th>已覆盖对/总对</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bandit 在线学习
+// ═══════════════════════════════════════════════════════════
+
+async function loadBandit() {
+  var el = document.getElementById('arsenalBanditContent');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">Bandit策略学习中...</div>';
+  try {
+    // 先出号
+    var sr = await fetch('/api/bandit/select?n=3');
+    var sd = await sr.json();
+    // 再取摘要
+    var br = await fetch('/api/bandit/summary');
+    var bd = await br.json();
+    if (!bd.ok) { el.innerHTML = '<div style="color:#EF4444;">失败</div>'; return; }
+    var armsHtml = bd.arms.map(function(a) {
+      var bar = a.trials > 0 ? '<span style="display:inline-block;width:' + Math.min(a.trials*5,80) + 'px;background:#A78BFA;height:6px;border-radius:3px;"></span>' : '';
+      return '<tr><td>' + a.name + '</td><td>' + a.trials + '</td>' +
+        '<td>' + (a.mean_score || 0).toFixed(3) + '</td>' +
+        '<td>' + bar + '</td></tr>';
+    }).join('');
+    el.innerHTML =
+      '<div style="color:#A78BFA;margin-bottom:8px;">Thompson抽样 — 在线学习最优策略</div>' +
+      '<div style="font-size:10px;color:#22C55E;margin-bottom:8px;">最佳: ' + bd.best_arm + ' (均值 ' + (bd.best_mean||0).toFixed(3) + ') | 总试验: ' + bd.total_trials + '</div>' +
+      '<table style="font-size:10px;width:100%;">' +
+      '<thead><tr style="color:#94A3B8;"><th>策略</th><th>试验</th><th>均值</th><th></th></tr></thead>' +
+      '<tbody>' + armsHtml + '</tbody></table>' +
+      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (bd.note || '') + '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#EF4444;">加载失败: ' + e.message + '</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Tab routing update
+// ═══════════════════════════════════════════════════════════
+
+window.switchArsenalTab = function(tab, el) {
+  // Call the original or do it inline
+  document.querySelectorAll('#arsenalPanel .tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('#arsenalPanel .tab-content').forEach(function(c) { c.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  var content = document.getElementById('tab-arsenal-' + tab);
+  if (content) content.classList.add('active');
+
+  switch(tab) {
+    case 'nist': loadNist(); break;
+    case 'condentropy': loadCondentropy(); break;
+    case 'exactcover': loadExactcover(); break;
+    case 'diffset': loadDiffset(); break;
+    case 'bandit': loadBandit(); break;
+    case 'wheeling': loadWheeling(); break;
+    case 'kelly': loadKelly(); break;
+    case 'sprt': loadSprt(); break;
+    case 'fdr': loadFdr(); break;
+    case 'mi': loadMi(); break;
+    case 'changepoint': loadChangepoint(); break;
+    case 'engines': loadEngines(); break;
+  }
 };

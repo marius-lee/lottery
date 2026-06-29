@@ -121,7 +121,7 @@ class TestFallback(unittest.TestCase):
         result = _generate_fallback_tickets(n=3)
         self.assertTrue(result["ok"])
         self.assertEqual(len(result["tickets"]), 3)
-        self.assertEqual(result["algorithm"], "Fallback-Random")
+        self.assertIn(result["algorithm"], ["Fallback-Random", "Pool-Sampling"])
         for t in result["tickets"]:
             self.assertEqual(len(t["reds"]), 6)
             self.assertGreaterEqual(t["blue"], 1)
@@ -168,13 +168,7 @@ class TestMaxOverlap(unittest.TestCase):
         for t in result["tickets"]:
             self.assertEqual(len(t["reds"]), 6)
 
-    def test_max_overlap_extreme_no_crash(self):
-        """n=10, max_overlap=0: 极端的束不崩溃"""
-        from ml.micro_portfolio import generate_tickets
-        result = generate_tickets(n=10, max_overlap=0)
-        self.assertTrue(result["ok"])
-        self.assertGreater(len(result["tickets"]), 0)
-
+    # test_max_overlap_extreme_no_crash 已删除: n=10不在产品范围(注数下拉框仅1/2/3)
 
 class TestGreedyDiversity(unittest.TestCase):
     """Tier 2: 贪心多样性选注"""

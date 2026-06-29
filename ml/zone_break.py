@@ -105,12 +105,12 @@ def filter_zone_break(break_rows_code, break_cols_code):
 
     # 确保_valid_reds已构建
     try:
-        if mp._valid_reds is None or len(data) != mp._past_count:
+        if mp._state.valid_reds is None or len(data) != mp._state.past_count:
             mp._build_pool()
     except Exception:
         mp._build_pool()
 
-    valid_reds = mp._valid_reds
+    valid_reds = mp._state.valid_reds
     if valid_reds is None or len(valid_reds) < 6:
         return {"ok": False, "msg": "有效池未构建"}
 

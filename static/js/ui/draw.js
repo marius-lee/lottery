@@ -27,20 +27,16 @@ function progressEl() { return document.getElementById('drawProgress'); }
 function progressBarEl() { return document.getElementById('progressBar'); }
 function drawBtn() { return document.getElementById('drawBtn'); }
 function saveBtn() { return document.getElementById('saveBtn'); }
-function luckBtn() { return document.getElementById('luckBtn'); }
-
 function restoreButtons() {
-  const db = drawBtn(), sb = saveBtn(), lb = luckBtn();
+  const db = drawBtn(), sb = saveBtn();
   if (db) db.disabled = false;
   if (sb) sb.disabled = false;
-  if (lb) lb.disabled = false;
 }
 
 function disableButtons() {
-  const db = drawBtn(), sb = saveBtn(), lb = luckBtn();
+  const db = drawBtn(), sb = saveBtn();
   if (db) db.disabled = true;
   if (sb) sb.disabled = true;
-  if (lb) lb.disabled = true;
 }
 
 function updateProgress(text, pct) {
@@ -90,52 +86,17 @@ export function updateGreedy() {
   }
 }
 
-export function updateLiuBlue() {
-  store.useLiuBlue = document.getElementById('liuBlueToggle').checked;
-}
-export function updateCaileleBlue() {
-  store.useCaileleBlue = document.getElementById('caileleBlueToggle').checked;
-}
-export function updateGongyiBlue() {
-  store.useGongyiBlue = document.getElementById('gongyiBlueToggle').checked;
-}
-export function updateWumingBlue() {
-  store.useWumingBlue = document.getElementById('wumingBlueToggle').checked;
-}
+
+
+
+
 
 export function updateBacktest() {
   store.useBacktest = document.getElementById('backtestToggle').checked;
 }
-export function updateColorFilter() {
-  store.useColorFilter = document.getElementById('colorFilterToggle').checked;
-}
-export function updateBlock9Filter() {
-  store.useBlock9Filter = document.getElementById('block9FilterToggle').checked;
-}
-export function updateSpreadFilter() {
-  store.useSpreadFilter = document.getElementById('spreadFilterToggle').checked;
-}
-export function updateAcFilter() {
-  store.useAcFilter = document.getElementById('acFilterToggle').checked;
-}
-export function updatePengChannelFilter() {
-  store.usePengChannelFilter = document.getElementById('pengChannelFilterToggle').checked;
-}
-export function updateGapFilter() {
-  store.useGapFilter = document.getElementById('gapFilterToggle').checked;
-}
-export function updateOmissionFilter() {
-  store.useOmissionFilter = document.getElementById('omissionFilterToggle').checked;
-}
-export function updateWumingClockwise() {
-  store.useWumingClockwise = document.getElementById('wumingClockwiseToggle').checked;
-}
-export function updateWumingBSD() {
-  store.useWumingBSD = document.getElementById('wumingBSDToggle').checked;
-}
-export function updateXiaBlue() {
-  store.useXiaBlue = document.getElementById('xiaBlueToggle').checked;
-}
+
+
+
 
 export function updateTwelveValue() {
   store.useTwelveValue = document.getElementById('twelveValueToggle').checked;
@@ -154,6 +115,48 @@ export function updatePatternRules() {
   store.usePatternRules = document.getElementById('patternRulesToggle').checked;
 }
 
+export function updateFreqBlue() {
+  var checked = document.getElementById('freqBlueToggle').checked;
+  store.useFreqBlue = checked;
+  store.blueMode = document.querySelector("input[name=blueMode]:checked")?.value || "freq";
+  // 联动蓝球选号方法radio: 勾选→可用, 未勾选→灰掉
+  var lblFreq = document.getElementById('lblBlueFreq');
+  var lblEntropy = document.getElementById('lblBlueEntropy');
+  var radios = document.querySelectorAll('input[name="blueMode"]');
+  for (var i = 0; i < radios.length; i++) {
+    radios[i].disabled = !checked;
+  }
+  if (lblFreq) {
+    lblFreq.style.opacity = checked ? '1' : '0.4';
+    lblFreq.style.cursor = checked ? 'pointer' : 'not-allowed';
+  }
+  if (lblEntropy) {
+    lblEntropy.style.opacity = checked ? '1' : '0.4';
+    lblEntropy.style.cursor = checked ? 'pointer' : 'not-allowed';
+  }
+}
+
+export function updateBlueMode() {
+  // 仅在蓝球缩小池勾选时更新, 否则保持默认
+  if (store.useFreqBlue) {
+    store.blueMode = document.querySelector("input[name=blueMode]:checked")?.value || "freq";
+  }
+}
+
+export function updateRedMode() {
+  store.redMode = document.querySelector("input[name=redMode]:checked")?.value || "pool";
+}
+
+export function toggleBanditMode() {
+  store.strategyMode = store.strategyMode === 'bandit' ? null : 'bandit';
+  var btn = document.getElementById('banditToggle');
+  if (btn) {
+    btn.classList.toggle('active', store.strategyMode === 'bandit');
+    btn.querySelector('.btn-icon').textContent = store.strategyMode === 'bandit' ? '🎰' : '🎲';
+  }
+}
+
+
 // ============ API 调用 ============
 
 async function drawTickets(luckMode) {
@@ -164,19 +167,16 @@ async function drawTickets(luckMode) {
     ? '&max_overlap=2&div=1'
     : (store.useDiversity && luckMode !== '&luck=2' ? '&max_overlap=2' : '');
   const backtest = store.useBacktest && luckMode !== '&luck=2' ? '&backtest=1' : '';
-  const colorF = store.useColorFilter ? '&color_filter=1' : '';
-  const block9F = store.useBlock9Filter ? '&block9_filter=1' : '';
-  const spreadF = store.useSpreadFilter ? '&spread_filter=1' : '';
-  const acF = store.useAcFilter ? '&ac_filter=1' : '';
-  const pengChannelF = store.usePengChannelFilter ? '&peng_channel=1' : '';
-  const gapF = store.useGapFilter ? '&gap_filter=1' : '';
-  const omissionF = store.useOmissionFilter ? '&omission_filter=1' : '';
   const fivePeriod = store.useFivePeriod ? '&five_period=1' : '';
   const patternRules = store.usePatternRules ? '&pattern_rules=1' : '';
   const author = store.currentAuthor ? '&author=' + store.currentAuthor : '';
   let data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + backtest + colorF + block9F + spreadF + acF + pengChannelF + gapF + omissionF + fivePeriod + patternRules + author + luckMode);
+    const freqBlue = store.useFreqBlue ? '&freq_blue=1' : '';
+    const blueModeParam = '&blue_mode=' + (store.blueMode || 'freq');
+    const redModeParam = '&red_mode=' + (store.redMode || 'pool');
+    const strategyParam = store.strategyMode ? '&strategy=' + store.strategyMode : '';
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + backtest + freqBlue + blueModeParam + redModeParam + strategyParam + fivePeriod + patternRules + author + luckMode);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';
@@ -221,7 +221,8 @@ async function drawTickets(luckMode) {
       ? ` → 有效池 ${data.pool_valid_reds.toLocaleString()} 红球`
       : '';
     const bluePool = data.blue_pool_size != null ? ` | 蓝球池${data.blue_pool_size}个` : '';
-    infoRow.innerHTML = `硬过滤[排除${h2+h3}组合]${softTag}${poolStr}${bluePool} · ${algo}`;
+    const blueMethod = data.blue_method ? ` · ${data.blue_method}` : '';
+    infoRow.innerHTML = `硬过滤[排除${h2+h3}组合]${softTag}${poolStr}${bluePool}${blueMethod} · ${algo}`;
   }
   stage.appendChild(infoRow);
 
@@ -238,6 +239,29 @@ async function drawTickets(luckMode) {
     stage.appendChild(row);
   }
 
+  // 信号联动: 若后端SPRT自动切换了红球模式, 更新界面radio
+  if (data.effective_red_mode) {
+    var radio = document.querySelector('input[name="redMode"][value="' + data.effective_red_mode + '"]');
+    if (radio && !radio.checked) {
+      radio.checked = true;
+      updateRedMode();
+    }
+  }
+  // Kelly 自动闭环: 自动模式下, 后端推荐注数≠当前注数时更新
+  var autoLabel = document.getElementById('autoKellyLabel');
+  if (data.kelly_recommended_n != null && store.useAutoKelly) {
+    store.drawCount = data.kelly_recommended_n;
+    var drawCountEl = document.getElementById('drawCount');
+    if (drawCountEl) {
+      drawCountEl.value = String(data.kelly_recommended_n);
+      updateDrawCount();
+    }
+  }
+  // 更新监控条的Kelly建议 (同步monitor bar)
+  if (autoLabel && data.kelly_recommended_n != null) {
+    autoLabel.textContent = store.useAutoKelly ? '自动(' + data.kelly_recommended_n + '注)' : '手动';
+  }
+
   updateProgress('完成', 100);
   await delay(300);
   clearProgress();
@@ -246,17 +270,52 @@ async function drawTickets(luckMode) {
 
 // ============ 入口点 ============
 
-export function proceedWithDraw() {
+export async function proceedWithDraw() {
   disableButtons();
   store.lastDrawResults = null;
   renderPlaceholders();
+
+  // 闭环: Auto-Kelly 模式下先查询监控推荐注数
+  var originalN = store.drawCount;
+  if (store.useAutoKelly) {
+    try {
+      var resp = await fetch('/api/monitor?n=' + originalN + '&v=15&blue=6&cap=5000');
+      var d = await resp.json();
+      if (d && d.ok) {
+        var rec = (d.status && d.status.recommended_tickets != null) ? d.status.recommended_tickets : originalN;
+        if (rec !== originalN) {
+          store.drawCount = Math.max(1, rec);
+          renderPlaceholders();
+          var msgEl = document.getElementById('dataMsg');
+          if (msgEl) {
+            msgEl.textContent = 'Kelly 注数调整: ' + originalN + '→' + store.drawCount;
+            msgEl.style.color = '#22C55E';
+            setTimeout(function() { msgEl.textContent = ''; }, 3000);
+          }
+        }
+      }
+    } catch (e) { /* 监控不可用时保持原注数 */ }
+  }
 
   const safety = setTimeout(() => {
     restoreButtons();
     clearProgress();
   }, 30000);
 
-  drawTickets('').finally(() => clearTimeout(safety));
+  await drawTickets('').finally(() => clearTimeout(safety));
+
+  // 出号完成后刷新监控 (SPRT/Kelly 会反映新 prediction_log 数据)
+  if (store.useAutoKelly) {
+    try {
+      var md = await fetch('/api/monitor?n=' + store.drawCount + '&v=15&blue=6&cap=5000');
+      if (md) {
+        // refresh monitor.js cached data silently
+        if (typeof window.fetchMonitor === 'function') {
+          window._lastMonitorData = md;
+        }
+      }
+    } catch(e) {}
+  }
 }
 
 export function proceedWithLuckDraw() {

@@ -9,15 +9,56 @@ export function refreshReviewPanel() {
 
   summary.innerHTML = '<span style="color:#cc8800;">加载中...</span>';
 
+  var results = {statsData: null, entriesData: null, claimsData: {ok: false}};
+  var errors = [];
+
   Promise.all([
-    fetch('/api/prediction-log?stats=1').then(r => r.json()),
-    fetch('/api/prediction-log?limit=200').then(r => r.json()),
-    fetch('/api/claims/summary').then(r => r.json()).catch(() => ({ok:false})),
-  ]).then(([statsData, entriesData, claimsData]) => {
-    if (!statsData.ok || !entriesData.ok) {
+    fetch('/api/prediction-log?stats=1')
+      .then(function(r){
+        if(!r.ok) throw new Error('stats HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(txt){
+        try { results.statsData = JSON.parse(txt); }
+        catch(e){ throw new Error('stats JSON parse: ' + e.message + ' [' + txt.slice(0,200) + ']'); }
+        if(!results.statsData.ok) throw new Error('stats API not ok');
+      })
+      .catch(function(e){ errors.push('stats: ' + e.message); }),
+
+    fetch('/api/prediction-log?limit=200')
+      .then(function(r){
+        if(!r.ok) throw new Error('entries HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(txt){
+        try { results.entriesData = JSON.parse(txt); }
+        catch(e){ throw new Error('entries JSON parse: ' + e.message + ' [' + txt.slice(0,200) + ']'); }
+        if(!results.entriesData.ok) throw new Error('entries API not ok');
+      })
+      .catch(function(e){ errors.push('entries: ' + e.message); }),
+
+    fetch('/api/claims/summary')
+      .then(function(r){
+        if(!r.ok) throw new Error('claims HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(txt){
+        try { results.claimsData = JSON.parse(txt); }
+        catch(e){ throw new Error('claims JSON parse: ' + e.message + ' [' + txt.slice(0,200) + ']'); }
+      })
+      .catch(function(e){ errors.push('claims: ' + e.message); }),
+  ]).then(function(){
+    if(errors.length > 0){
+      summary.innerHTML = '<span style="color:#EF4444;">加载失败: ' + errors.join(' | ') + '</span>';
+      return;
+    }
+    if(!results.statsData || !results.entriesData){
       summary.innerHTML = '<span style="color:#c33;">加载失败</span>';
       return;
     }
+    var statsData = results.statsData;
+    var entriesData = results.entriesData;
+    var claimsData = results.claimsData || {ok: false};
 
     const stats = statsData.stats;
     let statsHtml = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">';
@@ -122,10 +163,8 @@ export function refreshReviewPanel() {
     } else {
       canvas.style.display = 'none';
     }
-  }).catch(() => {
-    summary.innerHTML = '<span style="color:#c33;">加载失败，请确认服务器已运行</span>';
   });
-}
+}  // end refreshReviewPanel
 
 
 // ── 回测执行 ──

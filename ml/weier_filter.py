@@ -294,6 +294,9 @@ def _step123_filter(valid_reds, n_combos, data):
             filtered.extend(reds)
 
     n = len(filtered) // 6
+    # 冲突保护: 如窄化后为0, 回退到全选 (原书逻辑: 选号空间非空)
+    if n == 0:
+        return list(valid_reds), n_combos, {**report, "conflict_fallback": f"step1-3 窄化冲突,回退全选({n_combos})"}
     return filtered, n, report
 
 
@@ -473,15 +476,15 @@ def _step78_filter(pool, n, value_fn, data):
     new_n = len(result) // 6
 
     # 冲突保护: 如窄化后为0, 回退到全选 (原书逻辑: 后步不与前步冲突)
-    if new_n == 0 and len(allowed) < 27:
-        result2 = []
+    if new_n == 0:
+        # Rebuild original pool from input
+        orig_result = []
         for idx in range(n):
             base = idx * 6
-            reds = tuple(pool[base:base + 6])
-            result2.extend(reds)
-        new_n = len(result2) // 6
+            orig_result.extend(pool[base:base + 6])
+        new_n = len(orig_result) // 6
         report['conflict_fallback'] = f'窄化冲突,回退全选({n}→{new_n})'
-        return result2, new_n, report
+        return orig_result, new_n, report
 
     return result, new_n, report
 
@@ -511,11 +514,11 @@ def _ensure_pool(data):
     """Ensure valid_reds is built, return (valid_reds, n_combos) or None."""
     import ml.micro_portfolio as mp
     try:
-        if mp._valid_reds is None or len(data) != mp._past_count:
+        if mp._state.valid_reds is None or len(data) != mp._state.past_count:
             mp._build_pool()
     except Exception:
         mp._build_pool()
-    valid_reds = mp._valid_reds
+    valid_reds = mp._state.valid_reds
     if valid_reds is None or len(valid_reds) < 6:
         return None
     return valid_reds, len(valid_reds) // 6

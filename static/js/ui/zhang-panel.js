@@ -25,110 +25,110 @@ window._showZhangPanel = function(){
     // ═══ 定胆区 (Ch5, 独立于选号方法) ═══
     h += '<div style="margin-bottom:12px;padding:8px 10px;background:rgba(168,85,247,0.06);border-radius:6px;">';
     h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">';
-    h += '<span style="font-size:12px;color:#A78BFA;font-weight:600;">🎯 定胆 (Ch5):</span>';
-    h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
+    h += '<span style="font-size:15px;color:#A78BFA;font-weight:600;">🎯 定胆 (Ch5):</span>';
+    h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
     h += '<input type="checkbox" id="zhangUseDan1" onchange="window._zhangUpdateBtn()">';
     h += '<span>一四定胆法(1码,21.57%)</span></label>';
-    h += '<label style="font-size:11px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
+    h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
     h += '<input type="checkbox" id="zhangUseDan2" onchange="window._zhangUpdateBtn()">';
     h += '<span>定2胆最优法(2码,~4.3%)</span></label>';
-    h += '<span id="zhangDanDetail" style="font-size:10px;color:#64748B;">加载中...</span>';
+    h += '<span id="zhangDanDetail" style="font-size:16px;color:#64748B;">加载中...</span>';
     h += '</div></div>';
 
     // ═══ 选号方法 + 出号按钮 (Ch7, Ch8) ═══
     h += '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">';
-    h += '<span style="font-size:12px;color:#94A3B8;font-weight:600;">选号方法:</span>';
+    h += '<span style="font-size:15px;color:#94A3B8;font-weight:600;">选号方法:</span>';
 
-    h += '<label style="font-size:12px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
+    h += '<label style="font-size:15px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
     h += '<input type="checkbox" id="zhangUse12" checked onchange="window._zhangUpdateBtn()">';
     h += '<span>🎯围号选号(Ch7)</span></label>';
 
-    h += '<label style="font-size:12px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
+    h += '<label style="font-size:15px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
     h += '<input type="checkbox" id="zhangUseGrid" onchange="window._zhangUpdateBtn()">';
     h += '<span>🔲行列网格(Ch7)</span></label>';
 
-    h += '<label style="font-size:12px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
+    h += '<label style="font-size:15px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
     h += '<input type="checkbox" id="zhangUse8" onchange="window._zhangUpdateBtn()">';
     h += '<span>🎱后区围号(Ch8)</span></label>';
 
-    h += '<button class="btn btn-draw" id="zhangDrawBtn" onclick="window._zhangDraw()" style="font-size:12px;padding:6px 16px;">张委铭出号</button>';
-    h += '<span id="zhangStatus" style="font-size:11px;color:#94A3B8;"></span>';
+    h += '<button class="btn btn-draw" id="zhangDrawBtn" onclick="window._zhangDraw()" style="font-size:15px;padding:6px 16px;">张委铭出号</button>';
+    h += '<span id="zhangStatus" style="font-size:14px;color:#94A3B8;"></span>';
     h += '</div>';
 
     h += '<div id="zhangResult"></div>';
 
     // ═══ 围号红球 候选明细 ═══
     h += '<div style="margin-bottom:16px;">';
-    h += '<h5 style="color:#A78BFA;font-size:13px;margin:0 0 8px 0;">🎯 围号红球 · 18种杀号→候选</h5>';
+    h += '<h5 style="color:#A78BFA;font-size:16px;margin:0 0 8px 0;">🎯 围号红球 · 18种杀号→候选</h5>';
     if(tv && tv.ok){
-      h += '<div style="font-size:11px;color:#94A3B8;margin-bottom:4px;">';
+      h += '<div style="font-size:14px;color:#94A3B8;margin-bottom:4px;">';
       h += '候选池('+tv.candidate_count+'个): ';
       (tv.candidates||[]).forEach(function(n){
         h += '<span style="display:inline-block;padding:2px 6px;margin:1px;border-radius:4px;background:rgba(168,85,247,0.2);color:#A78BFA;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
       });
       h += '</div>';
       if(tv.first8){
-        h += '<div style="font-size:10px;color:#10B981;margin-bottom:2px;">前8(P1-P2): '+tv.first8.map(function(n){return String(n).padStart(2,'0')}).join(' ')+'</div>';
+        h += '<div style="font-size:16px;color:#10B981;margin-bottom:2px;">前8(P1-P2): '+tv.first8.map(function(n){return String(n).padStart(2,'0')}).join(' ')+'</div>';
       }
-      h += '<div style="font-size:9px;color:#64748B;">位置策略: P1-2→前8 | P3-4→池+邻±1 | P5→避池 | P6→30-33</div>';
-      h += '<details style="margin-top:4px;"><summary style="font-size:10px;color:#64748B;cursor:pointer;">18种方法明细</summary>';
-      h += '<table class="bt-table" style="font-size:10px;margin-top:4px;"><thead><tr><th>方法</th><th>杀号</th></tr></thead><tbody>';
+      h += '<div style="font-size:15px;color:#64748B;">位置策略: P1-2→前8 | P3-4→池+邻±1 | P5→避池 | P6→30-33</div>';
+      h += '<details style="margin-top:4px;"><summary style="font-size:16px;color:#64748B;cursor:pointer;">18种方法明细</summary>';
+      h += '<table class="bt-table" style="font-size:16px;margin-top:4px;"><thead><tr><th>方法</th><th>杀号</th></tr></thead><tbody>';
       Object.keys(tv.method_details||{}).forEach(function(k){
         h += '<tr><td>'+k+'</td><td style="color:#cc4444;">'+String(tv.method_details[k]).padStart(2,'0')+'</td></tr>';
       });
       h += '</tbody></table></details>';
-    } else { h += '<div style="color:#EF4444;font-size:11px;">'+(tv&&tv.msg||'加载失败')+'</div>'; }
+    } else { h += '<div style="color:#EF4444;font-size:14px;">'+(tv&&tv.msg||'加载失败')+'</div>'; }
     h += '</div>';
 
     // ═══ 围号蓝球 候选明细 ═══
     h += '<div style="margin-bottom:16px;">';
-    h += '<h5 style="color:#3B82F6;font-size:13px;margin:0 0 8px 0;">🎱 围号蓝球 · 11种后区杀号→候选</h5>';
+    h += '<h5 style="color:#3B82F6;font-size:16px;margin:0 0 8px 0;">🎱 围号蓝球 · 11种后区杀号→候选</h5>';
     if(ev && ev.ok){
-      h += '<div style="font-size:11px;color:#94A3B8;margin-bottom:4px;">';
+      h += '<div style="font-size:14px;color:#94A3B8;margin-bottom:4px;">';
       h += '候选池('+ev.candidate_count+'个): ';
       (ev.candidates||[]).forEach(function(n){
         h += '<span style="display:inline-block;padding:3px 8px;margin:2px;border-radius:6px;background:rgba(59,130,246,0.2);color:#3B82F6;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
       });
       h += '</div>';
-      h += '<div style="font-size:10px;color:#FBBF24;margin-bottom:2px;">';
+      h += '<div style="font-size:16px;color:#FBBF24;margin-bottom:2px;">';
       h += (ev.use_recommendation||'') + ' | 连续出错: '+ev.consecutive_errors+'次</div>';
-      h += '<div style="font-size:9px;color:#64748B;">出错规律: 1次→52%正 | 2→23% | 3→13% | 4→6.4% | 5+→5.4%</div>';
-      h += '<details style="margin-top:4px;"><summary style="font-size:10px;color:#64748B;cursor:pointer;">11种方法明细</summary>';
-      h += '<table class="bt-table" style="font-size:10px;margin-top:4px;"><thead><tr><th>方法</th><th>杀号</th></tr></thead><tbody>';
+      h += '<div style="font-size:15px;color:#64748B;">出错规律: 1次→52%正 | 2→23% | 3→13% | 4→6.4% | 5+→5.4%</div>';
+      h += '<details style="margin-top:4px;"><summary style="font-size:16px;color:#64748B;cursor:pointer;">11种方法明细</summary>';
+      h += '<table class="bt-table" style="font-size:16px;margin-top:4px;"><thead><tr><th>方法</th><th>杀号</th></tr></thead><tbody>';
       Object.keys(ev.method_details||{}).forEach(function(k){
         h += '<tr><td>'+k+'</td><td style="color:#3366cc;">'+String(ev.method_details[k]).padStart(2,'0')+'</td></tr>';
       });
       h += '</tbody></table></details>';
-    } else { h += '<div style="color:#EF4444;font-size:11px;">'+(ev&&ev.msg||'加载失败')+'</div>'; }
+    } else { h += '<div style="color:#EF4444;font-size:14px;">'+(ev&&ev.msg||'加载失败')+'</div>'; }
     h += '</div>';
 
     // ═══ 行列网格 候选明细 ═══
     h += '<div style="margin-bottom:16px;">';
-    h += '<h5 style="color:#F59E0B;font-size:13px;margin:0 0 8px 0;">🔲 行列网格 · 3×11自动断区</h5>';
+    h += '<h5 style="color:#F59E0B;font-size:16px;margin:0 0 8px 0;">🔲 行列网格 · 3×11自动断区</h5>';
     if(gd && gd.ok && gd.grid){
       var g = gd.grid;
-      h += '<div style="font-size:11px;color:#F59E0B;margin-bottom:4px;"><b>'+g.mode_desc+'</b></div>';
+      h += '<div style="font-size:14px;color:#F59E0B;margin-bottom:4px;"><b>'+g.mode_desc+'</b></div>';
       var br = (g.break_rows||[]).join(',') || '无';
       var bc = (g.break_cols||[]).join(',') || '无';
-      h += '<div style="font-size:10px;color:#94A3B8;margin-bottom:2px;">断行: ['+br+'] | 断列: ['+bc+']</div>';
-      h += '<div style="font-size:11px;margin-bottom:4px;">剩余'+g.remaining_count+'个: ';
+      h += '<div style="font-size:16px;color:#94A3B8;margin-bottom:2px;">断行: ['+br+'] | 断列: ['+bc+']</div>';
+      h += '<div style="font-size:14px;margin-bottom:4px;">剩余'+g.remaining_count+'个: ';
       (g.remaining_numbers||[]).forEach(function(n){
         h += '<span style="display:inline-block;padding:2px 6px;margin:1px;border-radius:4px;background:rgba(245,158,11,0.2);color:#F59E0B;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
       });
       h += '</div>';
-      h += '<div style="font-size:9px;color:#64748B;">行规则: 本期断→下期93%不断 | 列连续断1-2次→继续断 | ≥3次→停止</div>';
+      h += '<div style="font-size:15px;color:#64748B;">行规则: 本期断→下期93%不断 | 列连续断1-2次→继续断 | ≥3次→停止</div>';
       h += '<div style="font-size:8px;color:#64748B;">参考: 0r6c·15号·41% | 0r5c·18号·22% | 0r7c·12号·16% | 1r6c·10号·9.5% | 1r7c·8号·2.5% (原书表7-35)</div>';
-    } else { h += '<div style="color:#EF4444;font-size:11px;">'+(gd&&gd.msg||'加载失败')+'</div>'; }
+    } else { h += '<div style="color:#EF4444;font-size:14px;">'+(gd&&gd.msg||'加载失败')+'</div>'; }
     h += '</div>';
 
     // ═══ 数据手册 (可点击展开) ═══
     h += '<div style="margin-top:16px;">';
-    h += '<h5 style="color:#94A3B8;font-size:13px;margin:0 0 8px 0;">📖 数据手册 (原书统计表, 点击展开)</h5>';
-    h += '<div id="zhangRefContent" style="font-size:10px;color:#64748B;">加载中...</div>';
+    h += '<h5 style="color:#94A3B8;font-size:16px;margin:0 0 8px 0;">📖 数据手册 (原书统计表, 点击展开)</h5>';
+    h += '<div id="zhangRefContent" style="font-size:16px;color:#64748B;">加载中...</div>';
     h += '</div>';
 
     // ═══ 统计来源 ═══
-    h += '<div style="font-size:9px;color:#64748B;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">';
+    h += '<div style="font-size:15px;color:#64748B;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">';
     h += '📊 张委铭《双色球杀号定胆选号方法与技巧超级大全》经济管理出版社 2015 | 统计周期: 2003001-2015023 共1768期 | 全量枚举';
     h += '</div>';
 
@@ -170,8 +170,8 @@ window._showZhangPanel = function(){
 
     // 位置差值表
     if(ref.position_differences){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#A78BFA;font-size:11px;">📐 '+ref.position_differences._title+'</summary>';
-      h += '<div style="font-size:9px;color:#64748B;margin:4px 0 8px;">'+ref.position_differences._usage+'</div>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#A78BFA;font-size:14px;">📐 '+ref.position_differences._title+'</summary>';
+      h += '<div style="font-size:15px;color:#64748B;margin:4px 0 8px;">'+ref.position_differences._usage+'</div>';
       var diffs = ref.position_differences;
       ['p5_minus_p3','p6_minus_p3','p5_minus_p4','p6_minus_p4','p6_minus_p5'].forEach(function(key){
         var d = diffs[key];
@@ -194,9 +194,9 @@ window._showZhangPanel = function(){
 
     // 连号统计
     if(ref.consecutive_patterns){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#F59E0B;font-size:11px;">🔗 '+ref.consecutive_patterns._title+'</summary>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#F59E0B;font-size:14px;">🔗 '+ref.consecutive_patterns._title+'</summary>';
       var cp = ref.consecutive_patterns;
-      h += '<div style="font-size:10px;color:#94A3B8;margin-top:4px;">';
+      h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;">';
       h += '连号组数: 1组51.9% | 0组34.3% | 2组13.5% | 3组0.3%<br>';
       h += '两连号: 平均1.45期/次(1218次) | 三连号: 9.71期/次(169次)<br>';
       h += '最频: 56型(第5-6位连号) > 12型(第1-2位)<br>';
@@ -206,8 +206,8 @@ window._showZhangPanel = function(){
 
     // 定2胆
     if(ref.dan2_top_pairs){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#3B82F6;font-size:11px;">✌ '+ref.dan2_top_pairs._title+'</summary>';
-      h += '<div style="font-size:9px;color:#64748B;margin:4px 0;">'+ref.dan2_top_pairs._usage+'</div>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#3B82F6;font-size:14px;">✌ '+ref.dan2_top_pairs._title+'</summary>';
+      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.dan2_top_pairs._usage+'</div>';
       h += '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:200px;overflow-y:auto;">';
       ref.dan2_top_pairs.pairs.forEach(function(p, i){
         var bg = i<15 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)';
@@ -217,17 +217,17 @@ window._showZhangPanel = function(){
       });
       h += '</div>';
       var cold = ref.dan2_top_pairs.coldest_pairs;
-      if(cold) h += '<div style="font-size:9px;color:#EF4444;margin-top:4px;">最冷: '+cold.map(function(p){return p.combo.join('+')+'('+p.count+'次)';}).join(', ')+'</div>';
+      if(cold) h += '<div style="font-size:15px;color:#EF4444;margin-top:4px;">最冷: '+cold.map(function(p){return p.combo.join('+')+'('+p.count+'次)';}).join(', ')+'</div>';
       h += '</details>';
     }
 
     // 定3胆
     if(ref.dan3_top_triples){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#8B5CF6;font-size:11px;">🤟 '+ref.dan3_top_triples._title+'</summary>';
-      h += '<div style="font-size:9px;color:#64748B;margin:4px 0;">'+ref.dan3_top_triples._usage+'</div>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#8B5CF6;font-size:14px;">🤟 '+ref.dan3_top_triples._title+'</summary>';
+      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.dan3_top_triples._usage+'</div>';
       h += '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow-y:auto;">';
       ref.dan3_top_triples.triples.forEach(function(p, i){
-        h += '<span style="padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.1);color:#94A3B8;white-space:nowrap;font-size:9px;">';
+        h += '<span style="padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.1);color:#94A3B8;white-space:nowrap;font-size:15px;">';
         h += ''+p.combo.map(function(n){return String(n).padStart(2,'0')}).join('+');
         h += ' ('+p.count+')</span>';
       });
@@ -236,8 +236,8 @@ window._showZhangPanel = function(){
 
     // 伴生现象
     if(ref.cooccurrence){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#EC4899;font-size:11px;">💞 '+ref.cooccurrence._title+'</summary>';
-      h += '<div style="font-size:9px;color:#64748B;margin:4px 0;">'+ref.cooccurrence._usage+'<br>'+ref.cooccurrence._note+'</div>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#EC4899;font-size:14px;">💞 '+ref.cooccurrence._title+'</summary>';
+      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.cooccurrence._usage+'<br>'+ref.cooccurrence._note+'</div>';
       var nums = ['01','02','03','04','05','06'];
       nums.forEach(function(n){
         var data = ref.cooccurrence[n];
@@ -254,9 +254,9 @@ window._showZhangPanel = function(){
 
     // 重号统计
     if(ref.repeat_stats){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#10B981;font-size:11px;">🔄 '+ref.repeat_stats._title+'</summary>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#10B981;font-size:14px;">🔄 '+ref.repeat_stats._title+'</summary>';
       var rs = ref.repeat_stats;
-      h += '<div style="font-size:10px;color:#94A3B8;margin-top:4px;">';
+      h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;">';
       h += '重号个数: 1个43.2% | 0个27.9% | 2个23.8% | 3个4.6% | 4+个<0.6%<br>';
       h += '重号位置: 第1位18.7% | 第2位18.3% | 第3位17.9% | 第4位17.5% | 第5位17.3% | 第6位17.0%<br>';
       h += '<span style="color:#FBBF24;">'+rs.advice+'</span>';
@@ -265,9 +265,9 @@ window._showZhangPanel = function(){
 
     // 蓝球基本统计
     if(ref.blue_basic_stats){
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#06B6D4;font-size:11px;">🔵 '+ref.blue_basic_stats._title+'</summary>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#06B6D4;font-size:14px;">🔵 '+ref.blue_basic_stats._title+'</summary>';
       var bs = ref.blue_basic_stats;
-      h += '<div style="font-size:10px;color:#94A3B8;margin-top:4px;">';
+      h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;">';
       h += '奇偶: 奇51.1% | 偶48.9% → '+bs.odd_even.advice+'<br>';
       h += '大小: 大52.4% | 小47.6% → '+bs.big_small.advice+'<br>';
       h += '重号: 出现7.1%, 连出2次后→'+bs.repeat.advice+'<br>';
@@ -277,8 +277,8 @@ window._showZhangPanel = function(){
     // Ch6 技术指标 (2017版)
     if(ref.ch6_technical_indicators_2017){
       var ch6 = ref.ch6_technical_indicators_2017;
-      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#F59E0B;font-size:11px;">📊 '+ch6._title+'</summary>';
-      h += '<div style="font-size:9px;color:#64748B;margin:4px 0;">'+ch6._usage+'</div>';
+      h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#F59E0B;font-size:14px;">📊 '+ch6._title+'</summary>';
+      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ch6._usage+'</div>';
 
       // 重号
       if(ch6.repeat){
@@ -408,19 +408,19 @@ window._zhangDraw = function(){
       if(st) st.textContent = d.tickets.length+'注 · ¥'+(d.tickets.length*2);
 
       var rh = '<div style="margin-top:12px;">';
-      rh += '<div style="font-size:10px;color:#94A3B8;margin-bottom:8px;">算法: '+d.algorithm;
+      rh += '<div style="font-size:16px;color:#94A3B8;margin-bottom:8px;">算法: '+d.algorithm;
       if(dans.length){
         rh += ' <span style="color:#A78BFA;">🔒胆码:'+dans.join(',')+'</span>';
       }
       rh += '</div>';
       if(d.weihao){
-        rh += '<div style="font-size:10px;color:#A78BFA;">围号候选('+d.weihao.candidate_count+'个): '+(d.weihao.candidates||[]).slice(0,12).join(' ')+'</div>';
+        rh += '<div style="font-size:16px;color:#A78BFA;">围号候选('+d.weihao.candidate_count+'个): '+(d.weihao.candidates||[]).slice(0,12).join(' ')+'</div>';
       }
       if(d.weihao_blue){
-        rh += '<div style="font-size:10px;color:#3B82F6;">蓝围候选('+d.weihao_blue.candidate_count+'个): '+(d.weihao_blue.candidates||[]).join(' ')+' | '+d.weihao_blue.use_recommendation+'</div>';
+        rh += '<div style="font-size:16px;color:#3B82F6;">蓝围候选('+d.weihao_blue.candidate_count+'个): '+(d.weihao_blue.candidates||[]).join(' ')+' | '+d.weihao_blue.use_recommendation+'</div>';
       }
       if(d.grid){
-        rh += '<div style="font-size:10px;color:#F59E0B;">'+d.grid.mode_desc+' | 剩余'+d.grid.remaining_count+'号</div>';
+        rh += '<div style="font-size:16px;color:#F59E0B;">'+d.grid.mode_desc+' | 剩余'+d.grid.remaining_count+'号</div>';
       }
       rh += '<table class="bt-table" style="margin-top:6px;"><thead><tr><th>#</th><th>红球</th><th>蓝球</th></tr></thead><tbody>';
       d.tickets.forEach(function(t,i){

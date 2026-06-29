@@ -10,6 +10,12 @@ export function togglePanel(name) {
     panel.classList.remove('show');
     if (btn) btn.classList.remove('active');
   } else {
+    // If panel was moved into traditionalContent by switchTraditionalPanel,
+    // restore it to its original location so main-nav toggles work naturally.
+    var tradContent = document.getElementById('traditionalContent');
+    if (tradContent && panel.parentElement === tradContent && panel._originalParent) {
+      panel._originalParent.appendChild(panel);
+    }
     panel.classList.add('show');
     if (btn) btn.classList.add('active');
     panel.dispatchEvent(new CustomEvent('panel-shown'));
@@ -160,4 +166,14 @@ export function saveCurrentDraw() {
     toggleOfficialHistory();
   }
   setTimeout(() => { if (msg) msg.textContent = ''; }, 5000);
+  if (window.fetchMonitor) { window.fetchMonitor(); }
+}
+
+export function toggleTraditionalFilters() {
+  var wrap = document.getElementById('tradFiltersWrap');
+  var btn = document.getElementById('tradFiltersToggle');
+  if (!wrap || !btn) return;
+  var visible = wrap.style.display !== 'none';
+  wrap.style.display = visible ? 'none' : 'flex';
+  btn.textContent = visible ? '▸ 辅助过滤' : '▾ 辅助过滤';
 }

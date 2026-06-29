@@ -374,14 +374,16 @@ def dashboard(history: List[List[int]], pool_size: int = 33) -> Dict:
     for num in range(1, pool_size + 1):
         intervals = extract_intervals(history, num)
         if len(intervals) >= 3:
-            gap = detect_sandi(intervals) or detect_shuangdi(intervals)
+            gap = detect_sandi(intervals)
+            if gap is None:
+                gap = detect_shuangdi(intervals)
         elif len(intervals) >= 2:
             gap = detect_shuangdi(intervals)
         else:
             gap = None
         if gap is not None:
             bottom_preds.append({"num": num, "predicted_gap": gap,
-                                 "type": "三底" if (len(intervals) >= 3 and detect_sandi(intervals)) else "双底"})
+                                 "type": "三底" if (len(intervals) >= 3 and detect_sandi(intervals) is not None) else "双底"})
 
     # ── 散度/偏度趋势 ──
     if len(history) >= 1:

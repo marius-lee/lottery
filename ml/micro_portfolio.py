@@ -31,39 +31,6 @@ from ml.shared.ac_value import compute_ac_value     # [李相春2003, 刘大军2
 from dataclasses import dataclass, field
 
 
-@dataclass
-class FilterConfig:
-    """红球过滤配置 — 消除 handler→bridge→generate_tickets 三层25参数平铺.
-    
-    所有字段默认 False, 由 handler 层从查询参数构建.
-    """
-    color_filter: bool = False
-    block9_filter: bool = False
-    spread_filter: bool = False
-    ac_filter: bool = False
-    peng_channel_filter: bool = False
-    gap_filter: bool = False
-    omission_filter: bool = False
-    coincidence_filter: bool = False
-    wuming_clockwise: bool = False
-    wuming_bsd: bool = False
-    
-    def as_kwargs(self) -> dict:
-        """展开为 generate_tickets 兼容的关键字参数字典."""
-        return {
-            'color_filter': self.color_filter,
-            'block9_filter': self.block9_filter,
-            'spread_filter': self.spread_filter,
-            'ac_filter': self.ac_filter,
-            'peng_channel_filter': self.peng_channel_filter,
-            'gap_filter': self.gap_filter,
-            'omission_filter': self.omission_filter,
-            'coincidence_filter': self.coincidence_filter,
-            'wuming_clockwise': self.wuming_clockwise,
-            'wuming_bsd': self.wuming_bsd,
-        }
-
-
 # ── 吴明/夏志强策略已提取至独立模块 (ml/wuming.py, ml/xia_zhiqiang.py), 此处保留别名 ──
 from ml.wuming import (BLUE_CLOCKWISE, BLUE_BSD_TAIL, POSITION_VALUABLE,
     wuming_cyclic_oscillation as _wuming_cyclic_oscillation,
@@ -147,26 +114,6 @@ BLOCK_9 = [
     {15,16,17,21,22,23,27,28,29}, {16,17,18,22,23,24,28,29,30},
     {19,20,21,25,26,27,31,32,33},
 ]
-
-def _block9_kill(data):
-    """方块9重复杀号法 [吴长坤 2010 Ch6 §1].
-
-    上期空方块下期继续杀（空方块持续≤3期）.
-    返回被杀的号码集合.
-    """
-    if len(data) < 2:
-        return set()
-
-    last_reds = set(data[-1][1:7])
-    prev_reds = set(data[-2][1:7])
-
-    killed = set()
-    for block in BLOCK_9:
-        # 上期该方块为空 → 本期继续杀
-        if not (last_reds & block):
-            killed.update(block)
-
-    return killed
 
 
 # ── 运气规则参数 ──
@@ -329,32 +276,19 @@ def _blue_freq_weights():
 # 蓝球候选集 (独立投票: weight>=0.5→推荐, 交集)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _w2c(weights, threshold=0.5):
-    return {i + 1 for i, w in enumerate(weights) if w >= threshold}
+def _freq_blue_candidates(n=6):
+    """Laplace频率 top-N 蓝球 — 替代7种作者方法的诚实机制.
 
-def _five_period_candidates():
-    return _w2c(_five_period_boost(), 0.5)
-
-def _pattern_blue_candidates():
-    return _w2c(_pattern_blue_boost(), 0.3)
-
-def _liu_dajun_candidates():
-    return _w2c(_liu_dajun_blue(), 0.5)
-
-def _cailele_candidates():
-    return _w2c(_cailele_blue(), 0.5)
-
-def _gongyi_candidates():
-    return _w2c(_gongyi_blue(), 0.5)
-
-def _wuming_candidates():
-    return _w2c(_wuming_blue(), 0.5)
-
-def _wuming_clockwise_candidates():
-    return _w2c(_wuming_clockwise_weights(), 0.5)
-
-def _wuming_bsd_candidates():
-    return _w2c(_wuming_bsd_tail_weights(), 0.5)
+    不预测。仅取历史累计出现频率最高的N个蓝球（Laplace平滑），
+    缩小蓝球池 16→N。N=6时基线命中率≈37.5%(=6/16)。
+    """
+    from server.db import load_draws
+    data = load_draws()
+    counts = [1.0] * 16  # Laplace 平滑: 所有号码先验+1
+    for row in data:
+        counts[row[7] - 1] += 1.0
+    ranked = sorted(range(16), key=lambda i: counts[i], reverse=True)
+    return set(i + 1 for i in ranked[:n])
 
 
 def _five_period_boost():
@@ -856,34 +790,13 @@ def _generate_luck_tickets(n=3, max_overlap=None, five_period=False, pattern_rul
 
 def _generate_author_tickets(n=3, author_mode='zhang', soft=False, luck_mode='off',
                               max_overlap=None, five_period=False, pattern_rules=False,
-                              liu_blue=False, cailele_blue=False, gongyi_blue=False,
-                              wuming_blue=False, filter_config=None,
-                              **filter_kwargs):
+                              use_freq_blue=False):
     """委托特定作者生成红球, 蓝球+出票逻辑复用本模块."""
     from server.db import load_draws
     data = load_draws()
 
-    # 蓝球准备 (同主路径)
-    blue_candidates = set(range(1, 17))
-    blue_methods_active = []
-    if liu_blue:
-        blue_methods_active.append(("刘大军", _liu_dajun_candidates))
-    if cailele_blue:
-        blue_methods_active.append(("彩乐乐", _cailele_candidates))
-    if gongyi_blue:
-        blue_methods_active.append(("公益时报", _gongyi_candidates))
-    if wuming_blue:
-        blue_methods_active.append(("吴明", _wuming_candidates))
-    if blue_methods_active:
-        inter = set(range(1, 17))
-        union = set()
-        for _, fn in blue_methods_active:
-            cands = fn()
-            if cands:
-                inter &= cands
-                union |= cands
-        blue_candidates = inter if inter else union
-
+    # 蓝球准备: use_freq_blue → Laplace频率top-6窄池
+    blue_candidates = _freq_blue_candidates(n=6) if use_freq_blue else set(range(1, 17))
     blue_weights = _blue_freq_weights()
     if blue_candidates and len(blue_candidates) < 16:
         w = 1.0 / len(blue_candidates)
@@ -893,6 +806,9 @@ def _generate_author_tickets(n=3, author_mode='zhang', soft=False, luck_mode='of
     if five_period:
         fpb = _five_period_boost()
         blue_weights = [blue_weights[i] * fpb[i] for i in range(16)]
+    if pattern_rules:
+        ppb = _pattern_blue_boost()
+        blue_weights = [blue_weights[i] * ppb[i] for i in range(16)]
 
     # 调用作者模块生成红球
     author_tickets = []
@@ -955,31 +871,15 @@ def _generate_author_tickets(n=3, author_mode='zhang', soft=False, luck_mode='of
         "luck_mode": luck_mode,
         "luck_window": LUCK_WINDOW if luck_mode != 'off' else None,
         "rule_status": _state.rule_status,
+        "blue_method": blue_method_label,
+        "nist_biased": nist_biased,
         "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n, 2),
                         "cost_per_draw": n * TICKET_PRICE},
     }
 
 
-def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period=False, pattern_rules=False,
-                                filter_config: 'FilterConfig | None' = None,
-                                block9_killed=None, peng_channels=None,
-                                omission_ratios=None,
-                                color_filter=False, block9_filter=False,
-                                spread_filter=False, ac_filter=False,
-                                peng_channel_filter=False,
-                                gap_filter=False, omission_filter=False,
-                                coincidence_filter=False):
-    """随机生成+过滤: 不经池, 直接random.sample+排序+过过滤. 秒级响应."""
-    if filter_config is not None:
-        fk = filter_config.as_kwargs()
-        color_filter = fk['color_filter']
-        block9_filter = fk['block9_filter']
-        spread_filter = fk['spread_filter']
-        ac_filter = fk['ac_filter']
-        peng_channel_filter = fk['peng_channel_filter']
-        gap_filter = fk['gap_filter']
-        omission_filter = fk['omission_filter']
-        coincidence_filter = fk['coincidence_filter']
+def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period=False, pattern_rules=False):
+    """随机生成: 不经池, 直接random.sample+排序+去重. 秒级响应."""
     blue_weights = _blue_freq_weights()
     if five_period:
         fpb = _five_period_boost()
@@ -994,26 +894,13 @@ def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period
         _, blue_luck = _compute_luck_position_weights()
         blue_weights = _luck_blended_blue_weights(blue_weights, blue_luck)
 
-    # 预加载通道/遗漏比 (与主路径共享)
-    if peng_channel_filter and peng_channels is None:
-        from server.db import load_draws
-        peng_channels = _get_peng_channels(load_draws())
-    if omission_filter and omission_ratios is None:
-        from server.db import load_draws
-        omission_ratios = _get_omission_ratios(load_draws())
-
     tickets = []
     used_reds = set()
     for _ in range(n):
         for _ in range(500):  # [工程] 重试上限: 防止无限循环
             c = tuple(sorted(random.sample(range(1, 34), 6)))
             ticket = _try_one_ticket(c, used_reds, tickets, blue_weights,
-                max_overlap=max_overlap, color_filter=color_filter,
-                block9_filter=block9_filter, block9_killed=block9_killed,
-                spread_filter=spread_filter, ac_filter=ac_filter,
-                peng_channel_filter=peng_channel_filter, peng_channels=peng_channels,
-                gap_filter=gap_filter, omission_filter=omission_filter,
-                omission_ratios=omission_ratios, coincidence_filter=coincidence_filter)
+                max_overlap=max_overlap)
             if ticket:
                 tickets.append(ticket)
                 break
@@ -1047,16 +934,34 @@ def _jaccard_distance(a, b):
     return 1.0 - inter / (12.0 - inter)
 
 
-def _build_candidate_pool(pool_size, valid_reds, n_combos, exclude, used_reds, rng=random):
-    """从_state.valid_reds随机采样pool_size个候选组合.
-    返回 [(idx, reds_tuple), ...], 排除已过滤和已使用的组合."""
+def _build_candidate_pool(pool_size, valid_reds, n_combos, exclude, used_reds, rng=random, entropy_w=None, mi_clusters=None):
+    """从_state.valid_reds采样pool_size个候选组合.
+
+    若提供 entropy_w (1-indexed 权重list), 用 best-of-20 加权采样;
+    若提供 mi_clusters, 叠加MI多样性惩罚; 否则均匀随机. 返回 [(idx, reds_tuple), ...]."""
     candidates = []
     seen = set()
     attempts = 0
     # [工程] 最大尝试次数: pool_size×10保底, 5000是硬上限(防止大池子时无限循环)
     max_attempts = max(pool_size * 10, 5000)
     while len(candidates) < pool_size and attempts < max_attempts:
-        idx = rng.randrange(n_combos)
+        if entropy_w and n_combos >= 20:
+            # 条件熵+NIST+MI加权: 随机取20个, 选综合权重最高的
+            raw = random.sample(range(n_combos), 20)
+            def _cand_score(i):
+                reds = valid_reds[i*6:i*6+6]
+                base = sum(entropy_w[n] for n in reds)
+                if mi_clusters:
+                    cc = {}
+                    for n in reds:
+                        for cid, members in mi_clusters.items():
+                            if n in members:
+                                cc[cid] = cc.get(cid, 0) + 1
+                    base -= sum(max(0, c - 2) * 0.15 for c in cc.values())
+                return base
+            idx = max(raw, key=_cand_score)
+        else:
+            idx = rng.randrange(n_combos)
         if idx in seen:
             attempts += 1; continue
         seen.add(idx)
@@ -1072,7 +977,8 @@ def _build_candidate_pool(pool_size, valid_reds, n_combos, exclude, used_reds, r
 def _greedy_diverse_tickets(n, valid_reds, n_combos, exclude=None,
                              pool_size=1000,  # [工程] 随机采样池大小: C(33,6)=1.1M中取1000做多样性优化
                              blue_weights=None,
-                             used_blues=None, rng=random):
+                             used_blues=None, rng=random, entropy_w=None,
+                             mi_clusters=None):
     """贪心最大化最小Jaccard距离选注.
     返回 (tickets, used_idx, used_reds, used_blues), 不足时返回None."""
     if exclude is None:
@@ -1083,7 +989,7 @@ def _greedy_diverse_tickets(n, valid_reds, n_combos, exclude=None,
         used_blues = set()
 
     candidates = _build_candidate_pool(pool_size, valid_reds, n_combos,
-                                       exclude, set(), rng)
+                                       exclude, set(), rng, entropy_w, mi_clusters)
     if len(candidates) < n:
         return None
 
@@ -1150,65 +1056,9 @@ def _backtest_rank_tickets(n, valid_reds, n_combos, min_hits=3):
         result.append((idx, tuple(valid_reds[base:base + 6]), hits))
     return result
 
-
-def _get_peng_channels(data):
-    """计算6个红球位置的彭浩通道范围 [彭浩 2010 Ch5 §3].
-
-    使用MA9+MA18双通道交集, 返回 [(lower, upper), ...] 每位置.
-    结果缓存在模块级, 数据不变时不重新计算.
-    """
-    global _state
-    if _state.peng_channels is not None and _state.peng_channels_data_count == len(data):
-        return _state.peng_channels
-
-    from ml.peng_hao import compute_channel_dual
-    channels = []
-    for pos in range(6):
-        ch = compute_channel_dual(data, pos)
-        lower = max(1, int(ch.get("lower", 1)))
-        upper = min(33, int(ch.get("upper", 33)))
-        channels.append((lower, upper))
-    _state.peng_channels = channels
-    _state.peng_channels_data_count = len(data)
-    return channels
-
-
-def _get_omission_ratios(data):
-    """计算所有红球的遗漏比 [彩天使 2009 p90].
-
-    OR = 当前遗漏期数 / 理论出现周期(RED_PERIOD=5.5)
-    OR > 5 → 极寒带, 应避开 [文献] 原书p108
-    """
-    global _state
-    if _state.omission_ratios is not None and _state.omission_data_count == len(data):
-        return _state.omission_ratios
-
-    # 计算每个号码最近一次出现距今多少期
-    last_seen = {}
-    for i in range(len(data) - 1, -1, -1):
-        for n in data[i][1:7]:
-            if n not in last_seen:
-                last_seen[n] = len(data) - 1 - i
-
-    ratios = {}
-    for n in range(1, 34):
-        gap = last_seen.get(n, len(data))
-        ratios[n] = gap / _RED_PERIOD
-
-    _state.omission_ratios = ratios
-    _state.omission_data_count = len(data)
-    return ratios
-
-
-def _try_one_ticket(reds, used_reds, tickets, blue_weights,
-                     max_overlap=None, **filter_kwargs):
-    """过滤+重叠检查, 通过则返回ticket并更新used_reds, 否则返回None.
-    
-    消除 _generate_fallback_tickets 与主路径重复的过滤逻辑.
-    """
+def _try_one_ticket(reds, used_reds, tickets, blue_weights, max_overlap=None):
+    """重叠检查, 通过则返回ticket并更新used_reds, 否则返回None."""
     if reds in used_reds:
-        return None
-    if not _passes_red_filters(reds, **filter_kwargs):
         return None
     if max_overlap is not None and tickets:
         if any(len(set(reds) & set(t["reds"])) > max_overlap for t in tickets):
@@ -1216,62 +1066,6 @@ def _try_one_ticket(reds, used_reds, tickets, blue_weights,
     used_reds.add(reds)
     return {"reds": list(reds), "blue": _pick_blue(blue_weights)}
 
-
-def _passes_red_filters(reds, color_filter=False, block9_filter=False,
-                         block9_killed=None, spread_filter=False, ac_filter=False,
-                         peng_channel_filter=False, peng_channels=None,
-                         gap_filter=False, omission_filter=False,
-                         omission_ratios=None, coincidence_filter=False):
-    """检查可选红色球过滤规则. 返回 True=通过(保留), False=被过滤(跳过).
-
-    包含: 吴长坤三色分解(Ch4§6), 方块9杀号(Ch6§1), 李相春散度(p55-57), AC值(p60-62),
-          彭浩通道过滤(Ch5§3), 间距分析(2004 p114-119), 遗漏比过滤(2009 p90),
-          刘大军重合码(2010 p21-22).
-    """
-    if color_filter:
-        rs = set(reds)
-        if not (rs & COLOR_RED and rs & COLOR_BLUE and rs & COLOR_GREEN):
-            return False
-    if block9_filter and block9_killed and set(reds) & block9_killed:
-        return False
-    if spread_filter:
-        sp = compute_spread(list(reds), 33)
-        if sp < 3 or sp > 10:
-            return False
-    if ac_filter:
-        if compute_ac_value(list(reds)) < 6:
-            return False
-    # [文献] 李相春2004 p114-119: 间距分析 — 最大间距+平均间距约束
-    # [数据] 近500期校准: avg_gap P5=3.2 P95=6.2 → [4,7]; max_gap P5=5 P95=17
-    if gap_filter:
-        s = sorted(reds)
-        max_gap = max(s[i+1] - s[i] for i in range(5))
-        avg_gap = (s[-1] - s[0]) / 5.0
-        if max_gap < 5 or max_gap > 17:
-            return False
-        if avg_gap < 4 or avg_gap > 7:
-            return False
-
-    # [文献] 刘大军2010 p21-22: 重合码过滤 — 红球尾数需覆盖{1,3,6,8}
-    if coincidence_filter:
-        tails = {n % 10 for n in reds}
-        if not (tails & COINCIDENCE_TAILS):
-            return False
-
-    # [文献] 彩天使2009 p90/p108: 遗漏比过滤 — 排除含极寒号码的组合
-    if omission_filter and omission_ratios:
-        for n in reds:
-            if omission_ratios.get(n, 0) > 5:  # [文献] 原书p108: OR>5=极寒带
-                return False
-
-    # [彭浩 2010 Ch5 §3] 6位置通道过滤: 每红球必须落在对应位置的MA通道内
-    if peng_channel_filter and peng_channels:
-        s = sorted(reds)
-        for pos in range(6):
-            lower, upper = peng_channels[pos]
-            if s[pos] < lower or s[pos] > upper:
-                return False
-    return True
 
 
 # ────────────────────────────────────────────────────────
@@ -1322,78 +1116,55 @@ def _log_prediction(tickets, source="micro_portfolio"):
 
 def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                      diversity_mode=None, five_period=False, backtest_rank=False,
-                     param_filter=False, pattern_rules=False,
-                     liu_blue=False, cailele_blue=False, gongyi_blue=False, wuming_blue=False,
-                     author_mode=None,
-                     filter_config: 'FilterConfig | None' = None,
-                     # ── 以下为向后兼容的独立参数, filter_config 优先 ──
-                     color_filter=False, block9_filter=False,
-                     spread_filter=False, ac_filter=False,
-                     peng_channel_filter=False,
-                     gap_filter=False,
-                     omission_filter=False,
-                     coincidence_filter=False,
-                     wuming_clockwise=False, wuming_bsd=False):
+                     pattern_rules=False, author_mode=None, use_freq_blue=False,
+                     blue_mode="freq", red_mode="pool", strategy_mode=None):
     """生成号码主入口.
 
     Args:
         n: 注数 (1-3)
-        soft: 是否启用软过滤 (位置软过滤)
-        luck_mode:
-          'off'   → 纯池采样
-          'pure'  → 位置加权独立抽号 (「幸运开奖」按钮)
-        max_overlap: 注间最大共享红球数, None=不限制. 0=完全不相交, 2=默认推荐
-        diversity_mode: None=随机采样, 'greedy'=贪心max-min Jaccard
-        five_period: 五期断蓝法加权 (刘大军, 2011)
-        author_mode: 委托特定作者 ('zhang'|'li_zhilin'|'peng'|'jiang_jialin')
+        blue_mode: "freq"(频率Top-6) | "entropy"(条件熵Top-6)
+        red_mode: "pool"(池采样,默认) | "exact_cover"(La Jolla精确覆盖) | "diffset"(差集构造覆盖)
+        strategy_mode: None(手动控制) | "bandit"(Thompson抽样在线学习)
+        diversity_mode: None | "greedy" | "backtest" (仅在 red_mode="pool" 时生效)
 
     Returns:
-        dict with tickets, algorithm, filter info, ev_estimate.
+        dict with tickets, algorithm, ev_estimate.
     """
-    # ── filter_config 优先于独立参数 ──
-    if filter_config is not None:
-        fk = filter_config.as_kwargs()
-        color_filter = fk['color_filter']
-        block9_filter = fk['block9_filter']
-        spread_filter = fk['spread_filter']
-        ac_filter = fk['ac_filter']
-        peng_channel_filter = fk['peng_channel_filter']
-        gap_filter = fk['gap_filter']
-        omission_filter = fk['omission_filter']
-        coincidence_filter = fk['coincidence_filter']
-        wuming_clockwise = fk['wuming_clockwise']
-        wuming_bsd = fk['wuming_bsd']
+    # ── 深度信号收集 (提前: bandit/author也需要) ──
+    global _state
+    from server.db import load_draws
+    from ml.deep_signals import collect_signals
 
-    # ── 作者模式: 委托特定作者生成红球, 蓝球+过滤仍走本模块 ──
+    # ── Bandit 策略: FDR信号偏置arm选择 ──
+    if strategy_mode == "bandit":
+        from ml.bandit_strategy import bandit_select_and_generate
+        data = load_draws()
+        _signals = collect_signals(data, tickets=n)
+        tickets, meta = bandit_select_and_generate(data, n=n, fdr_signals=_signals.get("fdr_valid_methods", []))
+        tickets["bandit_meta"] = meta
+        return tickets
+
+    # ── 作者模式: 委托特定作者生成红球 ──
     if author_mode:
         return _generate_author_tickets(
             n=n, author_mode=author_mode, soft=soft, luck_mode=luck_mode,
             max_overlap=max_overlap, five_period=five_period,
-            pattern_rules=pattern_rules,
-            liu_blue=liu_blue, cailele_blue=cailele_blue,
-            gongyi_blue=gongyi_blue, wuming_blue=wuming_blue,
-            filter_config=filter_config,
-            color_filter=color_filter, block9_filter=block9_filter,
-            spread_filter=spread_filter, ac_filter=ac_filter,
-            peng_channel_filter=peng_channel_filter,
-            gap_filter=gap_filter, omission_filter=omission_filter,
-            coincidence_filter=coincidence_filter,
-            wuming_clockwise=wuming_clockwise, wuming_bsd=wuming_bsd)
+            pattern_rules=pattern_rules, use_freq_blue=use_freq_blue)
 
     # ── pure 模式走独立路径 ──
     if luck_mode == 'pure':
         return _generate_luck_tickets(n=n, max_overlap=max_overlap, five_period=five_period, pattern_rules=pattern_rules)
 
-    # ── off: 池采样 ──
-    global _state
-    from server.db import load_draws
+    # ── 六路深度信号收集 (SPRT/Kelly/FDR/变点/NIST/轮次表) ──
+    _signals = collect_signals(load_draws(), tickets=n)
+    if _signals["sprt_has_signal"]:
+        n = max(n, _signals["kelly_recommended_n"])  # SPRT信号时加大投入
+    nist_biased = _signals["nist_biased"]
 
-    # 吴长坤 2010: 方块9杀号 — 上期空方块本期继续杀
-    block9_killed = _block9_kill(load_draws()) if block9_filter else set()
-
-    # [工程] 只在贪心/回测模式下建池(需全量枚举C(33,6)),
-    # 普通采样直接用回退路径(随机生成6数+过滤), 秒级响应.
-    needs_pool = (diversity_mode == 'greedy' or backtest_rank or soft or param_filter)
+    # [工程] 只在贪心/回测/软过滤/精确覆盖/差集模式下建池(需全量枚举C(33,6)),
+    # 普通采样直接用回退路径(随机生成6数), 秒级响应.
+    needs_pool = (diversity_mode == 'greedy' or backtest_rank or soft
+                  or red_mode in ('pool', 'exact_cover', 'diffset'))
     if needs_pool:
         try:
             if _state.valid_reds is None or len(load_draws()) != _state.past_count:
@@ -1404,91 +1175,198 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
 
     if _state.valid_reds is None:
         return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap,
-            five_period=five_period, pattern_rules=pattern_rules,
-            color_filter=color_filter, block9_filter=block9_filter,
-            block9_killed=block9_killed,
-            spread_filter=spread_filter, ac_filter=ac_filter,
-            peng_channel_filter=peng_channel_filter,
-            gap_filter=gap_filter,
-            omission_filter=omission_filter,
-            coincidence_filter=coincidence_filter)
+            five_period=five_period, pattern_rules=pattern_rules)
 
     exclude = _state.soft_excluded if soft else set()
-    if param_filter and _state.param_excluded is not None:
-        exclude = exclude | _state.param_excluded
     n_combos = len(_state.valid_reds) // 6
     if n_combos * 6 != len(_state.valid_reds) or n_combos == 0:
         return _generate_fallback_tickets(n, luck_mode=luck_mode, max_overlap=max_overlap,
-            five_period=five_period, pattern_rules=pattern_rules,
-            color_filter=color_filter, block9_filter=block9_filter,
-            block9_killed=block9_killed,
-            spread_filter=spread_filter, ac_filter=ac_filter,
-            peng_channel_filter=peng_channel_filter,
-            gap_filter=gap_filter,
-            omission_filter=omission_filter,
-            coincidence_filter=coincidence_filter)
+            five_period=five_period, pattern_rules=pattern_rules)
 
-    # 蓝球: 各作者方法独立候选集投票 → 并集
+# NIST偏倚已由 deep_signals.collect_signals() 统一收集
+
+    # 变点窗口: detect_recent_window 返回整数(最近N期), 切片 load_draws()
+    _window_size = _signals.get("changepoint_window", 0)
+    all_data = load_draws()
+    if isinstance(_window_size, int) and _window_size > 0 and _window_size < len(all_data):
+        # changepoint 检测到结构性变化 → 只用变化点后的数据
+        _windowed_data = all_data[-_window_size:]
+    elif isinstance(_window_size, list):
+        _windowed_data = _window_size
+    else:
+        _windowed_data = load_draws()
+
+    # 蓝球: 按 blue_mode 选择策略
     blue_candidates = set(range(1, 17))
-    blue_methods_active = []
-    if liu_blue:
-        blue_methods_active.append(("刘大军蓝球", _liu_dajun_candidates))
-    if cailele_blue:
-        blue_methods_active.append(("彩乐乐蓝球", _cailele_candidates))
-    if gongyi_blue:
-        blue_methods_active.append(("公益时报蓝球", _gongyi_candidates))
-    if wuming_blue:
-        blue_methods_active.append(("吴明蓝球", _wuming_candidates))
-    if wuming_clockwise:
-        blue_methods_active.append(("顺时针法", _wuming_clockwise_candidates))
-    if wuming_bsd:
-        blue_methods_active.append(("大小单双尾", _wuming_bsd_candidates))
-
-    if blue_methods_active:
-        # 独立投票: 先取交集(全票通过), 交集为空→退到并集(至少一票)
-        inter = set(range(1, 17))
-        union = set()
-        for name, fn in blue_methods_active:
-            cands = fn()
+    blue_method_label = ""
+    blue_method_label = "均匀分布(16个)"
+    if use_freq_blue and blue_mode == "entropy":
+        # 条件熵选蓝球: 给定最近5期上下文, 熵最低的6个
+        from ml.cond_entropy import entropy_blue_candidates
+        try:
+            cands = entropy_blue_candidates(_windowed_data, n=6)
             if cands:
-                inter &= cands
-                union |= cands
-        blue_candidates = inter if inter else union
-    elif five_period:
-        cands = _five_period_candidates()
-        if cands:
-            blue_candidates = cands
-    elif pattern_rules:
-        cands = _pattern_blue_candidates()
-        if cands:
-            blue_candidates = cands
-
-    # 蓝球权重: 候选集内均权, 集外零权
-    # 方法负责筛选, 不干涉内部偏好; 历史频率不参与二次加权
+                blue_candidates = cands
+                blue_method_label = "条件熵蓝球"
+        except Exception:
+            blue_candidates = _freq_blue_candidates(n=6)
+            blue_method_label = "频率蓝球(回退)"
+    elif use_freq_blue:
+        blue_candidates = _freq_blue_candidates(n=6)
+        blue_method_label = "频率蓝球"
     blue_weights = [0.0] * 16
     if blue_candidates:
         w = 1.0 / len(blue_candidates)
         for b in blue_candidates:
             blue_weights[b - 1] = w
     else:
-        blue_weights = _blue_freq_weights()  # 无候选→回退频率
+        blue_weights = _blue_freq_weights()
 
     used_idx = set()
     used_reds = set()
     tickets = []
-    n_original = n  # 保存原始注数用于返回dict
+    n_original = n
 
-    # Tier 2: 贪心多样性选注 — 先尝试从候选池贪心选, 不足则走随机采样
+    # ── 条件熵号码权重 (注入所有采样路径) ──
+    # 条件熵越低 → 号码越规律 → 权重越高
+    # 用 best-of-N 策略: 每次采样取 N 个随机候选, 选权重最高的
+    _red_entropy_w = [1.0] * 34  # 1-indexed
+    try:
+        from ml.cond_entropy import analyze_conditional_entropy
+        ce = analyze_conditional_entropy(_windowed_data,
+                                         n_red=15, ngram=5)
+        if ce.ok and ce.red_entropies:
+            # 熵 → 权重: weight = 1/(entropy + 0.01), 归一化到 [0.3, 1.0]
+            min_e = min(ce.red_entropies.values())
+            max_e = max(ce.red_entropies.values())
+            span = max(max_e - min_e, 0.01)
+            for num, e in ce.red_entropies.items():
+                # 熵越低权重越高: linear map from [min_e, max_e] → [1.0, 0.3]
+                _red_entropy_w[num] = 1.0 - 0.7 * (e - min_e) / span
+            # 未覆盖的号码保持默认 0.5 (中性)
+            for num in range(1, 34):
+                if num not in ce.red_entropies:
+                    _red_entropy_w[num] = 0.5
+    except Exception:
+        pass
+
+    # ── 武器库信号注入 (NIST/SPRT/FDR → 号码权重) ──
+    # 1. NIST偏倚 → 频率加权: 物理偏倚时, 历史高频号码权重 +20%
+    if nist_biased:
+        try:
+            freq_count = [0] * 34
+            for row in _windowed_data:
+                for num in row[1:7]:
+                    freq_count[num] += 1
+            max_f = max(freq_count) or 1
+            for num in range(1, 34):
+                fw = freq_count[num] / max_f  # 0..1
+                _red_entropy_w[num] = _red_entropy_w[num] * 0.8 + fw * 0.2
+        except Exception:
+            pass
+
+    # 2. SPRT信号 → 自动精确覆盖: 偏离基线时, pool→exact_cover
+    _effective_red_mode = red_mode
+    if _signals["sprt_has_signal"] and red_mode == "pool":
+        red_mode = "exact_cover"
+        _effective_red_mode = "exact_cover"
+        needs_pool = True  # exact_cover也需要pool
+        # 重建池 (如果还没建)
+        try:
+            if _state.valid_reds is None or len(load_draws()) != _state.past_count:
+                _build_pool()
+        except Exception:
+            pass
+
+    # 3. FDR → 互信息多样性惩罚: 多方法显著时, 在采样中避免高MI号码聚类
+    _mi_clusters = None
+    if _signals.get("fdr_valid_methods") and len(_signals.get("fdr_valid_methods", [])) >= 2:
+        try:
+            from ml.cond_entropy import analyze_conditional_entropy
+            ce_mi = analyze_conditional_entropy(_windowed_data, n_red=15, ngram=5)
+            if ce_mi.ok and ce_mi.red_clusters:
+                _mi_clusters = ce_mi.red_clusters  # {cluster_id: [number, ...]}
+        except Exception:
+            pass
+
+    # ── 红球模式: exact_cover (La Jolla已知最优表) ──
+    if red_mode == "exact_cover" and needs_pool:
+        from ml.exact_cover import exact_cover as ec
+        from ml.cond_entropy import analyze_conditional_entropy
+        try:
+            # 用条件熵选 v=15 个最规律的红球
+            ce = analyze_conditional_entropy(_windowed_data, n_red=15)
+            hot = ce.red_top15 if ce.ok and ce.red_top15 else list(range(1, 16))
+            cover = ec(v=15, t=4, n=n_original, hot_numbers=hot)
+            if cover.ok and cover.tickets:
+                for reds in cover.tickets:
+                    blue = _pick_blue(blue_weights)
+                    tickets.append({"reds": list(reds), "blue": blue})
+                algo = "ExactCover+LaJolla" + ("+Soft" if soft else "") + ("+NIST" if nist_biased else "")
+                _log_prediction(tickets, source=f"micro+{algo}")
+                return {
+                    "ok": True, "algorithm": algo,
+                    "tickets": tickets, "budget": n_original,
+                    "cost_rmb": n_original * TICKET_PRICE,
+                    "pool_size": n_combos * 16,
+                    "pool_valid_reds": n_combos,
+                    "soft_filter": soft, "soft_excluded": len(exclude),
+                    "luck_mode": luck_mode,
+                    "rule_status": _state.rule_status,
+                    "coverage_pct": cover.coverage_pct,
+                    "cover_source": cover.source,
+                    "blue_method": blue_method_label,
+                    "nist_biased": nist_biased,
+                    "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
+                                    "cost_per_draw": n_original * TICKET_PRICE},
+                }
+        except Exception:
+            pass  # 回退到 pool 模式
+
+    # ── 红球模式: diffset (差集构造2-覆盖) ──
+    if red_mode == "diffset" and needs_pool:
+        from ml.diffset_cover import diffset_red_tickets
+        from ml.cond_entropy import analyze_conditional_entropy
+        try:
+            ce = analyze_conditional_entropy(_windowed_data, n_red=15)
+            hot = ce.red_top15 if ce.ok and ce.red_top15 else list(range(1, 16))
+            diff_tickets = diffset_red_tickets(hot, n_tickets=n_original)
+            for reds in diff_tickets:
+                blue = _pick_blue(blue_weights)
+                tickets.append({"reds": list(reds), "blue": blue})
+            algo = "差集构造覆盖" + ("+Soft" if soft else "") + ("+NIST" if nist_biased else "")
+            _log_prediction(tickets, source=f"micro+{algo}")
+            return {
+                "ok": True, "algorithm": algo,
+                "tickets": tickets, "budget": n_original,
+                "cost_rmb": n_original * TICKET_PRICE,
+                "pool_size": n_combos * 16,
+                "pool_valid_reds": n_combos,
+                "soft_filter": soft, "soft_excluded": len(exclude),
+                "luck_mode": luck_mode,
+                "rule_status": _state.rule_status,
+                "blue_method": blue_method_label,
+                "nist_biased": nist_biased,
+                "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
+                                "cost_per_draw": n_original * TICKET_PRICE},
+            }
+        except Exception:
+            pass
+
+    # ── 红球模式: pool (默认, 原逻辑) ──
+
+    # Tier 2: 贪心多样性选注
     if diversity_mode == 'greedy':
         greedy = _greedy_diverse_tickets(
             n, _state.valid_reds, n_combos, exclude,
             pool_size=1000, blue_weights=blue_weights,
+            entropy_w=_red_entropy_w, mi_clusters=_mi_clusters,
         )
         if greedy is not None:
             tickets, used_idx, used_reds, _ = greedy
             if len(tickets) >= n_original:
                 pool_size = (n_combos - len(exclude)) * 16
-                algo = "Pool-Sampling+Greedy"
+                algo = "Pool-Sampling+Greedy" + ("+SPRT" if _signals["sprt_has_signal"] else "") + ("+FDR" if _signals.get("fdr_valid_methods") else "")
                 if soft: algo += "+Soft"
                 _log_prediction(tickets, source=f"micro+{algo}")
                 return {
@@ -1504,12 +1382,11 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
                                     "cost_per_draw": n_original * TICKET_PRICE},
                 }
-            # 贪心未产足 → 剩余 n 走随机采样
             n = n_original - len(tickets)
         else:
             n = n_original
 
-    # Tier P0: 百万军中选大将 — 回测排名选注
+    # Tier P0: 回测排名选注
     elif backtest_rank:
         ranked = _backtest_rank_tickets(n_original, _state.valid_reds, n_combos)
         if ranked and len(ranked) >= n_original:
@@ -1523,6 +1400,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
             algo = "Pool-Sampling+Backtest"
             if soft: algo += "+Soft"
             if luck_mode == 'blend': algo += "+Luck"
+            _log_prediction(tickets, source=f"micro+{algo}")
             return {
                 "ok": True, "algorithm": algo,
                 "tickets": tickets, "budget": n_original,
@@ -1536,30 +1414,34 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                 "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
                                 "cost_per_draw": n_original * TICKET_PRICE},
             }
-            _log_prediction(tickets, source=f"micro+{algo}")
         else:
             n = n_original
     else:
         n = n_original
 
-    # [彭浩 2010 Ch5 §3] 通道过滤: 预计算6位置通道范围
-    # [彩天使 2009 p90] 遗漏比: 预计算所有号码遗漏比
-    peng_channels = None
-    omission_ratios = None
-    if peng_channel_filter or omission_filter:
-        from server.db import load_draws
-        data = load_draws()
-        if peng_channel_filter:
-            peng_channels = _get_peng_channels(data)
-        if omission_filter:
-            omission_ratios = _get_omission_ratios(data)
 
-
-    def _pick_combo_idx():
-        return random.randrange(n_combos)
+    def _pick_combo_idx(best_of=20):
+        """条件熵+NIST+MI加权采样: 随机取best_of候选, 选综合权重最高的."""
+        if best_of <= 1:
+            return random.randrange(n_combos)
+        candidates = random.sample(range(n_combos), min(best_of, n_combos))
+        def _score(idx):
+            reds = _state.valid_reds[idx * 6 : idx * 6 + 6]
+            base = sum(_red_entropy_w[n] for n in reds)
+            # MI多样性惩罚: 同一cluster内号码越多→扣分
+            if _mi_clusters:
+                cluster_counts = {}
+                for n in reds:
+                    for cid, members in _mi_clusters.items():
+                        if n in members:
+                            cluster_counts[cid] = cluster_counts.get(cid, 0) + 1
+                penalty = sum(max(0, c - 2) * 0.15 for c in cluster_counts.values())
+                base -= penalty
+            return base
+        return max(candidates, key=_score)
 
     for _ in range(n):
-        for _ in range(500):  # [工程] 重试上限: 防止无限循环
+        for _ in range(500):
             idx = _pick_combo_idx()
             if idx in used_idx:
                 continue
@@ -1572,36 +1454,19 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
             if reds in used_reds:
                 continue
 
-            # 可选红色球过滤 + 注间分散 → _try_one_ticket
             ticket = _try_one_ticket(reds, used_reds, tickets, blue_weights,
-                max_overlap=max_overlap, color_filter=color_filter,
-                block9_filter=block9_filter, block9_killed=block9_killed,
-                spread_filter=spread_filter, ac_filter=ac_filter,
-                peng_channel_filter=peng_channel_filter,
-                peng_channels=peng_channels,
-                gap_filter=gap_filter,
-                omission_filter=omission_filter,
-                omission_ratios=omission_ratios,
-                coincidence_filter=coincidence_filter)
+                max_overlap=max_overlap)
             if ticket:
                 used_idx.add(idx)
                 tickets.append(ticket)
                 break
         else:
-            for _ in range(500):  # [工程] 重试上限: 防止无限循环
+            for _ in range(500):
                 c = tuple(sorted(random.sample(range(1, 34), 6)))
                 if c in used_reds:
                     continue
                 ticket = _try_one_ticket(c, used_reds, tickets, blue_weights,
-                    max_overlap=max_overlap, color_filter=color_filter,
-                    block9_filter=block9_filter, block9_killed=block9_killed,
-                    spread_filter=spread_filter, ac_filter=ac_filter,
-                    peng_channel_filter=peng_channel_filter,
-                    peng_channels=peng_channels,
-                    gap_filter=gap_filter,
-                    omission_filter=omission_filter,
-                    omission_ratios=omission_ratios,
-                    coincidence_filter=coincidence_filter)
+                    max_overlap=max_overlap)
                 if ticket:
                     tickets.append(ticket)
                     break
@@ -1611,7 +1476,8 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
 
 
     pool_size = (n_combos - len(exclude)) * 16
-    algo = "Pool-Sampling" + ("+Soft" if soft else "")
+    algo = "Pool-Sampling+CondEntropy" + ("+NIST" if nist_biased else "") + ("+SPRT" if _signals["sprt_has_signal"] else "") + ("+MI" if _mi_clusters else "") + ("+Soft" if soft else "")
+    _effective_red_mode = _effective_red_mode if '_effective_red_mode' in dir() else red_mode
     _log_prediction(tickets, source=f"micro+{algo}")
     return {
         "ok": True,
@@ -1624,6 +1490,12 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         "luck_mode": luck_mode,
         "luck_window": LUCK_WINDOW if luck_mode != 'off' else None,
         "rule_status": _state.rule_status,
+        "blue_method": blue_method_label,
+        "nist_biased": nist_biased,
+        "kelly_recommended_n": _signals.get("kelly_recommended_n", n_original),
+        "kelly_verdict": _signals.get("kelly_verdict", ""),
+        "sprt_verdict": _signals.get("sprt_verdict", ""),
+        "effective_red_mode": _effective_red_mode if '_effective_red_mode' in dir() else red_mode,
         "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
                         "cost_per_draw": n_original * TICKET_PRICE},
     }

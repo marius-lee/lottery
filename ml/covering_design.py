@@ -125,7 +125,7 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
         return {"ok": False, "msg": f"需要至少{k}个热号"}
 
     # ── 优先用已知最优轮次表 ──
-    if v in {8, 9, 10} and t == 4:
+    if v in {8, 9, 10, 11} and t == 4:
         from ml.combinatorial_math import KNOWN_WHEELS, map_wheel_to_numbers
         wheel = KNOWN_WHEELS[v]
         # 控制注数: 如果用户只要N注, 只取前N

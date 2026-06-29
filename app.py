@@ -21,11 +21,24 @@ def main():
     source, _, count = fetcher.fetch_data(force=True)
     print(f"[Data] {source}: {'+' + str(count) + ' new' if count > 0 else 'up to date'}")
 
+    # 自动兑奖: 新数据后匹配所有未兑奖预测
+    from server.auto_claim import auto_claim_all
+    claim = auto_claim_all()
+    if claim["claimed"] > 0:
+        print(f"[Claim] 自动兑奖 {claim['claimed']} 注, {claim['total_new_periods']} 期")
+        if claim.get("recalculated"):
+            print(f"[Weight] 策略权重已更新: {list(claim['recalculated']['red'].keys())[:5]}...")
+
     draw_cnt = db.count_draws()
     print(f"\n  双色球 — 覆盖优化引擎")
     print(f"  浏览器: http://localhost:{PORT}")
     print(f"  数据库: {db.DB_PATH}")
     print(f"  开奖数据: {draw_cnt} 期\n")
+
+
+    # 启动定时调度器 (二/四/日 22:05 自动拉取+兑奖)
+    from server.scheduler import start_scheduler
+    start_scheduler()
 
     server = http.server.HTTPServer((HOST, PORT), Handler)
     try:
