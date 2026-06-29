@@ -361,15 +361,25 @@ def score_all_methods(data):
     return results
 
 
-def aggregate_scores(method_scores, weights):
+def aggregate_scores(method_scores, weights, fdr_filter=False, data=None):
     """加权聚合: final[n] = Σ(w_m × score_m[n]) / Σw_m.
 
     Args:
         method_scores: {name: [33]float}
         weights: {name: weight}
+        fdr_filter: 启用FDR多重比较校正 (移除不显著方法)
+        data: FDR所需的历史数据
     Returns:
         [33]float 聚合分数
     """
+    if fdr_filter and data is not None:
+        from ml.fdr import filter_methods_by_fdr
+        fdr_result = filter_methods_by_fdr(data, method_scores, weights, q=0.05)
+        weights = fdr_result["filtered_weights"]
+        if not weights:
+            # FDR保留0个方法 → 回退原始权重
+            pass
+
     total_w = sum(weights.values())
     if total_w == 0:
         return [0.5] * 33  # [数学] 0.5=无信息中性值

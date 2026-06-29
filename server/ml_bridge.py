@@ -732,19 +732,56 @@ def position_draw(n=3):
 
 # ── 智能覆盖 (组合覆盖设计 + 多样化) ──
 
-def ensemble_draw(n=3):
-    """智能覆盖出号 — 5方法聚合评分 + 贪心覆盖设计."""
+def ensemble_draw(n=3, method="ensemble", fdr=True):
+    """聚合覆盖出号 — 方法评分 + FDR校正 + 覆盖设计 + Kelly.
+
+    Args:
+        n: 注数
+        method: "ensemble"(5方法聚合+FDR) | "mi"(互信息) | "frequency"(纯频率)
+        fdr: 是否启用FDR多重比较校正
+    """
     from ml.micro_portfolio import generate_tickets_covering
     from ml.ensemble_aggregator import score_all_methods, aggregate_scores, select_hot_numbers
+    from ml.kelly import ev_per_ticket, kelly_fraction
+
     data = db.load_draws()
     if len(data) < 20:
         return {"ok": False, "msg": f"数据不足 ({len(data)}期)"}
-    # 5方法聚合评分
-    method_scores = score_all_methods(data)
-    weights = _get_ensemble_weights(data)
-    final = aggregate_scores(method_scores, weights)
-    hot = select_hot_numbers(final, k=15)
-    return generate_tickets_covering(n=n, hot_numbers=hot, t=4)
+
+    if method == "mi":
+        from ml.mi_selector import mi_based_hot_boost
+        boosted = mi_based_hot_boost(data[-500:], k=15)
+        hot = [num for num, _ in boosted]
+    elif method == "frequency":
+        from collections import Counter
+        freq = Counter()
+        for row in data:
+            for r in row[1:7]: freq[r] += 1
+        hot = [n for n, _ in freq.most_common(15)]
+    else:
+        method_scores = score_all_methods(data)
+        weights = _get_ensemble_weights(data)
+        if fdr:
+            from ml.fdr import filter_methods_by_fdr
+            fdr_result = filter_methods_by_fdr(data, method_scores, weights, q=0.05)
+            weights = fdr_result["filtered_weights"]
+        final = aggregate_scores(method_scores, weights)
+        hot = select_hot_numbers(final, k=15)
+
+    result = generate_tickets_covering(n=n, hot_numbers=hot, t=4)
+
+    if result.get("ok"):
+        v = result.get("covering", {}).get("v", 15)
+        cov = result.get("covering", {}).get("estimated_coverage_pct", 36)
+        ev = ev_per_ticket(n, v, pool_has_all_6_prob=0.00035,
+                          coverage_pct=cov, blue_coverage_pct=37.5)
+        kelly = kelly_fraction(ev)
+        result["kelly"] = {"quarter_kelly_tickets": kelly["quarter_kelly_tickets"],
+                           "verdict": kelly["verdict"], "net_ev": ev["net_ev"]}
+        result["method"] = method
+        result["fdr_enabled"] = method == "ensemble" and fdr
+
+    return result
 
 def _get_ensemble_weights(data):
     """从回测校准获取5方法权重."""

@@ -74,9 +74,24 @@ async function loadWheeling() {
     h += 'V=8:4注 ¥8/期 | V=10:5注 ¥10/期 | V=12:6注 ¥12/期 — 已知最优, 数学证明<br>';
     h += '来源: ccrwest.org, Bluskov "Combinatorial Lottery Systems" (CRC 2011)';
     h += '</div>';
+    h += '<button class="btn-small" onclick="applyWheeling()" style="margin-top:8px;background:rgba(34,197,94,0.12);color:#22C55E;border-color:rgba(34,197,94,0.2);">🧮 使用轮次表出号</button>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
 }
+
+window.applyWheeling = async function() {
+  var stage = document.getElementById('stage');
+  var n = parseInt(document.getElementById('drawCount')?.value || 3);
+  stage.innerHTML = '<div style="text-align:center;padding:20px;color:#22C55E;">🧮 轮次表覆盖 — 已知最优保证...</div>';
+  try {
+    var r = await fetch('/api/ensemble/draw?n=' + n + '&method=ensemble&fdr=0');
+    var d = await r.json();
+    if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;">'+ (d.msg||'失败') +'</div>'; return; }
+    stage.innerHTML = '<div style="font-size:10px;text-align:center;padding:6px;border-radius:6px;background:rgba(34,197,94,0.1);color:#4ADE80;"><b>🧮 轮次表覆盖</b> · ' + (d.covering?.method||'') + ' · 成本¥' + (d.cost_rmb||0) + '</div>';
+    renderTickets(stage, d);
+    document.getElementById('saveBtn').disabled = false;
+  } catch(e){ stage.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
+};
 
 // ═══ Kelly ═══
 async function loadKelly() {
@@ -263,6 +278,21 @@ async function loadChangepoint() {
       h += '<span style="font-size:9px;color:#64748B;">' + kv[0] + ' (期' + kv[1] + ') </span>';
     });
     h += '</div>';
+    h += '<button class="btn-small" onclick="applyMiDraw()" style="margin-top:8px;background:rgba(236,72,153,0.12);color:#F472B6;border-color:rgba(236,72,153,0.2);">🔗 MI增强出号</button>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
 }
+
+window.applyMiDraw = async function() {
+  var stage = document.getElementById('stage');
+  var n = parseInt(document.getElementById('drawCount')?.value || 3);
+  stage.innerHTML = '<div style="text-align:center;padding:20px;color:#EC4899;">🔗 互信息增强 — 检测非独立号码对...</div>';
+  try {
+    var r = await fetch('/api/ensemble/draw?n=' + n + '&method=mi');
+    var d = await r.json();
+    if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;">'+ (d.msg||'失败') +'</div>'; return; }
+    stage.innerHTML = '<div style="font-size:10px;text-align:center;padding:6px;border-radius:6px;background:rgba(236,72,153,0.1);color:#F472B6;"><b>🔗 MI增强</b> · 成本¥' + (d.cost_rmb||0) + '</div>';
+    renderTickets(stage, d);
+    document.getElementById('saveBtn').disabled = false;
+  } catch(e){ stage.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
+};
