@@ -19,7 +19,7 @@ window._showWeierPanel = function(){
     var h = '<div class="weier-container">';
     h += '<div style="display:flex;gap:8px;margin-bottom:12px;">';
     h += '<button class="btn btn-draw" onclick="window._runWeierFilter()" style="font-size:15px;padding:6px 16px;">开始过滤</button>';
-    h += '<button class="btn btn-save" onclick="window._clearWeier()" style="font-size:15px;padding:6px 16px;background:#64748B;">清除选择</button>';
+    h += '<button class="btn btn-save" onclick="window._clearWeier()" style="font-size:15px;padding:6px 16px;background:#FFFFFF;">清除选择</button>';
     h += '<span id="weierStatus" style="font-size:14px;color:#FFFFFF;align-self:center;"></span></div>';
 
     // 第1-3步

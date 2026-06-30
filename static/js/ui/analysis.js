@@ -187,7 +187,7 @@ async function renderSanlangAnalysis() {
     let h = '<div style="padding:8px;">';
 
     // 说明
-    h += '<div style="font-size:10px;color:#64748B;margin-bottom:12px;line-height:1.5;">';
+    h += '<div style="font-size:10px;color:#FFFFFF;margin-bottom:12px;line-height:1.5;">';
     h += '李相春《彩票小额投注必读》(2003) p73-74：<br>';
     h += '<b style="color:#34D399;">降三浪</b> = 间隔逐次递减(≥10→4-6→0-3)，冷号反转为热号的最强信号，近期应优先选择。<br>';
     h += '<b style="color:#EF4444;">升三浪</b> = 间隔逐次递增(0-3→4-6→≥10)，热号"疲惫"，除非出现反转信号否则避开。<br>';
@@ -203,7 +203,7 @@ async function renderSanlangAnalysis() {
       });
       h += '</div>';
     } else {
-      h += '<div style="color:#64748B;font-size:12px;">当前无降三浪信号</div>';
+      h += '<div style="color:#FFFFFF;font-size:12px;">当前无降三浪信号</div>';
     }
     h += '</div>';
 
@@ -217,7 +217,7 @@ async function renderSanlangAnalysis() {
       });
       h += '</div>';
     } else {
-      h += '<div style="color:#64748B;font-size:12px;">当前无升三浪信号</div>';
+      h += '<div style="color:#FFFFFF;font-size:12px;">当前无升三浪信号</div>';
     }
     h += '</div>';
 

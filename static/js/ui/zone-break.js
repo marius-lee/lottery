@@ -30,17 +30,17 @@ ZB.render = function(containerId) {
     h += '<div style="margin-bottom:12px;">';
     h += '<h5 style="color:#A78BFA;font-size:13px;margin:0 0 8px 0;">行列分布表 (近30期出现次数)</h5>';
     h += '<table style="border-collapse:collapse;font-size:11px;text-align:center;width:100%;max-width:420px;">';
-    h += '<tr><th style="padding:4px;color:#64748B;"></th>';
-    for (var ci=1;ci<=6;ci++) h += '<th style="padding:4px;color:#64748B;">第'+ci+'列</th>';
+    h += '<tr><th style="padding:4px;color:#FFFFFF;"></th>';
+    for (var ci=1;ci<=6;ci++) h += '<th style="padding:4px;color:#FFFFFF;">第'+ci+'列</th>';
     h += '</tr>';
     for (var ri=0;ri<6;ri++) {
       h += '<tr><td style="padding:4px;color:#FFFFFF;font-weight:600;">第'+(ri+1)+'行</td>';
       for (var ci=0;ci<6;ci++) {
         var cnt = d.distribution[ri][ci];
         var bg = cnt > 8 ? 'rgba(16,185,129,0.2)' : cnt > 4 ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.03)';
-        var color = cnt > 8 ? '#10B981' : cnt > 4 ? '#FBBF24' : '#64748B';
+        var color = cnt > 8 ? '#10B981' : cnt > 4 ? '#FBBF24' : '#FFFFFF';
         var num = ri*6 + ci + 1;
-        h += '<td style="padding:4px 6px;background:'+bg+';border:1px solid rgba(255,255,255,0.04);"><div style="font-weight:700;color:'+color+';">'+String(num).padStart(2,'0')+'</div><div style="font-size:9px;color:#64748B;">'+cnt+'次</div></td>';
+        h += '<td style="padding:4px 6px;background:'+bg+';border:1px solid rgba(255,255,255,0.04);"><div style="font-weight:700;color:'+color+';">'+String(num).padStart(2,'0')+'</div><div style="font-size:9px;color:#FFFFFF;">'+cnt+'次</div></td>';
       }
       h += '</tr>';
     }

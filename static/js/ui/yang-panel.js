@@ -10,8 +10,8 @@ window._showYangPanel = function(){
 
   var h = '<div class="weier-container">';
   h += '<h5 style="color:#F59E0B;font-size:16px;margin:0 0 2px 0;">🎯 杨情友 决战双色球 [2014]</h5>';
-  h += '<div style="font-size:16px;color:#64748B;margin-bottom:10px;">五行编码+位置字头排除+17条减码规则 · 独创方法论</div>';
-  h += '<div id="yangSignal" style="font-size:14px;"><span style="color:#64748B;">加载中...</span></div>';
+  h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:10px;">五行编码+位置字头排除+17条减码规则 · 独创方法论</div>';
+  h += '<div id="yangSignal" style="font-size:14px;"><span style="color:#FFFFFF;">加载中...</span></div>';
   h += '</div>';
   el.innerHTML = h;
   window._yangLoad();
@@ -59,7 +59,7 @@ window._yangLoad = async function(){
     }
   });
   // 五行生克提示
-  h += '<br><span style="color:#64748B;">相生: 水→木→火→土→金→水</span>';
+  h += '<br><span style="color:#FFFFFF;">相生: 水→木→火→土→金→水</span>';
   if(chain.length >= 2){
     var sheng = [];
     for(var i=0; i<chain.length-1; i++){
@@ -90,7 +90,7 @@ window._yangLoad = async function(){
   } else {
     h += '<br><span style="color:#34D399;">✓ 位置字头正常</span>';
   }
-  h += '<br><span style="color:#64748B;">规则: ①不取20-29 | ③不取30-33 | ⑥不取01-09</span>';
+  h += '<br><span style="color:#FFFFFF;">规则: ①不取20-29 | ③不取30-33 | ⑥不取01-09</span>';
   h += '</div>';
   h += '</div>';
 

@@ -140,7 +140,7 @@ window.switchTraditionalFilter = function(filter){
   
   infoPanel.style.display = 'block';
   infoPanel.innerHTML = '<b style="color:#FBBF24;">' + info.title + '</b><br><br>' + info.desc
-    + '<br><br><span style="font-size:10px;color:#64748B;">此策略已从主界面移除。'
+    + '<br><br><span style="font-size:10px;color:#FFFFFF;">此策略已从主界面移除。'
     + '来自彩票书籍的启发性规则，未经统计检验，'
     + '无一能通过OOS(样本外)验证产生超越随机的预测优势。</span>';
 };
@@ -262,7 +262,7 @@ function renderTickets(stage, d){
   tickets.forEach(function(t, i){
     var row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:6px;justify-content:center;margin-bottom:6px;';
-    row.innerHTML = '<span style="color:#64748B;font-size:11px;min-width:20px;">#'+(i+1)+'</span>';
+    row.innerHTML = '<span style="color:#FFFFFF;font-size:11px;min-width:20px;">#'+(i+1)+'</span>';
     t.reds.forEach(function(rn){
       var b = document.createElement('span');
       b.className = 'ball red';

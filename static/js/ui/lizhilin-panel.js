@@ -80,7 +80,7 @@ window._showLiZhiLinPanel = function(){
       }
     }
 
-    h += '<div style="font-size:15px;color:#64748B;padding:6px;background:rgba(255,255,255,0.03);border-radius:6px;">';
+    h += '<div style="font-size:15px;color:#FFFFFF;padding:6px;background:rgba(255,255,255,0.03);border-radius:6px;">';
     h += '📊 李志林《彩票赢家·双色球选号技巧》山西科学技术出版社 2012 | 各方法独立, 蓝球取勾选方法的交集';
     h += '</div>';
     h += '</div>';

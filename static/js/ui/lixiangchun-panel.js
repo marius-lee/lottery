@@ -12,11 +12,11 @@ window._showLiXiangChunPanel = function(){
 
   var h = '<div class="weier-container">';
   h += '<h5 style="color:#34D399;font-size:16px;margin:0 0 2px 0;">📊 李相春趋势分析 [2003-2009]</h5>';
-  h += '<div style="font-size:16px;color:#64748B;margin-bottom:10px;">三书聚合: 散度+偏度+AC+间距+遗漏比+三浪+DHR+双底</div>';
+  h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:10px;">三书聚合: 散度+偏度+AC+间距+遗漏比+三浪+DHR+双底</div>';
 
   // 信号区 (异步加载)
   h += '<div id="lxDashboard" style="font-size:14px;">';
-  h += '<span style="color:#64748B;">信号加载中...</span>';
+  h += '<span style="color:#FFFFFF;">信号加载中...</span>';
   h += '</div>';
 
   // 过滤开关
@@ -59,7 +59,7 @@ window._lxLoadDashboard = async function(){
     sl.jiang.forEach(function(n){
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#059669;color:#fff;font-weight:700;font-size:15px;margin:1px;">'+n+'</span>';
     });
-  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  } else { h += '<span style="color:#FFFFFF;">暂无</span>'; }
   h += '</div>';
 
   h += '<div style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(220,38,38,0.06);">';
@@ -68,7 +68,7 @@ window._lxLoadDashboard = async function(){
     sl.sheng.forEach(function(n){
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#DC2626;color:#fff;font-weight:700;font-size:15px;margin:1px;opacity:0.7;">'+n+'</span>';
     });
-  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  } else { h += '<span style="color:#FFFFFF;">暂无</span>'; }
   h += '</div>';
 
   h += '<div style="flex:1;min-width:120px;padding:8px;border-radius:6px;background:rgba(251,191,36,0.06);">';
@@ -77,7 +77,7 @@ window._lxLoadDashboard = async function(){
     sl.hot_end.forEach(function(n){
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#B45309;color:#fff;font-weight:700;font-size:15px;margin:1px;">'+n+'</span>';
     });
-  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  } else { h += '<span style="color:#FFFFFF;">暂无</span>'; }
   h += '</div>';
   h += '</div>';
 
@@ -89,10 +89,10 @@ window._lxLoadDashboard = async function(){
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
   h += '<span style="color:#FFFFFF;">📏 散度: </span>';
   h += '<span style="color:'+(st.zone==='normal'?'#34D399':'#FBBF24')+';font-weight:600;">'+st.current+'</span>';
-  h += '<span style="color:#64748B;"> (正常'+st.normal_range+')</span>';
+  h += '<span style="color:#FFFFFF;"> (正常'+st.normal_range+')</span>';
   h += '<br><span style="color:#FFFFFF;">📐 偏度: </span>';
   h += '<span style="color:'+(sk.zone==='normal'?'#34D399':'#FBBF24')+';font-weight:600;">'+sk.current+'</span>';
-  h += '<span style="color:#64748B;"> (正常'+sk.normal_range+')</span>';
+  h += '<span style="color:#FFFFFF;"> (正常'+sk.normal_range+')</span>';
   if(sk.bound) h += '<span style="color:#475569;"> 上限='+sk.bound+'</span>';
   h += '</div>';
 
@@ -102,22 +102,22 @@ window._lxLoadDashboard = async function(){
     d.dhr_sticky.forEach(function(x){
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(59,130,246,0.2);color:#60A5FA;font-weight:600;font-size:16px;margin:1px;" title="DHR='+x.dhr+'">'+x.num+'</span>';
     });
-  } else { h += '<span style="color:#64748B;">-</span>'; }
-  h += '<br><span style="color:#64748B;">📉 孤立号 (DHR高→勿追):</span><br>';
+  } else { h += '<span style="color:#FFFFFF;">-</span>'; }
+  h += '<br><span style="color:#FFFFFF;">📉 孤立号 (DHR高→勿追):</span><br>';
   if(d.dhr_avoid && d.dhr_avoid.length > 0){
     d.dhr_avoid.forEach(function(x){
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(239,68,68,0.1);color:#F87171;font-weight:600;font-size:16px;margin:1px;" title="DHR='+x.dhr+'">'+x.num+'</span>';
     });
-  } else { h += '<span style="color:#64748B;">-</span>'; }
+  } else { h += '<span style="color:#FFFFFF;">-</span>'; }
   h += '</div>';
 
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
   h += '<span style="color:#FFFFFF;">⏱ 双底/三底预测:</span><br>';
   if(d.shuangdi && d.shuangdi.length > 0){
     d.shuangdi.forEach(function(x){
-      h += '<span style="color:#A78BFA;">'+x.num+'</span><span style="color:#64748B;">→约'+x.predicted_gap+'期后</span> ';
+      h += '<span style="color:#A78BFA;">'+x.num+'</span><span style="color:#FFFFFF;">→约'+x.predicted_gap+'期后</span> ';
     });
-  } else { h += '<span style="color:#64748B;">暂无</span>'; }
+  } else { h += '<span style="color:#FFFFFF;">暂无</span>'; }
   h += '</div>';
   h += '</div>';
 
@@ -125,7 +125,7 @@ window._lxLoadDashboard = async function(){
   var ratios = d.omission_ratios || {};
   var extreme = [];
   for(var k in ratios){ if(ratios[k] > 5) extreme.push(k); }
-  h += '<div style="font-size:16px;color:#64748B;">';
+  h += '<div style="font-size:16px;color:#FFFFFF;">';
   h += '📉 遗漏比: ';
   if(extreme.length > 0){
     h += '<span style="color:#EF4444;">极寒带(OR>5): '+extreme.join(', ')+'</span>';

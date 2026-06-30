@@ -10,11 +10,11 @@ window._showLiuDaJunPanel = function(){
 
   var h = '<div class="weier-container">';
   h += '<h5 style="color:#FBBF24;font-size:16px;margin:0 0 2px 0;">📊 刘大军 趋势分析 [2010-2014]</h5>';
-  h += '<div style="font-size:16px;color:#64748B;margin-bottom:10px;">定尾选号+重合码{1,3,6,8}+三效应连锁+五期断蓝+断区转换</div>';
+  h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:10px;">定尾选号+重合码{1,3,6,8}+三效应连锁+五期断蓝+断区转换</div>';
 
   // 定尾信号区
   h += '<div id="ljdSignal" style="font-size:14px;">';
-  h += '<span style="color:#64748B;">定尾信号加载中...</span>';
+  h += '<span style="color:#FFFFFF;">定尾信号加载中...</span>';
   h += '</div>';
 
   // 过滤 + 出号
@@ -50,7 +50,7 @@ window._ljdLoadSignals = async function(){
     h += '<div style="padding:6px 8px;border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:6px;">';
     h += '<span style="color:#FFFFFF;">上期尾数: </span>';
     h += '<span style="color:#E2E8F0;">'+cs.tails.join(' ')+'</span>';
-    h += '<span style="color:#64748B;"> | 重合码{1,3,6,8}: </span>';
+    h += '<span style="color:#FFFFFF;"> | 重合码{1,3,6,8}: </span>';
     if(cs.has_coincidence){
       h += '<span style="color:#34D399;">✓ '+cs.matched.join(' ')+'</span>';
     } else {
@@ -64,7 +64,7 @@ window._ljdLoadSignals = async function(){
   (d.positions||[]).forEach(function(p){
     var rec = p.coincidence.length > 0 ? p.coincidence : p.recommended.slice(0,3);
     h += '<div style="padding:4px 6px;border-radius:3px;background:rgba(255,255,255,0.03);">';
-    h += '<div style="color:#64748B;font-size:15px;">'+p.name+'</div>';
+    h += '<div style="color:#FFFFFF;font-size:15px;">'+p.name+'</div>';
     rec.forEach(function(t){
       var isCoin = [1,3,6,8].indexOf(t) >= 0;
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:16px;margin:1px;'+(isCoin?'background:rgba(251,191,36,0.2);color:#FBBF24;':'background:rgba(148,163,184,0.1);color:#FFFFFF;')+'">'+t+'</span>';
@@ -75,7 +75,7 @@ window._ljdLoadSignals = async function(){
 
   // ── 尾数热度 ──
   h += '<div style="font-size:15px;color:#475569;">';
-  h += '热度: <span style="color:#34D399;">热</span>=高频 <span style="color:#FBBF24;">温</span>=中频 <span style="color:#64748B;">冷</span>=低频 ';
+  h += '热度: <span style="color:#34D399;">热</span>=高频 <span style="color:#FBBF24;">温</span>=中频 <span style="color:#FFFFFF;">冷</span>=低频 ';
   h += '| 黄色数字=重合码{1,3,6,8}';
   h += '</div>';
 

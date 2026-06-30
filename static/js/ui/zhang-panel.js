@@ -32,7 +32,7 @@ window._showZhangPanel = function(){
     h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
     h += '<input type="checkbox" id="zhangUseDan2" onchange="window._zhangUpdateBtn()">';
     h += '<span>定2胆最优法(2码,~4.3%)</span></label>';
-    h += '<span id="zhangDanDetail" style="font-size:16px;color:#64748B;">加载中...</span>';
+    h += '<span id="zhangDanDetail" style="font-size:16px;color:#FFFFFF;">加载中...</span>';
     h += '</div></div>';
 
     // ═══ 选号方法 + 出号按钮 (Ch7, Ch8) ═══
@@ -70,8 +70,8 @@ window._showZhangPanel = function(){
       if(tv.first8){
         h += '<div style="font-size:16px;color:#10B981;margin-bottom:2px;">前8(P1-P2): '+tv.first8.map(function(n){return String(n).padStart(2,'0')}).join(' ')+'</div>';
       }
-      h += '<div style="font-size:15px;color:#64748B;">位置策略: P1-2→前8 | P3-4→池+邻±1 | P5→避池 | P6→30-33</div>';
-      h += '<details style="margin-top:4px;"><summary style="font-size:16px;color:#64748B;cursor:pointer;">18种方法明细</summary>';
+      h += '<div style="font-size:15px;color:#FFFFFF;">位置策略: P1-2→前8 | P3-4→池+邻±1 | P5→避池 | P6→30-33</div>';
+      h += '<details style="margin-top:4px;"><summary style="font-size:16px;color:#FFFFFF;cursor:pointer;">18种方法明细</summary>';
       h += '<table class="bt-table" style="font-size:16px;margin-top:4px;"><thead><tr><th>方法</th><th>杀号</th></tr></thead><tbody>';
       Object.keys(tv.method_details||{}).forEach(function(k){
         h += '<tr><td>'+k+'</td><td style="color:#cc4444;">'+String(tv.method_details[k]).padStart(2,'0')+'</td></tr>';
@@ -92,8 +92,8 @@ window._showZhangPanel = function(){
       h += '</div>';
       h += '<div style="font-size:16px;color:#FBBF24;margin-bottom:2px;">';
       h += (ev.use_recommendation||'') + ' | 连续出错: '+ev.consecutive_errors+'次</div>';
-      h += '<div style="font-size:15px;color:#64748B;">出错规律: 1次→52%正 | 2→23% | 3→13% | 4→6.4% | 5+→5.4%</div>';
-      h += '<details style="margin-top:4px;"><summary style="font-size:16px;color:#64748B;cursor:pointer;">11种方法明细</summary>';
+      h += '<div style="font-size:15px;color:#FFFFFF;">出错规律: 1次→52%正 | 2→23% | 3→13% | 4→6.4% | 5+→5.4%</div>';
+      h += '<details style="margin-top:4px;"><summary style="font-size:16px;color:#FFFFFF;cursor:pointer;">11种方法明细</summary>';
       h += '<table class="bt-table" style="font-size:16px;margin-top:4px;"><thead><tr><th>方法</th><th>杀号</th></tr></thead><tbody>';
       Object.keys(ev.method_details||{}).forEach(function(k){
         h += '<tr><td>'+k+'</td><td style="color:#3366cc;">'+String(ev.method_details[k]).padStart(2,'0')+'</td></tr>';
@@ -116,19 +116,19 @@ window._showZhangPanel = function(){
         h += '<span style="display:inline-block;padding:2px 6px;margin:1px;border-radius:4px;background:rgba(245,158,11,0.2);color:#F59E0B;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
       });
       h += '</div>';
-      h += '<div style="font-size:15px;color:#64748B;">行规则: 本期断→下期93%不断 | 列连续断1-2次→继续断 | ≥3次→停止</div>';
-      h += '<div style="font-size:8px;color:#64748B;">参考: 0r6c·15号·41% | 0r5c·18号·22% | 0r7c·12号·16% | 1r6c·10号·9.5% | 1r7c·8号·2.5% (原书表7-35)</div>';
+      h += '<div style="font-size:15px;color:#FFFFFF;">行规则: 本期断→下期93%不断 | 列连续断1-2次→继续断 | ≥3次→停止</div>';
+      h += '<div style="font-size:8px;color:#FFFFFF;">参考: 0r6c·15号·41% | 0r5c·18号·22% | 0r7c·12号·16% | 1r6c·10号·9.5% | 1r7c·8号·2.5% (原书表7-35)</div>';
     } else { h += '<div style="color:#EF4444;font-size:14px;">'+(gd&&gd.msg||'加载失败')+'</div>'; }
     h += '</div>';
 
     // ═══ 数据手册 (可点击展开) ═══
     h += '<div style="margin-top:16px;">';
     h += '<h5 style="color:#FFFFFF;font-size:16px;margin:0 0 8px 0;">📖 数据手册 (原书统计表, 点击展开)</h5>';
-    h += '<div id="zhangRefContent" style="font-size:16px;color:#64748B;">加载中...</div>';
+    h += '<div id="zhangRefContent" style="font-size:16px;color:#FFFFFF;">加载中...</div>';
     h += '</div>';
 
     // ═══ 统计来源 ═══
-    h += '<div style="font-size:15px;color:#64748B;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">';
+    h += '<div style="font-size:15px;color:#FFFFFF;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">';
     h += '📊 张委铭《双色球杀号定胆选号方法与技巧超级大全》经济管理出版社 2015 | 统计周期: 2003001-2015023 共1768期 | 全量枚举';
     h += '</div>';
 
@@ -144,11 +144,11 @@ window._showZhangPanel = function(){
         var dh = '';
         if(d1&&d1.ok){
           dh += ' 一四定胆→<b style=\"color:#A78BFA;\">'+String(d1.dan).padStart(2,'0')+'</b>';
-          dh += '<span style=\"color:#64748B;\">('+d1.method_used+')</span>';
+          dh += '<span style=\"color:#FFFFFF;\">('+d1.method_used+')</span>';
         }
         if(d2&&d2.ok){
           dh += ' 定2胆→<b style=\"color:#F59E0B;\">'+d2.dan2.map(function(n){return String(n).padStart(2,'0')}).join('+')+'</b>';
-          dh += '<span style=\"color:#64748B;\">(组合'+d2.combo_name+')</span>';
+          dh += '<span style=\"color:#FFFFFF;\">(组合'+d2.combo_name+')</span>';
         }
         di.innerHTML = dh;
       }).catch(function(){});
@@ -171,7 +171,7 @@ window._showZhangPanel = function(){
     // 位置差值表
     if(ref.position_differences){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#A78BFA;font-size:14px;">📐 '+ref.position_differences._title+'</summary>';
-      h += '<div style="font-size:15px;color:#64748B;margin:4px 0 8px;">'+ref.position_differences._usage+'</div>';
+      h += '<div style="font-size:15px;color:#FFFFFF;margin:4px 0 8px;">'+ref.position_differences._usage+'</div>';
       var diffs = ref.position_differences;
       ['p5_minus_p3','p6_minus_p3','p5_minus_p4','p6_minus_p4','p6_minus_p5'].forEach(function(key){
         var d = diffs[key];
@@ -183,7 +183,7 @@ window._showZhangPanel = function(){
         h += '<span style="color:#FBBF24;">最高: '+d.top_value+' ('+d.top_pct+'%)</span><br>';
         // 简要分布
         var sorted = Object.entries(d.distribution).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
-        h += '<span style="color:#64748B;">分布: '+sorted.map(function(e){return e[0]+'→'+e[1]+'次';}).join(' | ')+'</span>';
+        h += '<span style="color:#FFFFFF;">分布: '+sorted.map(function(e){return e[0]+'→'+e[1]+'次';}).join(' | ')+'</span>';
         if(d.note_1) h += '<br><span style="color:#F59E0B;">'+d.note_1+'</span>';
         if(d.note_2) h += '<br><span style="color:#F59E0B;">'+d.note_2+'</span>';
         if(d.note_3) h += '<br><span style="color:#F59E0B;">'+d.note_3+'</span>';
@@ -207,13 +207,13 @@ window._showZhangPanel = function(){
     // 定2胆
     if(ref.dan2_top_pairs){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#3B82F6;font-size:14px;">✌ '+ref.dan2_top_pairs._title+'</summary>';
-      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.dan2_top_pairs._usage+'</div>';
+      h += '<div style="font-size:15px;color:#FFFFFF;margin:4px 0;">'+ref.dan2_top_pairs._usage+'</div>';
       h += '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:200px;overflow-y:auto;">';
       ref.dan2_top_pairs.pairs.forEach(function(p, i){
         var bg = i<15 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)';
         h += '<span style="padding:2px 6px;border-radius:4px;background:'+bg+';color:#FFFFFF;white-space:nowrap;">';
         h += '#'+(i+1)+' '+p.combo.map(function(n){return String(n).padStart(2,'0')}).join('+');
-        h += ' <span style="color:#64748B;">'+p.count+'次</span></span>';
+        h += ' <span style="color:#FFFFFF;">'+p.count+'次</span></span>';
       });
       h += '</div>';
       var cold = ref.dan2_top_pairs.coldest_pairs;
@@ -224,7 +224,7 @@ window._showZhangPanel = function(){
     // 定3胆
     if(ref.dan3_top_triples){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#8B5CF6;font-size:14px;">🤟 '+ref.dan3_top_triples._title+'</summary>';
-      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.dan3_top_triples._usage+'</div>';
+      h += '<div style="font-size:15px;color:#FFFFFF;margin:4px 0;">'+ref.dan3_top_triples._usage+'</div>';
       h += '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow-y:auto;">';
       ref.dan3_top_triples.triples.forEach(function(p, i){
         h += '<span style="padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.1);color:#FFFFFF;white-space:nowrap;font-size:15px;">';
@@ -237,7 +237,7 @@ window._showZhangPanel = function(){
     // 伴生现象
     if(ref.cooccurrence){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#EC4899;font-size:14px;">💞 '+ref.cooccurrence._title+'</summary>';
-      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.cooccurrence._usage+'<br>'+ref.cooccurrence._note+'</div>';
+      h += '<div style="font-size:15px;color:#FFFFFF;margin:4px 0;">'+ref.cooccurrence._usage+'<br>'+ref.cooccurrence._note+'</div>';
       var nums = ['01','02','03','04','05','06'];
       nums.forEach(function(n){
         var data = ref.cooccurrence[n];
@@ -278,7 +278,7 @@ window._showZhangPanel = function(){
     if(ref.ch6_technical_indicators_2017){
       var ch6 = ref.ch6_technical_indicators_2017;
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#F59E0B;font-size:14px;">📊 '+ch6._title+'</summary>';
-      h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ch6._usage+'</div>';
+      h += '<div style="font-size:15px;color:#FFFFFF;margin:4px 0;">'+ch6._usage+'</div>';
 
       // 重号
       if(ch6.repeat){
@@ -308,13 +308,13 @@ window._showZhangPanel = function(){
       if(ch6.skip_code){
         h += '<div style="margin:3px 0;padding:3px 6px;background:rgba(255,255,255,0.02);border-radius:4px;">';
         h += '<b style="color:#EF4444;">隔期码 '+ch6.skip_code.key_finding+'</b> ';
-        h += '<span style="color:#64748B;">(选对0个:506, 1个:874, 2个:506, 3+:116)</span>';
+        h += '<span style="color:#FFFFFF;">(选对0个:506, 1个:874, 2个:506, 3+:116)</span>';
         h += '</div>';
       }
       // 除3余数
       if(ch6.route012){
         h += '<div style="margin:3px 0;padding:3px 6px;background:rgba(255,255,255,0.02);border-radius:4px;">';
-        h += '<b style="color:#64748B;">除3余数:</b> 2路34.0% | 1路33.4% | 0路32.6% → '+ch6.route012.verdict;
+        h += '<b style="color:#FFFFFF;">除3余数:</b> 2路34.0% | 1路33.4% | 0路32.6% → '+ch6.route012.verdict;
         h += '</div>';
       }
       h += '</details>';

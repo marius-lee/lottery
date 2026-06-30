@@ -167,7 +167,7 @@ function renderMonitorDetail(d) {
     '<div style="color:#FFFFFF;">蓝球lift</div>' +
     '<div style="color:#E2E8F0;">' + (hs.blue ? (hs.blue.lift || 1).toFixed(2) : '1.00') + 'x</div>' +
 
-    '<div style="grid-column:1/-1;margin-top:6px;color:#64748B;font-size:9px;">' +
+    '<div style="grid-column:1/-1;margin-top:6px;color:#FFFFFF;font-size:9px;">' +
       (d.note || '') + '</div>' +
 
     '</div>';

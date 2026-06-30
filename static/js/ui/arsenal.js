@@ -59,7 +59,7 @@ async function loadWheeling() {
         '</tr>';
     });
     h += '</tbody></table>';
-    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">';
+    h += '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">';
     h += 'V=8:4注 ¥8/期 | V=10:5注 ¥10/期 | V=12:6注 ¥12/期 — 已知最优, 数学证明<br>';
     h += '来源: ccrwest.org, Bluskov "Combinatorial Lottery Systems" (CRC 2011)';
     h += '</div>';
@@ -96,7 +96,7 @@ async function loadKelly() {
     const ev = d.ev, k = d.kelly, costPerDraw = d.cost_per_draw || 0;
     let h = '<div style="font-size:11px;line-height:1.7;">';
     h += '<b style="color:#4ADE80;">Kelly 最优投注比例</b><br>';
-    h += '<span style="font-size:10px;color:#64748B;">Kelly 1956, Thorp 1997: 最大化对数效用的最优投注比例</span><br><br>';
+    h += '<span style="font-size:10px;color:#FFFFFF;">Kelly 1956, Thorp 1997: 最大化对数效用的最优投注比例</span><br><br>';
 
     h += '<b>当前策略 EV:</b><br>';
     h += '池V=' + (ev.pool_v||15) + ', 覆盖' + (ev.coverage_pct||36) + '%, 蓝' + (ev.blue_pct||38) + '%<br>';
@@ -112,7 +112,7 @@ async function loadKelly() {
 
     h += '<b>每期成本:</b> ¥' + costPerDraw + '<br>';
     h += '</div>';
-    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Kelly 1956, Bell System Tech. J. | MacLean, Thorp, Ziemba 2011</div>';
+    h += '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">Kelly 1956, Bell System Tech. J. | MacLean, Thorp, Ziemba 2011</div>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
 }
@@ -131,7 +131,7 @@ async function loadSprt() {
     const s = d.sprt, e = d.expected_sample_size || {};
     let h = '<div style="font-size:11px;line-height:1.7;">';
     h += '<b style="color:#A78BFA;">📊 序贯概率比检验 (SPRT)</b><br>';
-    h += '<span style="font-size:10px;color:#64748B;">Wald 1945: 实时检测策略是否偏离随机基线</span><br><br>';
+    h += '<span style="font-size:10px;color:#FFFFFF;">Wald 1945: 实时检测策略是否偏离随机基线</span><br><br>';
 
     h += '<b>状态:</b> <span style="color:' + (s.status==='significant'?'#22C55E':'#FBBF24') + '">' + s.interpretation + '</span><br>';
     h += '观测期数: ' + s.n + '<br>';
@@ -143,7 +143,7 @@ async function loadSprt() {
     h += '若H0真 (无差异): ~' + (e.expected_under_null||'?') + '期可做判断<br>';
     h += '若H1真 (有差异): ~' + (e.expected_under_alt||'?') + '期可做判断<br>';
     h += '</div>';
-    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Wald 1945, "Sequential Tests of Statistical Hypotheses"</div>';
+    h += '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">Wald 1945, "Sequential Tests of Statistical Hypotheses"</div>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
 }
@@ -162,15 +162,15 @@ async function loadFdr() {
     const bh = d.bh_results || {};
     let h = '<div style="font-size:11px;line-height:1.7;">';
     h += '<b style="color:#F97316;">🔬 FDR 多重比较校正</b><br>';
-    h += '<span style="font-size:10px;color:#64748B;">Benjamini-Hochberg 1995: ' + (bh.n_total||0) + ' tests, q=0.05</span><br><br>';
+    h += '<span style="font-size:10px;color:#FFFFFF;">Benjamini-Hochberg 1995: ' + (bh.n_total||0) + ' tests, q=0.05</span><br><br>';
 
     h += '<b>显著方法 (' + (bh.n_significant||0) + '/' + (bh.n_total||0) + '):</b><br>';
-    if(bh.interpretation) h += '<span style="font-size:10px;color:#64748B;">' + bh.interpretation + '</span><br>';
+    if(bh.interpretation) h += '<span style="font-size:10px;color:#FFFFFF;">' + bh.interpretation + '</span><br>';
     
     (bh.significant||[]).slice(0, 15).forEach(function(s){
       h += '<div style="font-size:10px;padding:2px 0;">' +
         '<span style="color:#22C55E;">' + s.name + '</span> ' +
-        '<span style="color:#64748B;">p=' + s.p_value + ' ≤ BH=' + s.bh_threshold + '</span>' +
+        '<span style="color:#FFFFFF;">p=' + s.p_value + ' ≤ BH=' + s.bh_threshold + '</span>' +
         '</div>';
     });
 
@@ -180,7 +180,7 @@ async function loadFdr() {
       h += '<span style="font-size:10px;color:#FFFFFF;">' + kv[0] + ': ' + kv[1].toFixed(4) + '</span> ';
     });
     h += '</div>';
-    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Benjamini & Hochberg 1995, JRSS-B 57(1):289-300</div>';
+    h += '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">Benjamini & Hochberg 1995, JRSS-B 57(1):289-300</div>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败: '+e.message+'</div>'; }
 }
@@ -199,7 +199,7 @@ async function loadMi() {
     const mi = d.mi_analysis || {};
     let h = '<div style="font-size:11px;line-height:1.7;">';
     h += '<b style="color:#EC4899;">🔗 互信息 — 号码对非独立共现</b><br>';
-    h += '<span style="font-size:10px;color:#64748B;">Cover & Thomas 2006: ' + (mi.interpretation||'') + '</span><br><br>';
+    h += '<span style="font-size:10px;color:#FFFFFF;">Cover & Thomas 2006: ' + (mi.interpretation||'') + '</span><br><br>';
 
     h += '<b>MI显著阈值:</b> ' + mi.mi_threshold + ' (' + mi.n_bootstrap + ' bootstrap, α=' + mi.alpha + ')<br>';
     h += '<b>Top 非独立号码对:</b><br>';
@@ -208,7 +208,7 @@ async function loadMi() {
         '<span style="color:#E2E8F0;">#' + String(p[0]).padStart(2,'0') + '</span> — ' +
         '<span style="color:#E2E8F0;">#' + String(p[1]).padStart(2,'0') + '</span> ' +
         '<span style="color:#F472B6;">MI=' + p[2] + '</span> ' +
-        '<span style="color:#64748B;">共现' + p[3] + '次</span>' +
+        '<span style="color:#FFFFFF;">共现' + p[3] + '次</span>' +
         '</div>';
     });
 
@@ -226,7 +226,7 @@ async function loadMi() {
       h += '</div>';
     }
     h += '</div>';
-    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Cover & Thomas 2006, "Elements of Information Theory" 2nd ed.</div>';
+    h += '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">Cover & Thomas 2006, "Elements of Information Theory" 2nd ed.</div>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
 }
@@ -244,7 +244,7 @@ async function loadChangepoint() {
 
     let h = '<div style="font-size:11px;line-height:1.7;">';
     h += '<b style="color:#22D3EE;">📈 贝叶斯变点检测</b><br>';
-    h += '<span style="font-size:10px;color:#64748B;">Fearnhead 2006: 检测开奖机制结构性变化</span><br><br>';
+    h += '<span style="font-size:10px;color:#FFFFFF;">Fearnhead 2006: 检测开奖机制结构性变化</span><br><br>';
 
     h += '<b>总数据:</b> ' + d.total_draws + '期, 窗口=' + d.window + ', 推荐窗口=' + d.recommended_window + '期<br>';
     h += '<span style="color:#FFFFFF;">建议: ' + (d.recommendation||'') + '</span><br><br>';
@@ -261,7 +261,7 @@ async function loadChangepoint() {
 
     h += '<br><b>已知变化点:</b><br>';
     Object.entries(d.known_changepoints||{}).forEach(function(kv){
-      h += '<span style="font-size:9px;color:#64748B;">' + kv[0] + ' (期' + kv[1] + ') </span>';
+      h += '<span style="font-size:9px;color:#FFFFFF;">' + kv[0] + ' (期' + kv[1] + ') </span>';
     });
     h += '</div>';
     h += '<button class="btn-small" onclick="applyMiDraw()" style="margin-top:8px;background:rgba(236,72,153,0.12);color:#F472B6;border-color:rgba(236,72,153,0.2);">🔗 MI增强出号</button>';
@@ -297,21 +297,21 @@ async function loadEngines() {
 
   // Bias
   h += '<div style="padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(124,58,237,0.08);">';
-  h += '<b style="font-size:12px;">🎯 偏差采样</b> <span style="font-size:9px;color:#64748B;">Dirichlet后验→Thompson→Gumbel-Max</span><br>';
+  h += '<b style="font-size:12px;">🎯 偏差采样</b> <span style="font-size:9px;color:#FFFFFF;">Dirichlet后验→Thompson→Gumbel-Max</span><br>';
   h += '<span style="font-size:9px;color:#475569;">文献: Thompson 1933; Gumbel 1954. 对彩票无证明优势.</span><br>';
   h += '<button class="btn-small" onclick="applyArchivedEngine(\'bias\')" style="margin-top:4px;">试用</button>';
   h += '</div>';
 
   // B-L
   h += '<div style="padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(124,58,237,0.08);">';
-  h += '<b style="font-size:12px;">⚖️ B-L加权</b> <span style="font-size:9px;color:#64748B;">多方法观点贝叶斯融合</span><br>';
+  h += '<b style="font-size:12px;">⚖️ B-L加权</b> <span style="font-size:9px;color:#FFFFFF;">多方法观点贝叶斯融合</span><br>';
   h += '<span style="font-size:9px;color:#475569;">文献: Black & Litterman 1992. 对频率数据无证明优势.</span><br>';
   h += '<button class="btn-small" onclick="applyArchivedEngine(\'bl\')" style="margin-top:4px;">试用</button>';
   h += '</div>';
 
   // Position
   h += '<div style="padding:8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(124,58,237,0.08);">';
-  h += '<b style="font-size:12px;">📐 分位采样</b> <span style="font-size:9px;color:#64748B;">每位置独立最优方法+约束采样</span><br>';
+  h += '<b style="font-size:12px;">📐 分位采样</b> <span style="font-size:9px;color:#FFFFFF;">每位置独立最优方法+约束采样</span><br>';
   h += '<span style="font-size:9px;color:#475569;">6位置独立建模. OOS无显著提升.</span><br>';
   h += '<button class="btn-small" onclick="applyArchivedEngine(\'pos\')" style="margin-top:4px;">试用</button>';
   h += '</div>';
@@ -360,7 +360,7 @@ async function loadNist() {
     }).join('');
     el.innerHTML =
       '<div style="color:#FBBF24;margin-bottom:8px;font-size:12px;">' + d.verdict + '</div>' +
-      '<div style="font-size:10px;color:#64748B;margin-bottom:8px;">通过 ' + d.passed + '/' + d.total + ' (' + d.pass_rate_pct + '%) | ' +
+      '<div style="font-size:10px;color:#FFFFFF;margin-bottom:8px;">通过 ' + d.passed + '/' + d.total + ' (' + d.pass_rate_pct + '%) | ' +
         (d.bias_weighting_advice || '') + '</div>' +
       '<table style="font-size:10px;width:100%;border-collapse:collapse;">' +
       '<thead><tr style="color:#FFFFFF;"><th>检验</th><th>状态</th><th>p值</th><th>详情</th></tr></thead>' +
@@ -396,7 +396,7 @@ async function loadCondentropy() {
       '</div>' +
       '<div style="margin-top:8px;"><b style="color:#A78BFA;">互信息聚类 (5簇)</b></div>' +
       '<div style="font-size:10px;color:#FFFFFF;">' + clustersHtml + '</div>' +
-      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
+      '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">' + (d.note || '') + '</div>';
   } catch(e) {
     el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
   }
@@ -424,7 +424,7 @@ async function loadExactcover() {
       '<table style="font-size:10px;width:100%;">' +
       '<thead><tr style="color:#FFFFFF;"><th>V</th><th>注数</th><th>覆盖率</th><th>来源</th><th>覆盖t元组</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
-      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
+      '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">' + (d.note || '') + '</div>';
   } catch(e) {
     el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
   }
@@ -452,7 +452,7 @@ async function loadDiffset() {
       '<table style="font-size:10px;width:100%;">' +
       '<thead><tr style="color:#FFFFFF;"><th>V</th><th>块数</th><th>2-覆盖</th><th>已覆盖对/总对</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
-      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
+      '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">' + (d.note || '') + '</div>';
   } catch(e) {
     el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
   }
@@ -486,7 +486,7 @@ async function loadBandit() {
       '<table style="font-size:10px;width:100%;">' +
       '<thead><tr style="color:#FFFFFF;"><th>策略</th><th>试验</th><th>均值</th><th></th></tr></thead>' +
       '<tbody>' + armsHtml + '</tbody></table>' +
-      '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (bd.note || '') + '</div>';
+      '<div style="margin-top:8px;font-size:9px;color:#FFFFFF;">' + (bd.note || '') + '</div>';
   } catch(e) {
     el.innerHTML = '<div style="color:#EF4444;">加载失败: ' + e.message + '</div>';
   }

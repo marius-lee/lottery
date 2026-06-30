@@ -11,8 +11,8 @@ window._showZengPanel = function(){
 
   var h = '<div class="weier-container">';
   h += '<h5 style="color:#A78BFA;font-size:16px;margin:0 0 2px 0;">🎯 曾献忠 曾氏模块 [2014]</h5>';
-  h += '<div style="font-size:16px;color:#64748B;margin-bottom:10px;">数学建模方法论 · 内外双层追踪 · 衡值轮盘+四大定律+V/O系统</div>';
-  h += '<div id="zengSignal" style="font-size:14px;"><span style="color:#64748B;">加载中...</span></div>';
+  h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:10px;">数学建模方法论 · 内外双层追踪 · 衡值轮盘+四大定律+V/O系统</div>';
+  h += '<div id="zengSignal" style="font-size:14px;"><span style="color:#FFFFFF;">加载中...</span></div>';
   h += '</div>';
   el.innerHTML = h;
   window._zengLoad();
@@ -101,7 +101,7 @@ window._zengLoad = async function(){
       var it = items[k];
       var sc = it.status === 'V' ? '#34D399' : (it.status === '~' ? '#FBBF24' : '#EF4444');
       h += '<div><span style="color:#FFFFFF;">'+k+':</span> <span style="color:'+sc+';">'+it.status+'</span> ';
-      h += '<span style="color:#64748B;">期:'+it.expected+' vs 实:'+it.actual+'</span></div>';
+      h += '<span style="color:#FFFFFF;">期:'+it.expected+' vs 实:'+it.actual+'</span></div>';
     }
     h += '</div>';
   }

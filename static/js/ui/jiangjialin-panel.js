@@ -11,7 +11,7 @@ window._showJiangJiaLinPanel = function(){
   if(!el) return;
   var h = '<div class="weier-container">';
   h += '<h5 style="color:#A78BFA;font-size:16px;margin:0 0 8px 0;">📐 蒋加林·排列型思维 [2010]</h5>';
-  h += '<div style="font-size:16px;color:#64748B;margin-bottom:8px;">将33选6按6个位置逐一分析 · 位间隔→位跨度→位形态 多级过滤</div>';
+  h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:8px;">将33选6按6个位置逐一分析 · 位间隔→位跨度→位形态 多级过滤</div>';
 
   h += '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">';
   h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';

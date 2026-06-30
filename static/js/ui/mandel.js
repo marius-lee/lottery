@@ -30,7 +30,7 @@ async function loadMandelConfig() {
         '<td>' + row.expected_years + '年</td>' +
         '</tr>';
     });
-    html += '<tr style="color:#64748B;font-size:9px;"><td colspan="6">' +
+    html += '<tr style="color:#FFFFFF;font-size:9px;"><td colspan="6">' +
       '保本头奖=¥3,544万 | 期望总成本=¥3,544万(与V无关) | 156期/年</td></tr>';
     tbody.innerHTML = html;
   } catch(e) {
@@ -73,7 +73,7 @@ async function mandelPreview() {
       let html = '';
       d.sample_tickets.slice(0, 3).forEach(function(t, i) {
         html += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">' +
-          '<span style="color:#64748B;font-size:10px;">#' + (i+1) + '</span>';
+          '<span style="color:#FFFFFF;font-size:10px;">#' + (i+1) + '</span>';
         t.reds.forEach(function(rn) {
           html += '<span class="ball red" style="display:inline-flex;width:20px;height:20px;font-size:9px;">' +
             String(rn).padStart(2,'0') + '</span>';
@@ -82,7 +82,7 @@ async function mandelPreview() {
           String(t.blue).padStart(2,'0') + '</span>';
         html += '</div>';
       });
-      html += '<div style="font-size:9px;color:#64748B;margin-top:2px;">... 共 ' + c.total_tickets.toLocaleString() + ' 注 (全买)</div>';
+      html += '<div style="font-size:9px;color:#FFFFFF;margin-top:2px;">... 共 ' + c.total_tickets.toLocaleString() + ' 注 (全买)</div>';
       sample.innerHTML = html;
     }
   } catch(e) {

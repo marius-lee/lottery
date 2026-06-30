@@ -36,7 +36,7 @@ window._showPengPanel = function(){
 
     // ═══ 通道显示区 ═══
     h += '<h5 style="color:#3B82F6;font-size:16px;margin:8px 0;">📊 五均线号码通道 [彭浩 Ch3 §2]</h5>';
-    h += '<div style="font-size:16px;color:#64748B;margin-bottom:6px;">18期MA + 3σ/√σ · 通道准确率=±1范围内概率 · 绿色=正常 黄色=警戒 红色=越界</div>';
+    h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:6px;">18期MA + 3σ/√σ · 通道准确率=±1范围内概率 · 绿色=正常 黄色=警戒 红色=越界</div>';
 
     if(ch && ch.ok && ch.positions){
       for(var i=0; i<7; i++){
@@ -49,13 +49,13 @@ window._showPengPanel = function(){
         h += '<div style="margin:4px 0;padding:6px 8px;border-radius:4px;background:'+bg+';font-size:14px;">';
         h += '<span style="font-weight:600;color:'+color+';min-width:50px;display:inline-block;">'+p.position_name+'</span> ';
         h += '<span style="font-weight:700;color:#E2E8F0;font-size:14px;">'+String(p.current).padStart(2,'0')+'</span> ';
-        h += '<span style="color:#64748B;">通道:</span> ';
+        h += '<span style="color:#FFFFFF;">通道:</span> ';
         h += '<span style="color:#EF4444;">'+p.lower+'</span> ';
         h += '<span style="color:#FBBF24;">'+p.mid_lower+'</span> ';
         h += '<span style="color:#3B82F6;">['+p.ma+']</span> ';
         h += '<span style="color:#FBBF24;">'+p.mid_upper+'</span> ';
         h += '<span style="color:#22C55E;">'+p.upper+'</span> ';
-        h += '<span style="color:#64748B;">σ='+p.sigma+' 准确率='+Math.round(p.accuracy_1*100)+'%</span>';
+        h += '<span style="color:#FFFFFF;">σ='+p.sigma+' 准确率='+Math.round(p.accuracy_1*100)+'%</span>';
         if(atEdge) h += ' <span style="color:#EF4444;font-weight:700;">⚠越界</span>';
         h += '</div>';
       }
@@ -65,7 +65,7 @@ window._showPengPanel = function(){
 
     // ═══ 方向预测区 ═══
     h += '<h5 style="color:#A78BFA;font-size:16px;margin:12px 0 8px 0;">🎯 方向预测 [彭浩 Ch3 §4]</h5>';
-    h += '<div style="font-size:16px;color:#64748B;margin-bottom:6px;">三方向: ↓下=本期<上期  →平=本期=上期  ↑上=本期>上期 | 九方向: 三期组合 | 反转形态(~30%): 下上/上下</div>';
+    h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:6px;">三方向: ↓下=本期<上期  →平=本期=上期  ↑上=本期>上期 | 九方向: 三期组合 | 反转形态(~30%): 下上/上下</div>';
 
     if(di && di.ok && di.positions){
       h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
@@ -84,7 +84,7 @@ window._showPengPanel = function(){
         h += '<div style="color:#FFFFFF;">'+name+'</div>';
         h += '<div style="font-size:18px;color:'+arrowColor+';">'+arrow+'</div>';
         h += '<div style="color:#E2E8F0;">'+d3+' '+nextArrow+'</div>';
-        h += '<div style="font-size:15px;color:#64748B;">'+d9+(rev?' ⚡':'')+'</div>';
+        h += '<div style="font-size:15px;color:#FFFFFF;">'+d9+(rev?' ⚡':'')+'</div>';
         h += '</div>';
       }
       h += '</div>';
