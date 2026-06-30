@@ -25,7 +25,7 @@ window._showJiangJiaLinPanel = function(){
   h += '</div>';
 
   h += '<div style="display:flex;align-items:center;gap:8px;">';
-  h += '<span style="font-size:14px;color:#94A3B8;">蓝球:</span>';
+  h += '<span style="font-size:14px;color:#FFFFFF;">蓝球:</span>';
   h += '<select id="jjBlueMode" style="font-size:14px;padding:4px 8px;border-radius:4px;background:#1E1E36;color:#E2E8F0;border:1px solid rgba(255,255,255,0.1);">';
   h += '<option value="mod3">除3余数归类</option>';
   h += '<option value="diagonal">斜边码</option>';
@@ -64,7 +64,7 @@ window._jjDraw = async function(){
     return;
   }
 
-  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">候选池: '+data.candidate_count+' → 过滤后: '+data.after_filter+'</div>';
+  var h = '<div style="font-size:16px;color:#FFFFFF;margin-bottom:4px;">候选池: '+data.candidate_count+' → 过滤后: '+data.after_filter+'</div>';
   h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
   (data.tickets||[]).forEach(function(t){
     var reds = t.reds.map(function(x){return String(x).padStart(2,'0')}).join(' ');

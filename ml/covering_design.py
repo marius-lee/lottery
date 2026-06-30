@@ -19,14 +19,25 @@ from ml.ssq_constants import (
 )
 KNOWN_OPTIMAL = COVERING_OPTIMAL_BOUNDS
 
-# v≤18 时全部枚举 (确定性); v>18 时抽样 (实用)
+# 候选/目标全枚举上限 [工程]: C(18,6)=18564 < 20000, C(19,6)=27132 > 20000
+# → v≤18 全枚举 (确定性, C(v,6)≤18564 组合可存); v>18 抽样 20000
+# 20000: 内存上限约 20000×2×64bit=320KB (位掩码列表), M1 8GB 可行
+# [Nemhauser, Wolsey & Fisher 1978]: 贪心(1-1/e)近似比与候选集大小无关,
+# 抽样仅降低绝对覆盖率, 近似比不变
 MAX_FULL_ENUM_V = 18
 MAX_SAMPLE_CANDIDATES = 20000
 
 
-def generate_candidate_set(red_probs, size=15):
+def generate_candidate_set(red_probs, size=None):
     """选前size个最高概率红球作为候选集。
-    默认15: C(15,6)=5005组合, 搜索空间可管理. 增至18则C(18,6)=18564."""
+    size=None=自动检测最优值 (偏差驱动).
+    默认15: C(15,6)=5005组合, 搜索空间可管理."""
+    if size is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            size = auto_v().v
+        except Exception:
+            size = 15  # [工程] 回退默认值
     sorted_nums = sorted(red_probs.items(), key=lambda x: -x[1])
     return [n for n, _ in sorted_nums[:size]]
 
@@ -39,12 +50,18 @@ def _to_mask(combo, lookup):
     return m
 
 
-def greedy_t_covering(v_numbers, n_tickets, t=4):
+def greedy_t_covering(v_numbers, n_tickets, t=4, already_covered=None):
     """贪心最大覆盖 — 确定性、可复现、有(1-1/e)近似比保证.
 
     每步选择覆盖最多未覆盖t-子集的候选票.
     v≤18: 全枚举 C(v,6) 候选 (确定性最优).
     v>18: 随机抽样 20000 候选 (近似, 但实用).
+
+    Args:
+        v_numbers: 热号列表
+        n_tickets: 需要生成的注数
+        t: 覆盖强度
+        already_covered: set[int] — 已覆盖的开奖组合索引 (多期联合模式)
 
     Returns:
         (tickets: list[list[int]], coverage_pct: float)
@@ -68,6 +85,8 @@ def greedy_t_covering(v_numbers, n_tickets, t=4):
 
     n_draws = len(draw_masks)
     uncovered = set(range(n_draws))
+    if already_covered:
+        uncovered -= already_covered  # 多期联合: 已覆盖的不再重复
 
     # 延迟缓存: candidate_idx → frozenset[covered draw indices]
     cache = {}
@@ -113,11 +132,14 @@ def greedy_t_covering(v_numbers, n_tickets, t=4):
     return tickets, coverage
 
 
-def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
+def build_covering_tickets(hot_numbers, t=4, target_tickets=None, already_covered=None):
     """构建覆盖设计票 — 已知轮次表优先, 回退贪心.
 
-    对于v=8/9/10使用已知最优轮次表 (数学证明, 100%保证).
-    更大v使用贪心最大覆盖 (1-1/e近似比).
+    对于v=8/9/10/11使用已知最优轮次表 (数学证明, 100%保证).
+    更大v使用贪心最大覆盖 (1-1/e近似比, 对开奖覆盖优化而非4-子集覆盖).
+    
+    Args:
+        already_covered: set[int] — 多期联合: 已覆盖的开奖组合索引, 贪心跳过
     """
     v = len(hot_numbers)
     k = 6
@@ -144,11 +166,12 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
             "method": "known_wheel",
         }
 
+
     # ── 回退: 贪心覆盖 ──
     if target_tickets is None:
         target_tickets = KNOWN_OPTIMAL.get((v, t), _estimate_required(v, t))
 
-    tickets, coverage = greedy_t_covering(hot_numbers, target_tickets, t)
+    tickets, coverage = greedy_t_covering(hot_numbers, target_tickets, t, already_covered=already_covered)
 
     if not tickets:
         return {"ok": False, "msg": "贪心覆盖未能生成有效票"}
@@ -174,7 +197,9 @@ def build_covering_tickets(hot_numbers, t=4, target_tickets=None):
 
 def _estimate_required(v, t):
     """组合下界: 最少需 ⌈C(v,t)/C(k,t)⌉ 注覆盖所有t-子集.
-    这是平凡下界, 实际取 1.5-2x 以确保可行."""
+    贪心算法 (1-1/e) 近似比 [NWF 1978] 要求 >= 下界, 倍增系数为经验校准:
+    - v<=15: 1.5x/最小4注; v<=20: 1.7x/最小8注; v>20: 2.0x/最小12注
+    倍增系数无理论下界, 仅确保可行."""
     k = 6
     lower = math.comb(v, t) / math.comb(k, t)
     if v <= 15:

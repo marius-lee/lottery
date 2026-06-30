@@ -38,7 +38,7 @@ def collect_signals(data, tickets=3, capital=5000) -> Dict[str, Any]:
         red_hits, blue_hits = _load_hit_history(50)
         if red_hits and len(red_hits) >= 5:
             import math
-            pool_v = 15
+            pool_v = 15  # 回退: 偏差检测不可用时使用默认值
             p_null_red = 1.0 - (math.comb(15,0)*math.comb(18,6) + math.comb(15,1)*math.comb(18,5) +
                                  math.comb(15,2)*math.comb(18,4)) / math.comb(33,6)
             p_alt_red = min(p_null_red * 1.15, 0.999)

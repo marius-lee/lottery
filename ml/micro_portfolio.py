@@ -84,6 +84,8 @@ class _PoolState:
         self.luck_blue_mix = 0.06
 
 _state = _PoolState()
+_multi_period_enabled = False  # [工程] 多期联合覆盖开关
+_per_ticket_blue_w = None  # [工程] 每注独立蓝球权重列表, 由 generate_tickets 设置
 
 
 # [彭浩 2010] 通道过滤缓存 — 每位置[下轨, 上轨]范围
@@ -122,7 +124,7 @@ BLOCK_9 = [
 #   混合=0.5: Laplace频率+运气偏置等权融合
 #   蓝球=0.06: 初始猜测(≈1/16=0.0625), 首次运行时自动校准到实际频率
 
-LUCK_WINDOW = 10        # 回溯窗口期数
+LUCK_WINDOW = 10        # 回溯窗口期数 [工程]: 10期≈1个月, 覆盖一个完整的运气周期
 LUCK_COEFF = 0.5        # 混合偏置强度 (blend模式)
 
 
@@ -425,6 +427,7 @@ def _cailele_blue():
         if oe[i]==oe[i-1]: oe_streak+=1
         else: break
     cur_parity = oe[-1]
+    # 奇偶/大小连续同趋势阈值 [工程]: 6/5→半阈值≥3/2期, 源自常见双色球过滤实践
     parity_max = 6 if cur_parity==1 else 5
     if oe_streak >= parity_max//2:
         for n in range(1, 17):
@@ -440,6 +443,7 @@ def _cailele_blue():
         if bs[i]==bs[i-1]: bs_streak+=1
         else: break
     cur_bs = bs[-1]
+    # 同上: 大小比连续同趋势阈值
     bs_max = 5 if cur_bs==1 else 4
     if bs_streak >= bs_max//2:
         for n in range(1, 17):
@@ -671,8 +675,15 @@ def _weighted_choice(weights, candidates, rng=random):
     return candidates[-1]
 
 
-def _pick_blue(weights):
-    """从蓝球权重中按概率抽取一个号码. 每注独立, 不要求跨注不重复."""
+def _pick_blue(weights, ticket_idx=None):
+    """从蓝球权重中按概率抽取一个号码. 每注独立, 不要求跨注不重复.
+    
+    若 _per_ticket_blue_w 已设置且 ticket_idx 有效, 则使用该注的独立蓝球权重。
+    [工程] 实现每注独立蓝球策略: 将蓝球候选集均分给各注, 分散整体蓝球覆盖。
+    """
+    if ticket_idx is not None and _per_ticket_blue_w is not None:
+        if ticket_idx < len(_per_ticket_blue_w):
+            return _weighted_choice(_per_ticket_blue_w[ticket_idx], list(range(1, 17)))
     return _weighted_choice(weights, list(range(1, 17)))
 
 
@@ -747,7 +758,7 @@ def _generate_luck_tickets(n=3, max_overlap=None, five_period=False, pattern_rul
                        for t in tickets):
                     continue
             used_reds.add(tr)
-            blue = _pick_blue(blue_weights)
+            blue = _pick_blue(blue_weights, len(tickets))
             tickets.append({"reds": reds, "blue": blue})
             found = True
             break
@@ -760,12 +771,12 @@ def _generate_luck_tickets(n=3, max_overlap=None, five_period=False, pattern_rul
                 if c in used_reds:
                     continue
                 used_reds.add(c)
-                blue = _pick_blue(blue_weights)
+                blue = _pick_blue(blue_weights, len(tickets))
                 tickets.append({"reds": list(c), "blue": blue})
                 found = True
                 break
             if not found:
-                blue = _pick_blue(blue_weights)
+                blue = _pick_blue(blue_weights, len(tickets))
                 tickets.append({"reds": [1, 2, 3, 4, 5, 6], "blue": blue})
 
     return {
@@ -906,7 +917,7 @@ def _generate_fallback_tickets(n, luck_mode='off', max_overlap=None, five_period
                 break
         else:
             tickets.append({"reds": [1, 2, 3, 4, 5, 6],
-                           "blue": _pick_blue(blue_weights)})
+                           "blue": _pick_blue(blue_weights, len(tickets))})
     _log_prediction(tickets, source="micro+Fallback")
     return {
         "ok": True,
@@ -1018,7 +1029,7 @@ def _greedy_diverse_tickets(n, valid_reds, n_combos, exclude=None,
     for idx, reds in selected:
         used_idx.add(idx)
         used_reds.add(reds)
-        blue = _pick_blue(blue_weights)
+        blue = _pick_blue(blue_weights, len(tickets))
         used_blues.add(blue)
         tickets.append({"reds": list(reds), "blue": blue})
 
@@ -1064,7 +1075,7 @@ def _try_one_ticket(reds, used_reds, tickets, blue_weights, max_overlap=None):
         if any(len(set(reds) & set(t["reds"])) > max_overlap for t in tickets):
             return None
     used_reds.add(reds)
-    return {"reds": list(reds), "blue": _pick_blue(blue_weights)}
+    return {"reds": list(reds), "blue": _pick_blue(blue_weights, len(tickets))}
 
 
 
@@ -1106,6 +1117,16 @@ def _log_prediction(tickets, source="micro_portfolio"):
             })
         if entries:
             db.save_prediction_log(entries)
+        # 多期联合: 保存覆盖的 t-子集
+        global _multi_period_enabled
+        if _multi_period_enabled:
+            try:
+                from ml.multi_period_cover import save_coverage
+                reds_only = [t.get("reds", []) for t in tickets if len(t.get("reds", [])) == 6]
+                if reds_only:
+                    save_coverage(str(period), reds_only, t=t)
+            except Exception:
+                pass
     except Exception:
         pass  # 日志失败不影响核心流程
 
@@ -1117,7 +1138,8 @@ def _log_prediction(tickets, source="micro_portfolio"):
 def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                      diversity_mode=None, five_period=False, backtest_rank=False,
                      pattern_rules=False, author_mode=None, use_freq_blue=False,
-                     blue_mode="freq", red_mode="pool", strategy_mode=None):
+                     blue_mode="freq", t=4, red_mode="pool", strategy_mode=None,
+                     v_override=None, multi_period=False):
     """生成号码主入口.
 
     Args:
@@ -1131,7 +1153,12 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         dict with tickets, algorithm, ev_estimate.
     """
     # ── 深度信号收集 (提前: bandit/author也需要) ──
-    global _state
+    global _state, _multi_period_enabled
+    _multi_period_enabled = multi_period
+    
+    # 多期联合: 自动切换到覆盖设计路径 (池采样无历史记忆, 覆盖设计可追踪已覆盖子集)
+    if multi_period and red_mode == 'pool':
+        red_mode = 'exact_cover'
     from server.db import load_draws
     from ml.deep_signals import collect_signals
 
@@ -1164,7 +1191,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     # [工程] 只在贪心/回测/软过滤/精确覆盖/差集模式下建池(需全量枚举C(33,6)),
     # 普通采样直接用回退路径(随机生成6数), 秒级响应.
     needs_pool = (diversity_mode == 'greedy' or backtest_rank or soft
-                  or red_mode in ('pool', 'exact_cover', 'diffset'))
+                  or red_mode in ('pool', 'exact_cover', 'diffset', 'la_jolla_full'))
     if needs_pool:
         try:
             if _state.valid_reds is None or len(load_draws()) != _state.past_count:
@@ -1222,6 +1249,28 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     else:
         blue_weights = _blue_freq_weights()
 
+    # ── 每注独立蓝球: 将蓝球候选集均分给每注 (默认策略) ──
+    # 当前所有注共享同一蓝球候选集, 分散蓝球可提升整体覆盖 
+    # [战略文档 2026-06-29 建议]: 每注独立选蓝球以覆盖更多蓝球空间
+    per_ticket_blue_weights = None
+    import math
+    cands = sorted(blue_candidates) if blue_candidates else list(range(1, 17))
+    per_ticket_blue_weights = []
+    # 轮转分配: 每注分到 ceil(|cands|/n) 个候选蓝球
+    per_ticket = max(1, math.ceil(len(cands) / n))
+    for i in range(n):
+        start = (i * per_ticket) % len(cands)
+        subset = []
+        for j in range(per_ticket):
+            subset.append(cands[(start + j) % len(cands)])
+        # 构造该注的权重数组
+        w = [0.0] * 16
+        w_per = 1.0 / len(subset)
+        for b in subset:
+            w[b - 1] = w_per
+        per_ticket_blue_weights.append(w)
+    _per_ticket_blue_w = per_ticket_blue_weights
+
     used_idx = set()
     used_reds = set()
     tickets = []
@@ -1234,7 +1283,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     try:
         from ml.cond_entropy import analyze_conditional_entropy
         ce = analyze_conditional_entropy(_windowed_data,
-                                         n_red=15, ngram=5)
+                                         n_red=None, ngram=5)
         if ce.ok and ce.red_entropies:
             # 熵 → 权重: weight = 1/(entropy + 0.01), 归一化到 [0.3, 1.0]
             min_e = min(ce.red_entropies.values())
@@ -1283,7 +1332,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
     if _signals.get("fdr_valid_methods") and len(_signals.get("fdr_valid_methods", [])) >= 2:
         try:
             from ml.cond_entropy import analyze_conditional_entropy
-            ce_mi = analyze_conditional_entropy(_windowed_data, n_red=15, ngram=5)
+            ce_mi = analyze_conditional_entropy(_windowed_data, n_red=None, ngram=5)
             if ce_mi.ok and ce_mi.red_clusters:
                 _mi_clusters = ce_mi.red_clusters  # {cluster_id: [number, ...]}
         except Exception:
@@ -1294,13 +1343,35 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         from ml.exact_cover import exact_cover as ec
         from ml.cond_entropy import analyze_conditional_entropy
         try:
-            # 用条件熵选 v=15 个最规律的红球
-            ce = analyze_conditional_entropy(_windowed_data, n_red=15)
-            hot = ce.red_top15 if ce.ok and ce.red_top15 else list(range(1, 16))
-            cover = ec(v=15, t=4, n=n_original, hot_numbers=hot)
+            # 确定 v: v_override > 偏差自动检测 > 默认15
+            if v_override and isinstance(v_override, int) and 8 <= v_override <= 20:
+                _v = v_override
+            else:
+                try:
+                    from ml.bias_v_selector import auto_v
+                    _v = auto_v().v
+                except Exception:
+                    _v = 15
+            # 用条件熵选 _v 个最规律的红球
+            ce = analyze_conditional_entropy(_windowed_data, n_red=None)
+            # 获取全量熵排序列表, 取前 _v 个
+            if ce.ok and ce.red_entropies:
+                # red_entropies is dict {num: entropy}, sort by entropy ascending
+                all_ranked = sorted(ce.red_entropies.keys(), key=lambda x: ce.red_entropies[x])
+                hot_all = all_ranked[:_v]
+            elif ce.ok and ce.red_top15:
+                hot_all = list(ce.red_top15)[:_v]
+                if len(hot_all) < _v:
+                    # 补足后续号码
+                    for i in range(1, 34):
+                        if i not in hot_all and len(hot_all) < _v:
+                            hot_all.append(i)
+            else:
+                hot_all = list(range(1, _v + 1))
+            cover = ec(v=_v, t=t, n=n_original, hot_numbers=hot_all)
             if cover.ok and cover.tickets:
                 for reds in cover.tickets:
-                    blue = _pick_blue(blue_weights)
+                    blue = _pick_blue(blue_weights, len(tickets))
                     tickets.append({"reds": list(reds), "blue": blue})
                 algo = "ExactCover+LaJolla" + ("+Soft" if soft else "") + ("+NIST" if nist_biased else "")
                 _log_prediction(tickets, source=f"micro+{algo}")
@@ -1323,16 +1394,87 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
         except Exception:
             pass  # 回退到 pool 模式
 
+    # ── 红球模式: la_jolla_full (La Jolla 完整表, 确定性最优) ──
     # ── 红球模式: diffset (差集构造2-覆盖) ──
+    if red_mode == "la_jolla_full" and needs_pool:
+        from ml.exact_cover_tables import FULL_COVERS, take_top_n
+        try:
+            # 确定 v
+            if v_override and isinstance(v_override, int) and 8 <= v_override <= 20:
+                _v = v_override
+            else:
+                try:
+                    from ml.bias_v_selector import auto_v
+                    _v = auto_v().v
+                except Exception:
+                    _v = 15
+            # 如果 v 有完整 La Jolla 表
+            if _v in [12, 13, 14, 15, 16]:
+                ce = analyze_conditional_entropy(_windowed_data, n_red=None)
+                if ce.ok and ce.red_entropies:
+                    all_ranked = sorted(ce.red_entropies.keys(), key=lambda x: ce.red_entropies[x])
+                    hot_all = all_ranked[:_v]
+                else:
+                    hot_all = list(range(1, _v + 1))
+                la_tickets = take_top_n(_v, t, n_original, hot_all)
+                if la_tickets:
+                    for reds in la_tickets:
+                        blue = _pick_blue(blue_weights, len(tickets))
+                        tickets.append({"reds": list(reds), "blue": blue})
+                    algo = "LaJollaFull(v=" + str(_v) + ")" + ("+Soft" if soft else "") + ("+NIST" if nist_biased else "")
+                    _log_prediction(tickets, source=f"micro+{algo}")
+                    return {
+                        "ok": True, "algorithm": algo,
+                        "tickets": tickets, "budget": n_original,
+                        "cost_rmb": n_original * TICKET_PRICE,
+                        "pool_size": n_combos * 16,
+                        "pool_valid_reds": n_combos,
+                        "soft_filter": soft, "soft_excluded": len(exclude),
+                        "luck_mode": luck_mode,
+                        "rule_status": _state.rule_status,
+                        "cover_source": "La Jolla C(v,6,4) 完整表",
+                        "blue_method": blue_method_label,
+                        "nist_biased": nist_biased,
+                        "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
+                                        "cost_per_draw": n_original * TICKET_PRICE},
+                    }
+            else:
+                # 回退到 exact_cover
+                from ml.exact_cover import exact_cover as ec
+                cover = ec(v=_v, t=t, n=n_original, hot_numbers=list(range(1, _v+1)))
+                if cover.ok and cover.tickets:
+                    for reds in cover.tickets:
+                        blue = _pick_blue(blue_weights, len(tickets))
+                        tickets.append({"reds": list(reds), "blue": blue})
+                    algo = "LaJollaFull-Fallback(v=" + str(_v) + ")"
+                    _log_prediction(tickets, source=f"micro+{algo}")
+                    return {
+                        "ok": True, "algorithm": algo,
+                        "tickets": tickets, "budget": n_original,
+                        "cost_rmb": n_original * TICKET_PRICE,
+                        "pool_size": n_combos * 16,
+                        "pool_valid_reds": n_combos,
+                        "soft_filter": soft, "soft_excluded": len(exclude),
+                        "luck_mode": luck_mode,
+                        "rule_status": _state.rule_status,
+                        "cover_source": cover.source,
+                        "blue_method": blue_method_label,
+                        "nist_biased": nist_biased,
+                        "ev_estimate": {"ev_per_draw": round(RANDOM_SINGLE_EV * n_original, 2),
+                                        "cost_per_draw": n_original * TICKET_PRICE},
+                    }
+        except Exception:
+            pass  # 回退到 pool 模式
+
     if red_mode == "diffset" and needs_pool:
         from ml.diffset_cover import diffset_red_tickets
         from ml.cond_entropy import analyze_conditional_entropy
         try:
-            ce = analyze_conditional_entropy(_windowed_data, n_red=15)
+            ce = analyze_conditional_entropy(_windowed_data, n_red=None)
             hot = ce.red_top15 if ce.ok and ce.red_top15 else list(range(1, 16))
             diff_tickets = diffset_red_tickets(hot, n_tickets=n_original)
             for reds in diff_tickets:
-                blue = _pick_blue(blue_weights)
+                blue = _pick_blue(blue_weights, len(tickets))
                 tickets.append({"reds": list(reds), "blue": blue})
             algo = "差集构造覆盖" + ("+Soft" if soft else "") + ("+NIST" if nist_biased else "")
             _log_prediction(tickets, source=f"micro+{algo}")
@@ -1393,7 +1535,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
             for idx, reds, hits in ranked[:n_original]:
                 used_idx.add(idx)
                 used_reds.add(reds)
-                blue = _pick_blue(blue_weights)
+                blue = _pick_blue(blue_weights, len(tickets))
                 tickets.append({"reds": list(reds), "blue": blue})
 
             pool_size = (n_combos - len(exclude)) * 16
@@ -1471,7 +1613,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     tickets.append(ticket)
                     break
             else:
-                blue = _pick_blue(blue_weights)
+                blue = _pick_blue(blue_weights, len(tickets))
                 tickets.append({"reds": [1, 2, 3, 4, 5, 6], "blue": blue})
 
 
@@ -1505,7 +1647,7 @@ def generate_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
 # Tier 3: 覆盖设计生成 — Steiner t-wise + 蓝球分配
 # ═══════════════════════════════════════════════════════════════════════════
 
-def generate_tickets_covering(n=6, hot_numbers=None, t=4, max_overlap=None, five_period=False):
+def generate_tickets_covering(n=6, hot_numbers=None, t=4, max_overlap=None, five_period=False, multi_period=False):
     """覆盖设计票生成: 用SA引擎优化红球覆盖 + Laplace蓝球分配.
 
     Args:
@@ -1523,7 +1665,18 @@ def generate_tickets_covering(n=6, hot_numbers=None, t=4, max_overlap=None, five
     if hot_numbers is None or len(hot_numbers) < 6:
         return {"ok": False, "msg": "热号数量不足（需要 ≥6）"}
 
-    cover = build_covering_tickets(hot_numbers, t=t, target_tickets=n)
+    # 多期联合: 加载已覆盖的开奖组合
+    _already = None
+    if multi_period:
+        try:
+            from ml.multi_period_cover import get_covered_draw_indices
+            cov_map = get_covered_draw_indices(hot_numbers, t=t)
+            if cov_map:
+                max_t = 15 if t == 4 else 6
+                _already = {di for di, cnt in cov_map.items() if cnt >= max_t}
+        except Exception:
+            pass
+    cover = build_covering_tickets(hot_numbers, t=t, target_tickets=n, already_covered=_already)
     if not cover["ok"]:
         return {"ok": False, "msg": "覆盖设计失败: " + cover.get("msg", "生成错误")}
 

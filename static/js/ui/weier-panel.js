@@ -11,7 +11,7 @@ fetch('/api/weier/conditions').then(function(r){return r.json()}).then(function(
 window._showWeierPanel = function(){
   var el = document.getElementById('weierContent');
   if(!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:8px;">加载中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:8px;">加载中...</div>';
 
   var clsTag = function(o){ return o<=10?'<span style="color:#10B981;font-size:16px;">热</span>':o<=18?'<span style="color:#FBBF24;font-size:16px;">温</span>':'<span style="color:#EF4444;font-size:16px;">冷</span>'; };
 
@@ -20,7 +20,7 @@ window._showWeierPanel = function(){
     h += '<div style="display:flex;gap:8px;margin-bottom:12px;">';
     h += '<button class="btn btn-draw" onclick="window._runWeierFilter()" style="font-size:15px;padding:6px 16px;">开始过滤</button>';
     h += '<button class="btn btn-save" onclick="window._clearWeier()" style="font-size:15px;padding:6px 16px;background:#64748B;">清除选择</button>';
-    h += '<span id="weierStatus" style="font-size:14px;color:#94A3B8;align-self:center;"></span></div>';
+    h += '<span id="weierStatus" style="font-size:14px;color:#FFFFFF;align-self:center;"></span></div>';
 
     // 第1-3步
     function ratioRow(label, items, stepNum) {

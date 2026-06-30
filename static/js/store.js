@@ -19,10 +19,13 @@ export const store = {
   useFreqBlue: false,
   blueMode: 'freq',
   redMode: 'pool',
+  t: 4,          // 覆盖强度 t (4=四等奖, 5=三等奖)
+  multiPeriod: false,  // 多期联合覆盖: 跨期跟踪已覆盖子集
   strategyMode: null,
   useAutoKelly: false,
   kellyRecommendedN: 0,
   currentAuthor: null,  // 当前选中的作者, null=无
+  vOverride: null,       // 手动覆盖 v (null=自动), 来源: bias signal v selector
 };
 
 const _listeners = [];

@@ -19,7 +19,7 @@ window._showLiuDaJunPanel = function(){
 
   // 过滤 + 出号
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;">';
-  h += '<span style="font-size:16px;color:#94A3B8;">过滤:</span>';
+  h += '<span style="font-size:16px;color:#FFFFFF;">过滤:</span>';
   h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="ljdCoincidence"><span>🔗重合码</span></label>';
   h += '<button class="btn btn-draw" onclick="window._ljdDraw()" style="font-size:14px;padding:5px 16px;margin-left:auto;">刘大军综合出号</button>';
   h += '</div>';
@@ -48,7 +48,7 @@ window._ljdLoadSignals = async function(){
   if(d.coincidence_status){
     var cs = d.coincidence_status;
     h += '<div style="padding:6px 8px;border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:6px;">';
-    h += '<span style="color:#94A3B8;">上期尾数: </span>';
+    h += '<span style="color:#FFFFFF;">上期尾数: </span>';
     h += '<span style="color:#E2E8F0;">'+cs.tails.join(' ')+'</span>';
     h += '<span style="color:#64748B;"> | 重合码{1,3,6,8}: </span>';
     if(cs.has_coincidence){
@@ -67,7 +67,7 @@ window._ljdLoadSignals = async function(){
     h += '<div style="color:#64748B;font-size:15px;">'+p.name+'</div>';
     rec.forEach(function(t){
       var isCoin = [1,3,6,8].indexOf(t) >= 0;
-      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:16px;margin:1px;'+(isCoin?'background:rgba(251,191,36,0.2);color:#FBBF24;':'background:rgba(148,163,184,0.1);color:#94A3B8;')+'">'+t+'</span>';
+      h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:16px;margin:1px;'+(isCoin?'background:rgba(251,191,36,0.2);color:#FBBF24;':'background:rgba(148,163,184,0.1);color:#FFFFFF;')+'">'+t+'</span>';
     });
     h += '</div>';
   });
@@ -108,7 +108,7 @@ window._ljdDraw = async function(){
     return;
   }
 
-  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">算法: '+data.algorithm+'</div>';
+  var h = '<div style="font-size:16px;color:#FFFFFF;margin-bottom:4px;">算法: '+data.algorithm+'</div>';
   h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
   (data.tickets||[]).forEach(function(t){
     var reds = t.reds.map(function(x){return String(x).padStart(2,'0')}).join(' ');

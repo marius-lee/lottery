@@ -6,7 +6,7 @@
 window.PU = {
   BLUE: '#3B82F6',
   RED: '#EF4444',
-  GRAY: '#94A3B8',
+  GRAY: '#FFFFFF',
   ERR: '#EF4444',
   WARN: '#FBBF24',
   OK: '#22C55E',

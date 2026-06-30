@@ -229,7 +229,9 @@ ui/draw.js → fetch /api/micro/tickets → ml_bridge.micro_3_tickets()
 ## Project structure
 
 ```
-ml/                          # 活跃模块 (4 files)
+ml/                          # 活跃模块 (6 files)
+  bias_v_selector.py         # 偏差驱动的动态v选择 (替代硬编码k=15)
+  exact_cover_tables.py      # La Jolla C(v,6,4) 完整覆盖表 (v=12-16)
   micro_portfolio.py         # 微投资组合: 硬/软过滤 → 随机采样
   covering_design.py         # Mandel覆盖: 位掩码模拟退火
   prize_evaluator.py         # 超几何分布期望价值

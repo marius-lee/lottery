@@ -201,13 +201,13 @@ def run():
     
     # Bootstrap (只用200次, 因为528对 × 200 × 2000期 = 太慢)
     # 改用解析逼近: MI × 2n ~ χ²(1)
-    # 计算χ² = 2 × n_draws × MI
+    # [Cover & Thomas 2006, §2.5]: 2n·I(X;Y) → χ²(df) under H₀
     print()
     print("χ² 检验 (MI × 2n ~ χ²(1), 大样本近似):")
     chi2_results = []
     for (i, j), mi in actual_mi.items():
         chi2 = 2 * n * mi
-        # χ²(1) p值: p-value = 1 - F(chi2; 1)
+        # [数学] 自由度为1的χ², p = 1 - F_χ²(1)(chi2)
         # F(x;1) = erf(sqrt(x/2))
         import math
         if chi2 > 0:

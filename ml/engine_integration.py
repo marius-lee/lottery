@@ -29,7 +29,7 @@ def _cached(key: str, compute_fn):
     return val
 
 
-def compute_advanced_hotness(window: int = 200) -> List[float]:
+def compute_advanced_hotness(window: int = 200) -> List[float]:  # 200期≈3年, 覆盖足够的历史统计
     """合成热号评分 [33]float — 用3个OOS验证方法加权."""
     def _compute():
         from server.db import load_draws
@@ -63,7 +63,13 @@ def auto_ticket_count(budget: float = 100.0) -> int:
     return 3
 
 
-def ensemble_hot_numbers(k: int = 15) -> List[int]:
+def ensemble_hot_numbers(k: int = None) -> List[int]:
+    if k is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            k = auto_v().v
+        except Exception:
+            k = 15
     """多方法综合热号."""
     def _compute():
         from server.db import load_draws
@@ -92,7 +98,7 @@ def integration_status() -> dict:
     """引擎集成状态报告."""
     try:
         hotness = compute_advanced_hotness()
-        hot = ensemble_hot_numbers(k=15)
+        hot = ensemble_hot_numbers()  # auto-detect optimal v
         return {
             "ok": True,
             "active_methods": 5,

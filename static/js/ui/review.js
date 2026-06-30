@@ -83,15 +83,15 @@ export function refreshReviewPanel() {
       Object.keys(hd).sort().forEach(function(k){
         var v = hd[k];
         var pct = Math.round(v / barMax * 100);
-        statsHtml += '<div style="flex:1;min-width:40px;text-align:center;font-size:9px;color:#94A3B8;">' + k + '<div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.08);margin-top:2px;"><div style="height:100%;width:'+pct+'%;background:#22C55E;border-radius:2px;"></div></div><span style="color:#E2E8F0;">'+v+'</span></div>';
+        statsHtml += '<div style="flex:1;min-width:40px;text-align:center;font-size:9px;color:#FFFFFF;">' + k + '<div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.08);margin-top:2px;"><div style="height:100%;width:'+pct+'%;background:#22C55E;border-radius:2px;"></div></div><span style="color:#E2E8F0;">'+v+'</span></div>';
       });
       statsHtml += '</div>';
       // 策略排名
       var ss = claimsData.strategy_stats || [];
       if (ss.length > 0) {
-        statsHtml += '<div style="margin-top:6px;font-size:10px;color:#94A3B8;">策略TOP5:</div>';
+        statsHtml += '<div style="margin-top:6px;font-size:10px;color:#FFFFFF;">策略TOP5:</div>';
         ss.sort(function(a,b){return b.wins - a.wins || b.avg_red - a.avg_red}).slice(0,5).forEach(function(s){
-          var cls = s.avg_red > 1.09 ? 'color:#22C55E;' : 'color:#94A3B8;';
+          var cls = s.avg_red > 1.09 ? 'color:#22C55E;' : 'color:#FFFFFF;';
           statsHtml += '<div style="margin:1px 0;">' + s.strategy + ': <span style="'+cls+'">均' + s.avg_red + '红</span> 蓝率' + (s.blue_rate*100).toFixed(0) + '%(' + s.total + '注) <span style="color:#FBBF24;">' + s.wins + '中奖</span></div>';
         });
       }
@@ -190,7 +190,7 @@ export function runBacktest(){
     });
     html += '</tbody></table></div>';
     // Show weights too
-    html += '<div style="margin-top:6px;font-size:9px;color:#94A3B8;">';
+    html += '<div style="margin-top:6px;font-size:9px;color:#FFFFFF;">';
     html += '<span style="color:#FBBF24;">▲</span> = 优于随机基线 · 吴明系列返回0需排查';
     html += '</div>';
     if (summary) summary.innerHTML = old + '<hr style="border-color:rgba(255,255,255,0.04);margin:8px 0;">' + html;
@@ -201,7 +201,7 @@ export function runBacktest(){
 
 export function runExperiments(){
   var stage = document.getElementById('stage');
-  if (stage) stage.innerHTML = '<div style="text-align:center;padding:20px;color:#94A3B8;">A/B实验模块已归档 — 待重建</div>';
+  if (stage) stage.innerHTML = '<div style="text-align:center;padding:20px;color:#FFFFFF;">A/B实验模块已归档 — 待重建</div>';
 };
 
 
@@ -210,7 +210,7 @@ export function runExperiments(){
 export function loadKellyInfo(){
   var el = document.getElementById('backtestResults');
   if(!el) return;
-  var html = '<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.1);font-size:10px;color:#94A3B8;">';
+  var html = '<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.1);font-size:10px;color:#FFFFFF;">';
   html += '<b>💰 Kelly最优建议</b> · 已归档 (负EV场景最优投注=0)';
   html += '</div>';
   el.innerHTML += html;
@@ -219,7 +219,7 @@ export function loadKellyInfo(){
 export function loadParticleState(){
   var el = document.getElementById('backtestResults');
   if(!el) return;
-  var html = '<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;background:rgba(139,92,246,0.06);font-size:10px;color:#94A3B8;">';
+  var html = '<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;background:rgba(139,92,246,0.06);font-size:10px;color:#FFFFFF;">';
   html += '<b>🎯 粒子滤波</b> · 已归档至 ml/_deprecated/ — OOS无显著提升';
   html += '</div>';
   el.innerHTML = html;
@@ -228,13 +228,13 @@ export function loadParticleState(){
 export function loadBanditState(){
   var stage = document.getElementById('stage');
   if(!stage) return;
-  stage.innerHTML = '<div style="padding:8px;font-size:10px;color:#94A3B8;">🎰 策略Bandit · 已归档至 ml/_deprecated/ — 无独立验证</div>';
+  stage.innerHTML = '<div style="padding:8px;font-size:10px;color:#FFFFFF;">🎰 策略Bandit · 已归档至 ml/_deprecated/ — 无独立验证</div>';
 }
 
 export function loadFdrFilter(){
   var el = document.getElementById('backtestResults');
   if(!el) return;
-  var html = '<div style="margin-top:4px;font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(34,197,94,0.04);color:#94A3B8;">';
+  var html = '<div style="margin-top:4px;font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(34,197,94,0.04);color:#FFFFFF;">';
   html += '<b>📊 FDR筛选</b> · 已归档 — 5方法无需多重比较校正';
   html += '</div>';
   el.innerHTML += html;
@@ -243,7 +243,7 @@ export function loadFdrFilter(){
 export function loadEntropyHotness(){
   var el = document.getElementById('backtestResults');
   if(!el) return;
-  var html = '<div style="margin-top:4px;font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(168,85,247,0.04);color:#94A3B8;">';
+  var html = '<div style="margin-top:4px;font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(168,85,247,0.04);color:#FFFFFF;">';
   html += '<b>🔢 熵值选号</b> · 已归档至 ml/_deprecated/ — 无独立验证';
   html += '</div>';
   el.innerHTML = html;

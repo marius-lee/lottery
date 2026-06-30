@@ -284,11 +284,34 @@ def empirical_bayes_shrink(counts, n_total, n_categories):
 # 蒙特卡洛Bootstrap
 # ═══════════════════════════════════════════════════════════════
 
-def bootstrap_significance(data, n_bootstrap=5000):
+
+# ═══════════════════════════════════════════════════════════════
+# FDR 辅助: 将 bootstrap p 值映射为显著标志
+# ═══════════════════════════════════════════════════════════════
+
+def fdr_significant_flags(p_values):
+    """对 33 个红球的 bootstrap p 值应用 BH-FDR.
+    
+    [Benjamini & Hochberg 1995, JRSS-B 57(1):289-300]
+    
+    Args:
+        p_values: list[float], 长度 33, 对应红球 1..33 的 p 值
+    
+    Returns:
+        list[bool], 长度 33, True=FDR q=0.05 显著
+    """
+    from ml.fdr import benjamini_hochberg
+    pairs = [(i, p_values[i]) for i in range(len(p_values))]
+    result = benjamini_hochberg(pairs, q=0.05)
+    sig_names = {item["name"] for item in result.get("significant", [])}
+    return [i in sig_names for i in range(len(p_values))]
+def bootstrap_significance(data, n_bootstrap=10000):
     """Bootstrap重采样检验频率偏差的统计显著性.
 
-    对2000期做5000次重采样, 计算每号码的经验p值和置信区间.
-    [统计] 5000次Bootstrap: 95%CI精度≈±0.7个百分点
+    对历史数据做Bootstrap重采样, 计算每号码的经验p值和置信区间.
+    [统计] 10000次Bootstrap: 95%CI精度≈±0.5个百分点, p值分辨率0.0001
+    [来源] Efron & Tibshirani (1993): 假设检验用Bootstrap推荐≥10000次,
+           对33重Bonferroni校正(α=0.05/33≈0.0015), 需p值分辨率<0.0015
     """
     import random
     n = len(data)
@@ -436,7 +459,7 @@ def run():
 
     # ── Bootstrap ──
     print(f"\n{'─' * 60}")
-    print(f"Bootstrap显著性检验 (5000次重采样)")
+    print(f"Bootstrap显著性检验 (10000次重采样)")
     boot = bootstrap_significance(data)
     boot_sig = [(n, boot[n]["p_value"]) for n in range(1, 34) if boot[n]["significant_05"]]
     print(f"  p<0.05: {len(boot_sig)}个号码")
@@ -496,7 +519,7 @@ def run():
     return {
         "verdict": "BIAS_DETECTED" if has_bias else "UNIFORM",
         "has_bias": has_bias,
-        "bonferroni_pass": bonferroni_pass,
+        "fdr_pass": fdr_pass,
         "overdispersion_pass": overdispersion_pass,
         "time_stable": sorted(time_stable) if has_bias else [],
         "L1_number": l1,

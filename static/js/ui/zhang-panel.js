@@ -7,7 +7,7 @@
 window._showZhangPanel = function(){
   var el = document.getElementById('zhangContent');
   if(!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:8px;">加载中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:8px;">加载中...</div>';
 
   // 并行加载三种方法的数据
   var p1 = fetch('/api/zhang/twelve-value?n=0').then(function(r){return r.json()});
@@ -37,7 +37,7 @@ window._showZhangPanel = function(){
 
     // ═══ 选号方法 + 出号按钮 (Ch7, Ch8) ═══
     h += '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">';
-    h += '<span style="font-size:15px;color:#94A3B8;font-weight:600;">选号方法:</span>';
+    h += '<span style="font-size:15px;color:#FFFFFF;font-weight:600;">选号方法:</span>';
 
     h += '<label style="font-size:15px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:4px;">';
     h += '<input type="checkbox" id="zhangUse12" checked onchange="window._zhangUpdateBtn()">';
@@ -52,7 +52,7 @@ window._showZhangPanel = function(){
     h += '<span>🎱后区围号(Ch8)</span></label>';
 
     h += '<button class="btn btn-draw" id="zhangDrawBtn" onclick="window._zhangDraw()" style="font-size:15px;padding:6px 16px;">张委铭出号</button>';
-    h += '<span id="zhangStatus" style="font-size:14px;color:#94A3B8;"></span>';
+    h += '<span id="zhangStatus" style="font-size:14px;color:#FFFFFF;"></span>';
     h += '</div>';
 
     h += '<div id="zhangResult"></div>';
@@ -61,7 +61,7 @@ window._showZhangPanel = function(){
     h += '<div style="margin-bottom:16px;">';
     h += '<h5 style="color:#A78BFA;font-size:16px;margin:0 0 8px 0;">🎯 围号红球 · 18种杀号→候选</h5>';
     if(tv && tv.ok){
-      h += '<div style="font-size:14px;color:#94A3B8;margin-bottom:4px;">';
+      h += '<div style="font-size:14px;color:#FFFFFF;margin-bottom:4px;">';
       h += '候选池('+tv.candidate_count+'个): ';
       (tv.candidates||[]).forEach(function(n){
         h += '<span style="display:inline-block;padding:2px 6px;margin:1px;border-radius:4px;background:rgba(168,85,247,0.2);color:#A78BFA;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
@@ -84,7 +84,7 @@ window._showZhangPanel = function(){
     h += '<div style="margin-bottom:16px;">';
     h += '<h5 style="color:#3B82F6;font-size:16px;margin:0 0 8px 0;">🎱 围号蓝球 · 11种后区杀号→候选</h5>';
     if(ev && ev.ok){
-      h += '<div style="font-size:14px;color:#94A3B8;margin-bottom:4px;">';
+      h += '<div style="font-size:14px;color:#FFFFFF;margin-bottom:4px;">';
       h += '候选池('+ev.candidate_count+'个): ';
       (ev.candidates||[]).forEach(function(n){
         h += '<span style="display:inline-block;padding:3px 8px;margin:2px;border-radius:6px;background:rgba(59,130,246,0.2);color:#3B82F6;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
@@ -110,7 +110,7 @@ window._showZhangPanel = function(){
       h += '<div style="font-size:14px;color:#F59E0B;margin-bottom:4px;"><b>'+g.mode_desc+'</b></div>';
       var br = (g.break_rows||[]).join(',') || '无';
       var bc = (g.break_cols||[]).join(',') || '无';
-      h += '<div style="font-size:16px;color:#94A3B8;margin-bottom:2px;">断行: ['+br+'] | 断列: ['+bc+']</div>';
+      h += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:2px;">断行: ['+br+'] | 断列: ['+bc+']</div>';
       h += '<div style="font-size:14px;margin-bottom:4px;">剩余'+g.remaining_count+'个: ';
       (g.remaining_numbers||[]).forEach(function(n){
         h += '<span style="display:inline-block;padding:2px 6px;margin:1px;border-radius:4px;background:rgba(245,158,11,0.2);color:#F59E0B;font-weight:700;">'+String(n).padStart(2,'0')+'</span>';
@@ -123,7 +123,7 @@ window._showZhangPanel = function(){
 
     // ═══ 数据手册 (可点击展开) ═══
     h += '<div style="margin-top:16px;">';
-    h += '<h5 style="color:#94A3B8;font-size:16px;margin:0 0 8px 0;">📖 数据手册 (原书统计表, 点击展开)</h5>';
+    h += '<h5 style="color:#FFFFFF;font-size:16px;margin:0 0 8px 0;">📖 数据手册 (原书统计表, 点击展开)</h5>';
     h += '<div id="zhangRefContent" style="font-size:16px;color:#64748B;">加载中...</div>';
     h += '</div>';
 
@@ -196,7 +196,7 @@ window._showZhangPanel = function(){
     if(ref.consecutive_patterns){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#F59E0B;font-size:14px;">🔗 '+ref.consecutive_patterns._title+'</summary>';
       var cp = ref.consecutive_patterns;
-      h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;">';
+      h += '<div style="font-size:16px;color:#FFFFFF;margin-top:4px;">';
       h += '连号组数: 1组51.9% | 0组34.3% | 2组13.5% | 3组0.3%<br>';
       h += '两连号: 平均1.45期/次(1218次) | 三连号: 9.71期/次(169次)<br>';
       h += '最频: 56型(第5-6位连号) > 12型(第1-2位)<br>';
@@ -211,7 +211,7 @@ window._showZhangPanel = function(){
       h += '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:200px;overflow-y:auto;">';
       ref.dan2_top_pairs.pairs.forEach(function(p, i){
         var bg = i<15 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)';
-        h += '<span style="padding:2px 6px;border-radius:4px;background:'+bg+';color:#94A3B8;white-space:nowrap;">';
+        h += '<span style="padding:2px 6px;border-radius:4px;background:'+bg+';color:#FFFFFF;white-space:nowrap;">';
         h += '#'+(i+1)+' '+p.combo.map(function(n){return String(n).padStart(2,'0')}).join('+');
         h += ' <span style="color:#64748B;">'+p.count+'次</span></span>';
       });
@@ -227,7 +227,7 @@ window._showZhangPanel = function(){
       h += '<div style="font-size:15px;color:#64748B;margin:4px 0;">'+ref.dan3_top_triples._usage+'</div>';
       h += '<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow-y:auto;">';
       ref.dan3_top_triples.triples.forEach(function(p, i){
-        h += '<span style="padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.1);color:#94A3B8;white-space:nowrap;font-size:15px;">';
+        h += '<span style="padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.1);color:#FFFFFF;white-space:nowrap;font-size:15px;">';
         h += ''+p.combo.map(function(n){return String(n).padStart(2,'0')}).join('+');
         h += ' ('+p.count+')</span>';
       });
@@ -256,7 +256,7 @@ window._showZhangPanel = function(){
     if(ref.repeat_stats){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#10B981;font-size:14px;">🔄 '+ref.repeat_stats._title+'</summary>';
       var rs = ref.repeat_stats;
-      h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;">';
+      h += '<div style="font-size:16px;color:#FFFFFF;margin-top:4px;">';
       h += '重号个数: 1个43.2% | 0个27.9% | 2个23.8% | 3个4.6% | 4+个<0.6%<br>';
       h += '重号位置: 第1位18.7% | 第2位18.3% | 第3位17.9% | 第4位17.5% | 第5位17.3% | 第6位17.0%<br>';
       h += '<span style="color:#FBBF24;">'+rs.advice+'</span>';
@@ -267,7 +267,7 @@ window._showZhangPanel = function(){
     if(ref.blue_basic_stats){
       h += '<details style="margin-bottom:6px;"><summary style="cursor:pointer;color:#06B6D4;font-size:14px;">🔵 '+ref.blue_basic_stats._title+'</summary>';
       var bs = ref.blue_basic_stats;
-      h += '<div style="font-size:16px;color:#94A3B8;margin-top:4px;">';
+      h += '<div style="font-size:16px;color:#FFFFFF;margin-top:4px;">';
       h += '奇偶: 奇51.1% | 偶48.9% → '+bs.odd_even.advice+'<br>';
       h += '大小: 大52.4% | 小47.6% → '+bs.big_small.advice+'<br>';
       h += '重号: 出现7.1%, 连出2次后→'+bs.repeat.advice+'<br>';
@@ -285,7 +285,7 @@ window._showZhangPanel = function(){
         h += '<div style="margin:3px 0;padding:3px 6px;background:rgba(255,255,255,0.02);border-radius:4px;">';
         h += '<b style="color:#10B981;">重号 '+ch6.repeat.overall_probability+'%</b> ';
         h += '<span style="color:#EF4444;">'+ch6.repeat.key_finding+'</span><br>';
-        h += '<span style="color:#94A3B8;">A1:'+ch6.repeat.by_count['1个重号(A1)']+'% A0:'+ch6.repeat.by_count['0个重号(A0)']+'% A2:'+ch6.repeat.by_count['2个重号(A2)']+'%</span> ';
+        h += '<span style="color:#FFFFFF;">A1:'+ch6.repeat.by_count['1个重号(A1)']+'% A0:'+ch6.repeat.by_count['0个重号(A0)']+'% A2:'+ch6.repeat.by_count['2个重号(A2)']+'%</span> ';
         h += '<span style="color:#FBBF24;">A6-6 & A1-1 各~11% (最高频细分)</span>';
         h += '</div>';
       }
@@ -294,14 +294,14 @@ window._showZhangPanel = function(){
         h += '<div style="margin:3px 0;padding:3px 6px;background:rgba(255,255,255,0.02);border-radius:4px;">';
         h += '<b style="color:#10B981;">连号 '+ch6.consecutive.overall_probability+'%</b> ';
         h += '<span style="color:#EF4444;">'+ch6.consecutive.key_finding+'</span><br>';
-        h += '<span style="color:#94A3B8;">'+ch6.consecutive.advice+'</span>';
+        h += '<span style="color:#FFFFFF;">'+ch6.consecutive.advice+'</span>';
         h += '</div>';
       }
       // 质合
       if(ch6.prime_composite){
         h += '<div style="margin:3px 0;padding:3px 6px;background:rgba(255,255,255,0.02);border-radius:4px;">';
         h += '<b style="color:#FBBF24;">质合比3:3 → 范围缩至26.42%</b> ';
-        h += '<span style="color:#94A3B8;">'+ch6.prime_composite.detail+'</span>';
+        h += '<span style="color:#FFFFFF;">'+ch6.prime_composite.detail+'</span>';
         h += '</div>';
       }
       // 隔期码
@@ -408,7 +408,7 @@ window._zhangDraw = function(){
       if(st) st.textContent = d.tickets.length+'注 · ¥'+(d.tickets.length*2);
 
       var rh = '<div style="margin-top:12px;">';
-      rh += '<div style="font-size:16px;color:#94A3B8;margin-bottom:8px;">算法: '+d.algorithm;
+      rh += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:8px;">算法: '+d.algorithm;
       if(dans.length){
         rh += ' <span style="color:#A78BFA;">🔒胆码:'+dans.join(',')+'</span>';
       }

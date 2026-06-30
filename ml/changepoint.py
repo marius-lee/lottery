@@ -96,7 +96,7 @@ def blue_ball_ll_statistic(data, start, end):
     return -0.5 * chi2
 
 
-def online_changepoint(data: List, window: int = 300,
+def online_changepoint(data: List, window: int = 300,  # [工程] 300期≈5年双色球数据, 足够覆盖结构性变化
                        hazard: float = 0.005,
                        min_run_length: int = 20):
     """在线贝叶斯变点检测 (精简版).

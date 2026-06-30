@@ -98,6 +98,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.ml_bridge.get_strategy_weights()),
             "/api/integration/status": lambda: self._json(self.ml_bridge.integration_status_api()),
             "/api/bias/draw": lambda: self._json(self.ml_bridge.bias_draw(n=qint(q, "n", 3))),
+            "/api/bias/status": lambda: self._json(self.ml_bridge.bias_status_api()),
             "/api/bl/draw": lambda: self._json(self.ml_bridge.bl_draw(n=qint(q, "n", 3))),
             "/api/position/draw": lambda: self._json(self.ml_bridge.position_draw(n=qint(q, "n", 3))),
 "/api/ensemble/draw": lambda: self._json(self.ml_bridge.ensemble_draw(
@@ -131,6 +132,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/cond-entropy/blue": lambda: self._json(self.ml_bridge.cond_entropy_blue_api(
                 n=qint(q, "n", 6))),
             "/api/diffset/table": lambda: self._json(self.ml_bridge.diffset_table_api()),
+            "/api/multi-period/stats": lambda: self._json(self.ml_bridge.multi_period_stats_api(t=qint(q, "t", 4))),
+            "/api/multi-period/clear": lambda: self._json(self.ml_bridge.multi_period_clear_api(t=qint(q, "t", 4))),
             "/api/bandit/select": lambda: self._json(self.ml_bridge.bandit_select_api(
                 n=qint(q, "n", 3))),
             "/api/bandit/feedback": lambda: self._json(self.ml_bridge.bandit_feedback_api(
@@ -274,7 +277,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             author_mode=author_mode,
             use_freq_blue=qbool(q, 'freq_blue'), blue_mode=qstr(q, 'blue_mode', 'freq'),
             red_mode=qstr(q, 'red_mode', 'pool'),
-            strategy_mode=qstr(q, 'strategy', None)))
+            strategy_mode=qstr(q, 'strategy', None),
+            v_override=qint(q, 'v_override', None), t=qint(q, 't', 4), multi_period=qbool(q, 'multi_period')))
     def _handle_zhang_get(self, path):
         clean = path.split("?")[0]
         q = _parse_query(path)

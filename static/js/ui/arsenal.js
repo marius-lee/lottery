@@ -40,7 +40,7 @@ async function loadWheeling() {
     const d = await r.json();
     if(!d.ok){ el.innerHTML='<div style="color:#EF4444;">加载失败</div>'; return; }
 
-    let h = '<div style="font-size:12px;color:#94A3B8;margin-bottom:8px;">';
+    let h = '<div style="font-size:12px;color:#FFFFFF;margin-bottom:8px;">';
     h += '<b>已知最优覆盖注数</b> — La Jolla + Bluskov 2011<br>';
     h += '<span style="font-size:10px;">4-if-6 guarantee: 若V个号包含全部6个中奖号 → ≥1注中≥4红</span>';
     h += '</div>';
@@ -180,7 +180,7 @@ async function loadFdr() {
     h += '<br><b>移除方法:</b> ' + (d.removed_methods||[]).join(', ') + '<br>';
     h += '<b>保留权重:</b><br>';
     Object.entries(d.filtered_weights||{}).forEach(function(kv){
-      h += '<span style="font-size:10px;color:#94A3B8;">' + kv[0] + ': ' + kv[1].toFixed(4) + '</span> ';
+      h += '<span style="font-size:10px;color:#FFFFFF;">' + kv[0] + ': ' + kv[1].toFixed(4) + '</span> ';
     });
     h += '</div>';
     h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Benjamini & Hochberg 1995, JRSS-B 57(1):289-300</div>';
@@ -250,7 +250,7 @@ async function loadChangepoint() {
     h += '<span style="font-size:10px;color:#64748B;">Fearnhead 2006: 检测开奖机制结构性变化</span><br><br>';
 
     h += '<b>总数据:</b> ' + d.total_draws + '期, 窗口=' + d.window + ', 推荐窗口=' + d.recommended_window + '期<br>';
-    h += '<span style="color:#94A3B8;">建议: ' + (d.recommendation||'') + '</span><br><br>';
+    h += '<span style="color:#FFFFFF;">建议: ' + (d.recommendation||'') + '</span><br><br>';
 
     h += '<b>红球变点 (后验概率>0.3):</b><br>';
     (d.detected_red||[]).slice(0,8).forEach(function(c){
@@ -291,7 +291,7 @@ async function loadEngines() {
   const el = document.getElementById('arsenalEnginesContent');
   if(!el) return;
 
-  let h = '<div style="font-size:11px;line-height:1.7;color:#94A3B8;">';
+  let h = '<div style="font-size:11px;line-height:1.7;color:#FFFFFF;">';
   h += '<b>已归档的选号策略</b> — 均用不同统计方法选热号, 底层统一贪心覆盖设计.<br>';
   h += '<span style="font-size:10px;">OOS回测确认无方法显著优于基线; 保留供参考/对比.</span>';
   h += '</div>';
@@ -328,12 +328,12 @@ window.applyArchivedEngine = async function(type) {
   var n = parseInt(document.getElementById('drawCount')?.value || 3);
   var labels = {bias:'偏差采样', bl:'B-L加权', pos:'分位采样'};
   var urls = {bias:'/api/bias/draw', bl:'/api/bl/draw', pos:'/api/position/draw'};
-  stage.innerHTML = '<div style="text-align:center;padding:20px;color:#94A3B8;">' + (labels[type]||'') + '...</div>';
+  stage.innerHTML = '<div style="text-align:center;padding:20px;color:#FFFFFF;">' + (labels[type]||'') + '...</div>';
   try {
     var r = await fetch((urls[type]||'') + '?n=' + n);
     var d = await r.json();
     if(!d.ok){ stage.innerHTML = '<div style="color:#EF4444;">'+ (d.msg||'失败') +'</div>'; return; }
-    stage.innerHTML = '<div style="font-size:10px;text-align:center;padding:6px;border-radius:6px;background:rgba(120,120,120,0.1);color:#94A3B8;"><b>' + (d.algorithm||labels[type]) + '</b> · 成本¥' + (d.cost_rmb||0) + '</div>';
+    stage.innerHTML = '<div style="font-size:10px;text-align:center;padding:6px;border-radius:6px;background:rgba(120,120,120,0.1);color:#FFFFFF;"><b>' + (d.algorithm||labels[type]) + '</b> · 成本¥' + (d.cost_rmb||0) + '</div>';
     renderTickets(stage, d);
     document.getElementById('saveBtn').disabled = false;
   } catch(e){ stage.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
@@ -349,7 +349,7 @@ window.API_NIST = '/api/nist/test';
 async function loadNist() {
   var el = document.getElementById('arsenalNistContent');
   if (!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">NIST SP 800-22 检验运行中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:20px;text-align:center;">NIST SP 800-22 检验运行中...</div>';
   try {
     var r = await fetch(window.API_NIST);
     var d = await r.json();
@@ -366,7 +366,7 @@ async function loadNist() {
       '<div style="font-size:10px;color:#64748B;margin-bottom:8px;">通过 ' + d.passed + '/' + d.total + ' (' + d.pass_rate_pct + '%) | ' +
         (d.bias_weighting_advice || '') + '</div>' +
       '<table style="font-size:10px;width:100%;border-collapse:collapse;">' +
-      '<thead><tr style="color:#94A3B8;"><th>检验</th><th>状态</th><th>p值</th><th>详情</th></tr></thead>' +
+      '<thead><tr style="color:#FFFFFF;"><th>检验</th><th>状态</th><th>p值</th><th>详情</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>';
   } catch(e) {
     el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
@@ -380,7 +380,7 @@ async function loadNist() {
 async function loadCondentropy() {
   var el = document.getElementById('arsenalCondentropyContent');
   if (!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">条件熵分析中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:20px;text-align:center;">条件熵分析中...</div>';
   try {
     var r = await fetch('/api/cond-entropy/analyze');
     var d = await r.json();
@@ -398,7 +398,7 @@ async function loadCondentropy() {
       '<div><b style="color:#A78BFA;">蓝球Top6</b></div><div>' + blueTags + '</div>' +
       '</div>' +
       '<div style="margin-top:8px;"><b style="color:#A78BFA;">互信息聚类 (5簇)</b></div>' +
-      '<div style="font-size:10px;color:#94A3B8;">' + clustersHtml + '</div>' +
+      '<div style="font-size:10px;color:#FFFFFF;">' + clustersHtml + '</div>' +
       '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
   } catch(e) {
     el.innerHTML = '<div style="color:#EF4444;">加载失败</div>';
@@ -412,7 +412,7 @@ async function loadCondentropy() {
 async function loadExactcover() {
   var el = document.getElementById('arsenalExactcoverContent');
   if (!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">精确覆盖比较中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:20px;text-align:center;">精确覆盖比较中...</div>';
   try {
     var r = await fetch('/api/exact-cover/compare?n=3');
     var d = await r.json();
@@ -425,7 +425,7 @@ async function loadExactcover() {
     el.innerHTML =
       '<div style="color:#A78BFA;margin-bottom:8px;">精确覆盖 — La Jolla已知最优表</div>' +
       '<table style="font-size:10px;width:100%;">' +
-      '<thead><tr style="color:#94A3B8;"><th>V</th><th>注数</th><th>覆盖率</th><th>来源</th><th>覆盖t元组</th></tr></thead>' +
+      '<thead><tr style="color:#FFFFFF;"><th>V</th><th>注数</th><th>覆盖率</th><th>来源</th><th>覆盖t元组</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
       '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
   } catch(e) {
@@ -440,7 +440,7 @@ async function loadExactcover() {
 async function loadDiffset() {
   var el = document.getElementById('arsenalDiffsetContent');
   if (!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">差集构造分析中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:20px;text-align:center;">差集构造分析中...</div>';
   try {
     var r = await fetch('/api/diffset/table');
     var d = await r.json();
@@ -453,7 +453,7 @@ async function loadDiffset() {
     el.innerHTML =
       '<div style="color:#A78BFA;margin-bottom:8px;">差集构造 — 数论保证 (Singer + Hadamard)</div>' +
       '<table style="font-size:10px;width:100%;">' +
-      '<thead><tr style="color:#94A3B8;"><th>V</th><th>块数</th><th>2-覆盖</th><th>已覆盖对/总对</th></tr></thead>' +
+      '<thead><tr style="color:#FFFFFF;"><th>V</th><th>块数</th><th>2-覆盖</th><th>已覆盖对/总对</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
       '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (d.note || '') + '</div>';
   } catch(e) {
@@ -468,7 +468,7 @@ async function loadDiffset() {
 async function loadBandit() {
   var el = document.getElementById('arsenalBanditContent');
   if (!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:20px;text-align:center;">Bandit策略学习中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:20px;text-align:center;">Bandit策略学习中...</div>';
   try {
     // 先出号
     var sr = await fetch('/api/bandit/select?n=3');
@@ -487,7 +487,7 @@ async function loadBandit() {
       '<div style="color:#A78BFA;margin-bottom:8px;">Thompson抽样 — 在线学习最优策略</div>' +
       '<div style="font-size:10px;color:#22C55E;margin-bottom:8px;">最佳: ' + bd.best_arm + ' (均值 ' + (bd.best_mean||0).toFixed(3) + ') | 总试验: ' + bd.total_trials + '</div>' +
       '<table style="font-size:10px;width:100%;">' +
-      '<thead><tr style="color:#94A3B8;"><th>策略</th><th>试验</th><th>均值</th><th></th></tr></thead>' +
+      '<thead><tr style="color:#FFFFFF;"><th>策略</th><th>试验</th><th>均值</th><th></th></tr></thead>' +
       '<tbody>' + armsHtml + '</tbody></table>' +
       '<div style="margin-top:8px;font-size:9px;color:#64748B;">' + (bd.note || '') + '</div>';
   } catch(e) {

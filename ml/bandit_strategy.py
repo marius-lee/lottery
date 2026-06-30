@@ -257,10 +257,10 @@ def extract_context(data, window=5) -> dict:
 
     # 和值趋势
     sums = [sum(r) for r in reds]
-    sum_trend = sums[-1] - sums[0] if len(sums) >= 2 else 0
+    sum_trend = sums[-1] - sums[0] if len(sums) >= 2 else 0  # [工程] 简单首尾差值趋势
 
     # 奇偶比趋势
-    odd_ratios = [sum(1 for x in r if x % 2 == 1) / 6 for r in reds]
+    odd_ratios = [sum(1 for x in r if x % 2 == 1) / 6 for r in reds]  # [数学] 每注6红, 奇偶比∈[0,6]
     avg_odd = sum(odd_ratios) / len(odd_ratios)
 
     # 蓝球遗漏

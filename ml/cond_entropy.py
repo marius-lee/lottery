@@ -186,7 +186,13 @@ def _hierarchical_cluster(mi_matrix, n_clusters=5):
 # 主入口
 # ═══════════════════════════════════════════════════════════
 
-def analyze_conditional_entropy(data, n_red=15, n_blue=6, ngram=5) -> CondEntropyResult:
+def analyze_conditional_entropy(data, n_red=None, n_blue=6, ngram=5) -> CondEntropyResult:
+    if n_red is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            n_red = auto_v().v
+        except Exception:
+            n_red = 15
     """主入口: 计算条件熵 + 互信息 + 聚类.
 
     Args:

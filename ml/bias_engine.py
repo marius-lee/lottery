@@ -196,7 +196,13 @@ def compute_blue_bias(data):
 # 偏差增强出号 (Dirichlet + Thompson + Gumbel-Max → 覆盖设计)
 # ═══════════════════════════════════════════════════════════
 
-def bias_tickets(k=15, t=4, n=6):
+def bias_tickets(k=None, t=4, n=6):
+    if k is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            k = auto_v().v
+        except Exception:
+            k = 15
     """偏差增强出号 v2: Dirichlet后验 → Thompson采样 → Gumbel-Max → 覆盖设计.
 
     每期从后验重新采样 (探索), Gumbel-Max正确建模选6过程, 覆盖设计保底.
@@ -282,7 +288,7 @@ def bias_stats():
 
 
 if __name__ == "__main__":
-    result = bias_tickets(k=15, t=4, n=6)
+    result = bias_tickets(k=None, t=4, n=6)
     if result["ok"]:
         print(f"偏差增强出号 v2:")
         for i, t in enumerate(result["tickets"]):

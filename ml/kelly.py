@@ -182,7 +182,7 @@ def capital_allocation_plan(capital, tickets_per_draw, ev_result):
         return {"ok": False, "msg": "注数必须>0"}
 
     max_draws = capital // cost_per_draw
-    annual_draws = 156  # 每周3期 × 52周
+    annual_draws = 156  # [官方] 双色球每周二/四/日开奖, 一年≈156期
 
     net_ev_per_draw = ev_result["net_ev"]
     expected_return = net_ev_per_draw * max_draws

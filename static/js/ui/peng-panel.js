@@ -29,7 +29,7 @@ window._showPengPanel = function(){
         h += '<span style="color:#EF4444;">▸ 红一球='+pos0.current+' (≤3) → 下期</span><span style="color:#EF4444;font-weight:700;"> 72.7%概率向上</span><br>';
       }
       if((!pos6 || pos6.current < 30) && (!pos0 || pos0.current > 3)){
-        h += '<span style="color:#94A3B8;">当前无极端值触发</span>';
+        h += '<span style="color:#FFFFFF;">当前无极端值触发</span>';
       }
       h += '</div>';
     }
@@ -76,12 +76,12 @@ window._showPengPanel = function(){
         var d3 = d.current_3_dir;
         var d9 = d.current_9_dir;
         var arrow = d3==='上' ? '↑' : (d3==='下' ? '↓' : '→');
-        var arrowColor = d3==='上' ? '#EF4444' : (d3==='下' ? '#22C55E' : '#94A3B8');
+        var arrowColor = d3==='上' ? '#EF4444' : (d3==='下' ? '#22C55E' : '#FFFFFF');
         var next = d.predicted_next;
         var nextArrow = next==='上' ? '↑' : (next==='下' ? '↓' : '?');
         var rev = d9==='下上' || d9==='上下';
         h += '<div style="padding:4px 8px;border-radius:4px;background:rgba(168,85,247,0.06);font-size:14px;text-align:center;min-width:60px;">';
-        h += '<div style="color:#94A3B8;">'+name+'</div>';
+        h += '<div style="color:#FFFFFF;">'+name+'</div>';
         h += '<div style="font-size:18px;color:'+arrowColor+';">'+arrow+'</div>';
         h += '<div style="color:#E2E8F0;">'+d3+' '+nextArrow+'</div>';
         h += '<div style="font-size:15px;color:#64748B;">'+d9+(rev?' ⚡':'')+'</div>';
@@ -104,7 +104,7 @@ window._showPengPanel = function(){
 
     // ═══ 出号区 ═══
     h += '<div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">';
-    h += '<span style="font-size:15px;color:#94A3B8;font-weight:600;">出号选项:</span>';
+    h += '<span style="font-size:15px;color:#FFFFFF;font-weight:600;">出号选项:</span>';
     h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';
     h += '<input type="checkbox" id="pengUseChannel" checked><span>通道约束</span></label>';
     h += '<label style="font-size:14px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:3px;">';

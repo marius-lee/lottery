@@ -5,7 +5,7 @@
  */
 import { store, subscribe } from './store.js';
 import { loadFromServer, fetchLatestData } from './data.js';
-import { renderPlaceholders, proceedWithDraw, proceedWithLuckDraw, startCoveringDraw, startWeierDraw, startZhangDraw, updateAdvFilter, updateDiversity, updateGreedy, updateBacktest, updateFreqBlue, updateBlueMode, updateRedMode, toggleBanditMode, updateTwelveValue, updateEightValue, updateGridSelection, updateFivePeriod, updatePatternRules } from './ui/draw.js';
+import { renderPlaceholders, proceedWithDraw, proceedWithLuckDraw, startCoveringDraw, startWeierDraw, startZhangDraw, updateAdvFilter, updateDiversity, updateGreedy, updateBacktest, updateFreqBlue, updateBlueMode, updateRedMode, updateTMode, updateMultiPeriod, toggleBanditMode, updateTwelveValue, updateEightValue, updateGridSelection, updateFivePeriod, updatePatternRules, fetchBiasStatus, updateVOverride } from './ui/draw.js';
 import { togglePanel, resetHistoryPanels, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw, toggleTraditionalFilters } from './ui/panels.js';
 
 import { switchAnalysisTab } from './ui/analysis.js';
@@ -58,9 +58,10 @@ function init() {
   Object.assign(window, {
     startDraw, startLuckDraw, startCoveringDraw, startWeierDraw, startZhangDraw,
     updateDrawCount, updateAdvFilter, updateDiversity, updateGreedy, updateBacktest,
-    updateFreqBlue, updateBlueMode, updateRedMode, toggleBanditMode,
+    updateFreqBlue, updateBlueMode, updateRedMode, updateTMode, updateMultiPeriod, toggleBanditMode,
     updateTwelveValue, updateEightValue, updateGridSelection, updateFivePeriod, updatePatternRules,
     togglePanel, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw, toggleTraditionalFilters,
+    fetchBiasStatus, updateVOverride,
     runAutoCompare, fetchLatestData,
     switchAnalysisTab, switchChart, refreshRecommend, refreshReviewPanel,
     runBacktest, fetchMonitor, toggleMonitorDetail, toggleAutoKelly,
@@ -69,6 +70,7 @@ function init() {
   renderPlaceholders();
   updateFreqBlue();  // 初始化蓝球radio禁用状态
   fetchMonitor();
+  fetchBiasStatus();  // 偏差信号面板
 
   // 蓝球遗漏警报 (吴明2010 博彩基本公式)
   fetch('/api/wuming/blue-alert').then(r => r.json()).then(d => {

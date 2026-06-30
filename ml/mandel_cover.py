@@ -31,7 +31,7 @@ from ml.ssq_constants import TOTAL_RED, PICK_RED, TOTAL_BLUE, TICKET_PRICE, TOTA
 @dataclass
 class MandelConfig:
     """Mandel 策略参数."""
-    v: int = 12                         # 选号池大小 (6-33)
+    v: int = 12                         # 选号池大小 [工程]: 12 为策略文档默认起点, 实际由偏差引擎控制
     jackpot_threshold: float = 50_000_000  # 头奖触发阈值 (元)
     auto_trigger: bool = False           # 是否自动触发
 
@@ -92,7 +92,7 @@ class MandelConfig:
         }
 
 
-def select_v_numbers(data: List, v: int = 12, method: str = "frequency") -> List[int]:
+def select_v_numbers(data: List, v: int = 12, method: str = "frequency") -> List[int]:  # [工程] 默认12, 实际由调用方传入偏差检测结果
     """选V个号码.
 
     Args:

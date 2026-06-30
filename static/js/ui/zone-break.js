@@ -7,23 +7,23 @@ var ZB = {};
 ZB.render = function(containerId) {
   var el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:8px;">加载中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:8px;">加载中...</div>';
 
   fetch('/api/zone-break/data').then(function(r){return r.json()}).then(function(d){
     var h = '<div class="weier-container">';
 
     // 断区选择器
     h += '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">';
-    h += '<span style="font-size:12px;color:#94A3B8;">断行3D码:</span>';
+    h += '<span style="font-size:12px;color:#FFFFFF;">断行3D码:</span>';
     h += '<select id="zbBreakRows" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#1E1E36;color:#E2E8F0;font-size:13px;">';
     ZB.ALL_CODES.forEach(function(c){ h += '<option value="'+c+'">'+c+'</option>'; });
     h += '</select>';
-    h += '<span style="font-size:12px;color:#94A3B8;">断列3D码:</span>';
+    h += '<span style="font-size:12px;color:#FFFFFF;">断列3D码:</span>';
     h += '<select id="zbBreakCols" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#1E1E36;color:#E2E8F0;font-size:13px;">';
     ZB.ALL_CODES.forEach(function(c){ h += '<option value="'+c+'">'+c+'</option>'; });
     h += '</select>';
     h += '<button class="btn btn-draw" onclick="ZB.filter()" style="font-size:12px;padding:6px 14px;">断区过滤</button>';
-    h += '<span id="zbStatus" style="font-size:11px;color:#94A3B8;"></span>';
+    h += '<span id="zbStatus" style="font-size:11px;color:#FFFFFF;"></span>';
     h += '</div>';
 
     // 6×6行列分布表
@@ -34,7 +34,7 @@ ZB.render = function(containerId) {
     for (var ci=1;ci<=6;ci++) h += '<th style="padding:4px;color:#64748B;">第'+ci+'列</th>';
     h += '</tr>';
     for (var ri=0;ri<6;ri++) {
-      h += '<tr><td style="padding:4px;color:#94A3B8;font-weight:600;">第'+(ri+1)+'行</td>';
+      h += '<tr><td style="padding:4px;color:#FFFFFF;font-weight:600;">第'+(ri+1)+'行</td>';
       for (var ci=0;ci<6;ci++) {
         var cnt = d.distribution[ri][ci];
         var bg = cnt > 8 ? 'rgba(16,185,129,0.2)' : cnt > 4 ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.03)';
@@ -72,7 +72,7 @@ ZB.filter = function() {
         if (st) st.textContent = d.tickets.length+'注, ¥'+d.cost_rmb;
         var re = document.getElementById('zbResult');
         if (re) {
-          var info = d.filter_log ? '<div style="font-size:10px;color:#94A3B8;margin-bottom:6px;">排除号码: '+d.filter_log.excluded_numbers.join(' ')+'</div>' : '';
+          var info = d.filter_log ? '<div style="font-size:10px;color:#FFFFFF;margin-bottom:6px;">排除号码: '+d.filter_log.excluded_numbers.join(' ')+'</div>' : '';
           var h = info+'<div style="max-height:400px;overflow-y:auto;"><table class="bt-table"><thead><tr><th>#</th><th>红球</th><th>蓝球</th></tr></thead><tbody>';
           d.tickets.forEach(function(t,i){
             h += '<tr><td>'+(i+1)+'</td><td style="color:#cc4444;">'+t.reds.join(' ')+'</td><td style="color:#3366cc;">'+String(t.blue).padStart(2,'0')+'</td></tr>';

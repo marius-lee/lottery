@@ -35,7 +35,8 @@ def generate_covering(v=15, t=4):
 def micro_3_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                     diversity_mode=None, five_period=False, backtest_rank=False,
                     pattern_rules=False, author_mode=None, use_freq_blue=False,
-                    blue_mode="freq", red_mode="pool", strategy_mode=None):
+                    blue_mode="freq", red_mode="pool", strategy_mode=None,
+                    v_override=None, t=4):
     """从号码池不放回随机采样 n 注。"""
     from ml.micro_portfolio import generate_tickets
     return generate_tickets(n=n, soft=soft, luck_mode=luck_mode,
@@ -46,7 +47,8 @@ def micro_3_tickets(n=3, soft=False, luck_mode='off', max_overlap=None,
                             use_freq_blue=use_freq_blue,
                             blue_mode=blue_mode,
                             red_mode=red_mode,
-                            strategy_mode=strategy_mode)
+                            strategy_mode=strategy_mode,
+                            v_override=v_override, t=t, multi_period=multi_period)
 
 def run_backtest(k=15, window=50):
     """运行全量回测, 返回各方法 recall@K."""
@@ -61,6 +63,46 @@ def get_strategy_weights():
     """获取当前策略权重."""
     weights, perf = db.load_strategy_weights()
     return {"ok": True, "weights": weights, "perf": perf}
+
+# ============ 偏差检测状态 ============
+
+def bias_status_api():
+    """偏差检测状态 — 信号级别 + 动态v + 热号 + 偏差排名.
+
+    GET /api/bias/status
+    """
+    try:
+        from ml.bias_v_selector import auto_v
+        result = auto_v()
+        return {
+            "ok": True,
+            "v": result.v,
+            "signal_level": result.signal_level,
+            "signal_level_cn": {
+                "strong": "强信号",
+                "moderate": "中等信号",
+                "weak": "弱信号",
+                "none": "无信号",
+            }.get(result.signal_level, "未知"),
+            "fdr_count": result.fdr_count,
+            "hpd_count": result.hpd_count,
+            "time_stable_count": result.time_stable_count,
+            "reasoning": result.reasoning,
+            "top_numbers": result.top_numbers[:result.v],
+            "top_deviations": [
+                {"num": n, "deviation": round(result.deviation_scores.get(n, 0), 1)}
+                for n in result.top_numbers[:16]
+            ],
+            "v_options": [
+                {"v": 10, "label": "强信号 (v=10)", "active": result.v == 10},
+                {"v": 13, "label": "中信号 (v=13)", "active": result.v == 13},
+                {"v": 16, "label": "弱信号 (v=16)", "active": result.v == 16},
+                {"v": 15, "label": "纯覆盖 (v=15)", "active": result.v == 15 and result.signal_level == "none"},
+            ],
+        }
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
 
 # ── 已归档的API (模块迁移至 ml/_deprecated/) ──
 
@@ -712,6 +754,7 @@ def position_draw(n=3):
 # ── 智能覆盖 (组合覆盖设计 + 多样化) ──
 
 def ensemble_draw(n=3, method="ensemble", fdr=True):
+    """聚合覆盖出号 — 偏差驱动的动态v + 方法评分 + FDR校正 + 覆盖设计 + Kelly."""
     """聚合覆盖出号 — 方法评分 + FDR校正 + 覆盖设计 + Kelly.
 
     Args:
@@ -736,7 +779,12 @@ def ensemble_draw(n=3, method="ensemble", fdr=True):
         freq = Counter()
         for row in data:
             for r in row[1:7]: freq[r] += 1
-        hot = [n for n, _ in freq.most_common(15)]
+        try:
+            from ml.bias_v_selector import auto_v
+            kv = auto_v().v
+        except Exception:
+            kv = 15
+        hot = [n for n, _ in freq.most_common(kv)]
     else:
         method_scores = score_all_methods(data)
         weights = _get_ensemble_weights(data)
@@ -819,7 +867,13 @@ def claims_run_api():
 # 策略监控面板 — SPRT + Kelly + EV 三位一体
 # ═══════════════════════════════════════════════════════════════════════════
 
-def monitor_api(tickets=3, pool_v=15, pool_blue=6, capital=5000):
+def monitor_api(tickets=3, pool_v=None, pool_blue=6, capital=5000):
+    if pool_v is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            pool_v = auto_v().v
+        except Exception:
+            pool_v = 15
     """综合监控面板 — 实际命中统计 + SPRT检测 + Kelly分配."""
     try:
         from ml.monitor import monitor_panel
@@ -848,7 +902,13 @@ def mandel_config_api():
             "note": "期望总成本 = 32×C(33,6) = ¥3,544万 (与V无关). "
                     "小V = 低成本 + 长等待; 大V = 高成本 + 短等待."}
 
-def mandel_preview_api(v=12):
+def mandel_preview_api(v=None):
+    if v is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            v = max(8, auto_v().v - 3)  # Mandel uses smaller v for full coverage
+        except Exception:
+            v = 12
     """Mandel 策略预览 — 不生成全部票, 仅返回配置+选号+成本分析."""
     from ml.mandel_cover import MandelConfig, select_v_numbers
     config = MandelConfig(v=v, jackpot_threshold=50_000_000)
@@ -937,7 +997,13 @@ def wheeling_generate_api(v=10):
         result = generate_steiner_like(v, max_tickets=30)
         return result
 
-def kelly_api(tickets=3, pool_v=15, coverage_pct=36, blue_pct=37.5):
+def kelly_api(tickets=3, pool_v=None, coverage_pct=36, blue_pct=37.5):
+    if pool_v is None:
+        try:
+            from ml.bias_v_selector import auto_v
+            pool_v = auto_v().v
+        except Exception:
+            pool_v = 15
     """Kelly 最优投注比例."""
     from ml.kelly import ev_per_ticket, kelly_fraction, capital_allocation_plan
     ev = ev_per_ticket(tickets, pool_v,
@@ -1109,3 +1175,18 @@ def mi_selector_api():
     boosted = mi_based_hot_boost(data, k=15)
     return {"ok": True, "mi_analysis": mi,
             "mi_hot_numbers": boosted}
+
+# ═══════════════════════════════════════════════════════════
+# 多期联合覆盖
+# ═══════════════════════════════════════════════════════════
+
+def multi_period_stats_api(t=4):
+    """多期覆盖统计."""
+    from ml.multi_period_cover import coverage_stats
+    return {"ok": True, **coverage_stats(t=t)}
+
+def multi_period_clear_api(t=4):
+    """清空多期覆盖历史."""
+    from ml.multi_period_cover import clear_coverage
+    clear_coverage(t=t)
+    return {"ok": True, "msg": f"t={t} 覆盖历史已清空"}

@@ -11,6 +11,9 @@ import itertools
 from typing import List, Dict, Tuple, Set, Optional
 from dataclasses import dataclass, field
 
+# La Jolla 完整覆盖表 (C(v,6,4) 已知最优 — 确定性构造)
+from ml.exact_cover_tables import FULL_COVERS as LA_JOLLA_FULL, take_top_n as la_jolla_top_n
+
 
 # ═══════════════════════════════════════════════════════════
 # La Jolla 已知最优覆盖表 (Dan Gordon, 1995-2025)
@@ -95,8 +98,8 @@ class ExactCover:
     """精确覆盖结果."""
     ok: bool = True
     tickets: List[List[int]] = field(default_factory=list)
-    v: int = 15
-    t: int = 4
+    v: int = 15  # [工程] 回退默认值, 实际由 auto_v() 动态确定
+    t: int = 4   # [工程] 默认覆盖强度, 四等奖(200元)为可触及目标
     n_tickets: int = 0
     coverage_pct: float = 0.0
     source: str = "unknown"  # "known_table" | "ip_optimal" | "greedy_fallback"
@@ -161,6 +164,22 @@ def exact_cover(v: int, t: int, n: int, hot_numbers: Optional[List[int]] = None)
             source="已知最优表 (La Jolla)", total_t_tuples=total_t,
             covered_t_tuples=covered,
         )
+
+    # 1b. 从 La Jolla 完整表取前 N 注 (v=12-14, 确定性构造)
+    if (v, t) in LA_JOLLA_FULL:
+        tickets = la_jolla_top_n(v, t, n, hot_numbers)
+        if tickets:
+            total_t = math.comb(v, t)
+            covered = _count_covered_tuples(tickets, v, t)
+            full_table = LA_JOLLA_FULL[(v, t)]
+            full_len = len(full_table)
+            return ExactCover(
+                ok=True, tickets=tickets, v=v, t=t, n_tickets=len(tickets),
+                coverage_pct=round(covered / max(1, total_t) * 100, 1),
+                source=f"La Jolla 完整表取前{n}注 (共{full_len}注, 确定性构造)",
+                total_t_tuples=total_t,
+                covered_t_tuples=covered,
+            )
 
     # 2. 整数规划 (精确求解)
     #   对 v ≤ 15 的规模, 可以枚举 C(v,6) 然后 MIP 选最优子集

@@ -129,48 +129,48 @@ function renderMonitorDetail(d) {
 
     '<div><b style="color:#A78BFA;">SPRT 序贯检验</b></div>' +
     '<div></div>' +
-    '<div style="color:#94A3B8;">红球 LLR</div>' +
+    '<div style="color:#FFFFFF;">红球 LLR</div>' +
     '<div style="color:#E2E8F0;">' + (sprt.red_summary || '—') + '</div>' +
-    '<div style="color:#94A3B8;">蓝球 LLR</div>' +
+    '<div style="color:#FFFFFF;">蓝球 LLR</div>' +
     '<div style="color:#E2E8F0;">' + (sprt.blue_summary || '—') + '</div>' +
-    '<div style="color:#94A3B8;">结论</div>' +
+    '<div style="color:#FFFFFF;">结论</div>' +
     '<div style="color:' + signalColor + ';">' + (sprt.verdict || '—') + '</div>' +
-    (redSpark ? '<div style="color:#94A3B8;">红球轨迹</div><div>' + redSpark + '</div>' : '') +
-    (blueSpark ? '<div style="color:#94A3B8;">蓝球轨迹</div><div>' + blueSpark + '</div>' : '') +
+    (redSpark ? '<div style="color:#FFFFFF;">红球轨迹</div><div>' + redSpark + '</div>' : '') +
+    (blueSpark ? '<div style="color:#FFFFFF;">蓝球轨迹</div><div>' + blueSpark + '</div>' : '') +
 
     '<div><b style="color:#A78BFA;margin-top:6px;">Kelly 资金分配</b></div>' +
     '<div></div>' +
-    '<div style="color:#94A3B8;">每注EV</div>' +
+    '<div style="color:#FFFFFF;">每注EV</div>' +
     '<div style="color:#E2E8F0;">¥' + evNet + ' (比率 ' + evRatio + ')</div>' +
-    '<div style="color:#94A3B8;">头奖概率</div>' +
+    '<div style="color:#FFFFFF;">头奖概率</div>' +
     '<div style="color:#E2E8F0;">~' + pJackpot + '</div>' +
-    '<div style="color:#94A3B8;">推荐注数</div>' +
+    '<div style="color:#FFFFFF;">推荐注数</div>' +
     '<div style="color:#22C55E;font-weight:600;">' + recN + ' 注/期</div>' +
-    '<div style="color:#94A3B8;">蓝球提升</div>' +
+    '<div style="color:#FFFFFF;">蓝球提升</div>' +
     '<div style="color:#E2E8F0;">' + (kelly.blue_lift || 1) + 'x vs 随机</div>' +
-    '<div style="color:#94A3B8;">结论</div>' +
+    '<div style="color:#FFFFFF;">结论</div>' +
     '<div style="color:#EF4444;">' + (kelly.verdict || '负EV') + '</div>' +
 
     '<div><b style="color:#A78BFA;margin-top:6px;">资本规划</b></div>' +
     '<div></div>' +
-    '<div style="color:#94A3B8;">本金</div>' +
+    '<div style="color:#FFFFFF;">本金</div>' +
     '<div style="color:#E2E8F0;">¥' + (s.capital || 5000).toLocaleString() + '</div>' +
-    '<div style="color:#94A3B8;">每期成本</div>' +
+    '<div style="color:#FFFFFF;">每期成本</div>' +
     '<div style="color:#E2E8F0;">¥' + costPerDraw + ' / 期</div>' +
-    '<div style="color:#94A3B8;">可持续</div>' +
+    '<div style="color:#FFFFFF;">可持续</div>' +
     '<div style="color:#E2E8F0;">' + susYears + ' 年</div>' +
-    '<div style="color:#94A3B8;">破产评估</div>' +
+    '<div style="color:#FFFFFF;">破产评估</div>' +
     '<div style="color:#EF4444;">' + (kp.ruin_assessment || '必然破产') + '</div>' +
 
     '<div><b style="color:#A78BFA;margin-top:6px;">历史命中</b></div>' +
     '<div></div>' +
-    '<div style="color:#94A3B8;">红球均/预期</div>' +
+    '<div style="color:#FFFFFF;">红球均/预期</div>' +
     '<div style="color:#E2E8F0;">' + (hs.red ? hs.red.mean : 0) + ' / ' + (hs.red ? hs.red.expected : 0) + '</div>' +
-    '<div style="color:#94A3B8;">蓝球率/预期</div>' +
+    '<div style="color:#FFFFFF;">蓝球率/预期</div>' +
     '<div style="color:#E2E8F0;">' + (hs.blue ? hs.blue.rate : 0) + '% / ' + (hs.blue ? hs.blue.expected : 0) + '%</div>' +
-    '<div style="color:#94A3B8;">红球lift</div>' +
+    '<div style="color:#FFFFFF;">红球lift</div>' +
     '<div style="color:#E2E8F0;">' + (hs.red ? (hs.red.lift || 1).toFixed(2) : '1.00') + 'x</div>' +
-    '<div style="color:#94A3B8;">蓝球lift</div>' +
+    '<div style="color:#FFFFFF;">蓝球lift</div>' +
     '<div style="color:#E2E8F0;">' + (hs.blue ? (hs.blue.lift || 1).toFixed(2) : '1.00') + 'x</div>' +
 
     '<div style="grid-column:1/-1;margin-top:6px;color:#64748B;font-size:9px;">' +

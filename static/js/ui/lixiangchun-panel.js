@@ -21,7 +21,7 @@ window._showLiXiangChunPanel = function(){
 
   // 过滤开关
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;">';
-  h += '<span style="font-size:16px;color:#94A3B8;">过滤:</span>';
+  h += '<span style="font-size:16px;color:#FFFFFF;">过滤:</span>';
   h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxSpread" checked><span>📏散度</span></label>';
   h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxAC" checked><span>🔢AC值</span></label>';
   h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="lxGap"><span>↔️间距</span></label>';
@@ -87,17 +87,17 @@ window._lxLoadDashboard = async function(){
   var st = d.spread_trend || {};
   var sk = d.skewness_trend || {};
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
-  h += '<span style="color:#94A3B8;">📏 散度: </span>';
+  h += '<span style="color:#FFFFFF;">📏 散度: </span>';
   h += '<span style="color:'+(st.zone==='normal'?'#34D399':'#FBBF24')+';font-weight:600;">'+st.current+'</span>';
   h += '<span style="color:#64748B;"> (正常'+st.normal_range+')</span>';
-  h += '<br><span style="color:#94A3B8;">📐 偏度: </span>';
+  h += '<br><span style="color:#FFFFFF;">📐 偏度: </span>';
   h += '<span style="color:'+(sk.zone==='normal'?'#34D399':'#FBBF24')+';font-weight:600;">'+sk.current+'</span>';
   h += '<span style="color:#64748B;"> (正常'+sk.normal_range+')</span>';
   if(sk.bound) h += '<span style="color:#475569;"> 上限='+sk.bound+'</span>';
   h += '</div>';
 
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
-  h += '<span style="color:#94A3B8;">📌 粘滞号 (DHR低→易重复):</span><br>';
+  h += '<span style="color:#FFFFFF;">📌 粘滞号 (DHR低→易重复):</span><br>';
   if(d.dhr_sticky && d.dhr_sticky.length > 0){
     d.dhr_sticky.forEach(function(x){
       h += '<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(59,130,246,0.2);color:#60A5FA;font-weight:600;font-size:16px;margin:1px;" title="DHR='+x.dhr+'">'+x.num+'</span>';
@@ -112,7 +112,7 @@ window._lxLoadDashboard = async function(){
   h += '</div>';
 
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
-  h += '<span style="color:#94A3B8;">⏱ 双底/三底预测:</span><br>';
+  h += '<span style="color:#FFFFFF;">⏱ 双底/三底预测:</span><br>';
   if(d.shuangdi && d.shuangdi.length > 0){
     d.shuangdi.forEach(function(x){
       h += '<span style="color:#A78BFA;">'+x.num+'</span><span style="color:#64748B;">→约'+x.predicted_gap+'期后</span> ';
@@ -167,7 +167,7 @@ window._lxIntegratedDraw = async function(){
     return;
   }
 
-  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">';
+  var h = '<div style="font-size:16px;color:#FFFFFF;margin-bottom:4px;">';
   h += '算法: '+data.algorithm+' · 池: '+(data.pool_valid_reds||'随机').toLocaleString()+'注';
   h += '</div>';
 

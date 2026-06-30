@@ -34,9 +34,9 @@ window._zengLoad = async function(){
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;min-width:160px;">';
   h += '<div style="color:#A78BFA;font-weight:600;margin-bottom:3px;">📐 衡值轮盘</div>';
   if(wh.lines){
-    h += '<span style="color:#94A3B8;">线:</span> ';
+    h += '<span style="color:#FFFFFF;">线:</span> ';
     for(var k in wh.lines) h += '<span style="color:#E2E8F0;">'+k+':'+wh.lines[k]+'</span> ';
-    h += '<br><span style="color:#94A3B8;">圈:</span> ';
+    h += '<br><span style="color:#FFFFFF;">圈:</span> ';
     for(var k in wh.circles) h += '<span style="color:#E2E8F0;">'+k+':'+wh.circles[k]+'</span> ';
     if(wh.pairs && wh.pairs.length) {
       h += '<br><span style="color:#FBBF24;">互补对:</span> ';
@@ -57,7 +57,7 @@ window._zengLoad = async function(){
   h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">';
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
   h += '<div style="color:#A78BFA;font-weight:600;margin-bottom:2px;">📦 模块A (奇3大3)</div>';
-  h += '<span style="color:#94A3B8;">样本:'+ma.sample_size+'期</span> | 年均'+ma.avg_per_year+'次';
+  h += '<span style="color:#FFFFFF;">样本:'+ma.sample_size+'期</span> | 年均'+ma.avg_per_year+'次';
   if(ma.collections){
     var hh = ma.collections.hot || [];
     var cc = ma.collections.cold || [];
@@ -72,7 +72,7 @@ window._zengLoad = async function(){
   var mb = d.module_b || {};
   h += '<div style="padding:6px 10px;border-radius:4px;background:rgba(255,255,255,0.03);font-size:16px;">';
   h += '<div style="color:#A78BFA;font-weight:600;margin-bottom:2px;">📦 模块B (奇3大3 区间2:2:2)</div>';
-  h += '<span style="color:#94A3B8;">样本:'+mb.sample_size+'期</span> | 年均'+mb.avg_per_year+'次';
+  h += '<span style="color:#FFFFFF;">样本:'+mb.sample_size+'期</span> | 年均'+mb.avg_per_year+'次';
   h += '</div>';
   h += '</div>';
 
@@ -84,7 +84,7 @@ window._zengLoad = async function(){
     for(var k in laws){
       var l = laws[k];
       var color = l.zone === 'standard' ? '#34D399' : (l.zone === 'normal' ? '#FBBF24' : (l.zone === 'edge' ? '#F97316' : '#EF4444'));
-      h += '<div style="margin-bottom:2px;"><span style="color:#94A3B8;">'+k+':</span> ';
+      h += '<div style="margin-bottom:2px;"><span style="color:#FFFFFF;">'+k+':</span> ';
       h += '<span style="color:'+color+';">'+l.law+' → '+l.action+'</span></div>';
     }
     h += '</div>';
@@ -100,7 +100,7 @@ window._zengLoad = async function(){
     for(var k in items){
       var it = items[k];
       var sc = it.status === 'V' ? '#34D399' : (it.status === '~' ? '#FBBF24' : '#EF4444');
-      h += '<div><span style="color:#94A3B8;">'+k+':</span> <span style="color:'+sc+';">'+it.status+'</span> ';
+      h += '<div><span style="color:#FFFFFF;">'+k+':</span> <span style="color:'+sc+';">'+it.status+'</span> ';
       h += '<span style="color:#64748B;">期:'+it.expected+' vs 实:'+it.actual+'</span></div>';
     }
     h += '</div>';
@@ -108,7 +108,7 @@ window._zengLoad = async function(){
 
   // 出号区
   h += '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">';
-  h += '<span style="font-size:16px;color:#94A3B8;">模块A(奇3大3) · 热号优先+衡值轮盘均衡+排除极端冷号</span>';
+  h += '<span style="font-size:16px;color:#FFFFFF;">模块A(奇3大3) · 热号优先+衡值轮盘均衡+排除极端冷号</span>';
   h += '<button class="btn btn-draw" onclick="window._zengDraw()" style="font-size:14px;padding:5px 16px;margin-left:auto;">曾氏模块出号</button>';
   h += '</div>';
   h += '<div id="zengResult" style="margin-top:10px;"></div>';
@@ -139,7 +139,7 @@ window._zengDraw = async function(){
 
   var mi = data.module_info || {};
   var la = data.laws_applied || {};
-  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">';
+  var h = '<div style="font-size:16px;color:#FFFFFF;margin-bottom:4px;">';
   h += data.algorithm+' · 样本'+mi.sample_size+'期 · 热号池'+mi.hot_count+'个';
   if(la.avoid_extreme_cold && la.avoid_extreme_cold.length) h += ' · 避开:'+la.avoid_extreme_cold.join(',');
   h += '</div>';

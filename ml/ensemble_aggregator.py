@@ -7,6 +7,7 @@
 新增方法只需: 实现score_reds(data)→[33]float + register_method(name, fn)
 """
 import math
+from ml.bias_v_selector import auto_v as _auto_v
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 方法注册表
@@ -298,7 +299,10 @@ def _top_k_indices(scores, k):
     return [i for i, _ in indexed[:k]]
 
 
-def backtest_calibrate(data, k=15, window=50):
+def backtest_calibrate(data, k=None, window=50):
+    if k is None:
+        try: k = _auto_v().v
+        except Exception: k = 15
     """滑动窗口回测, 计算每个方法的 recall@K.
 
     recall@K = 开奖6红有多少落在方法评分top-K中, 除以6.
@@ -396,8 +400,11 @@ def aggregate_scores(method_scores, weights, fdr_filter=False, data=None):
     return [s / total_w for s in final]
 
 
-def select_hot_numbers(final_scores, k=15):
-    """按聚合分数排序, 取top-K号码."""
+def select_hot_numbers(final_scores, k=None):
+    """按聚合分数排序, 取top-K号码. k=None=自动检测最优v."""
+    if k is None:
+        try: k = _auto_v().v
+        except Exception: k = 15
     return [idx + 1 for idx in _top_k_indices(final_scores, k)]
 
 
@@ -409,7 +416,10 @@ _cached_weights = None
 _cached_data_count = 0
 
 
-def _get_weights(data, k=15, window=50):
+def _get_weights(data, k=None, window=50):
+    if k is None:
+        try: k = _auto_v().v
+        except Exception: k = 15
     """获取权重(带缓存). 数据未变时重用缓存. 同时持久化到 strategy_weights."""
     global _cached_weights, _cached_data_count
     if _cached_weights is not None and len(data) == _cached_data_count:
@@ -440,7 +450,10 @@ def _persist_weights(weights):
         pass  # 持久化失败不影响核心逻辑
 
 
-def run_full_backtest(k=15, window=50):
+def run_full_backtest(k=None, window=50):
+    if k is None:
+        try: k = _auto_v().v
+        except Exception: k = 15
     """全量回测 — 计算每个方法的 recall@K 并记录到 backtest_results.
 
     Returns:
@@ -479,7 +492,7 @@ def run_full_backtest(k=15, window=50):
         })
 
     # 频率基线: 随机选15个号码的期望recall
-    # 超几何: E[命中数] = 6 * 15/33 ≈ 2.73
+    # 超几何期望: E[命中数] = 6 × v/33, v 由偏差检测动态确定
     baseline_hit = 6.0 * k / 33.0
 
     # 持久化
@@ -518,7 +531,10 @@ def run_full_backtest(k=15, window=50):
 # 主入口
 # ═══════════════════════════════════════════════════════════════════════════
 
-def ensemble_tickets(k=15, t=4, n=6, max_overlap=2):
+def ensemble_tickets(k=None, t=4, n=6, max_overlap=2):
+    if k is None:
+        try: k = _auto_v().v
+        except Exception: k = 15
     """方法聚合 + 覆盖设计 出号.
 
     Args:

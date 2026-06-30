@@ -127,7 +127,7 @@ def _test_frequency(bits: List[int]) -> NistResult:
 
 # ── 检验 2: 块内频率检验 (Frequency within Block) ──
 
-def _test_block_frequency(bits: List[int], block_size: int = 128) -> NistResult:
+def _test_block_frequency(bits: List[int], block_size: int = 128) -> NistResult:  # [NIST SP 800-22 §2.2] 推荐 block_size ≥ 128
     n = len(bits)
     N = n // block_size
     if N < 2:
@@ -161,7 +161,7 @@ def _test_runs(bits: List[int]) -> NistResult:
 
 # ── 检验 4: 最长连续 1 检验 (Longest Run of Ones) ──
 
-def _test_longest_run(bits: List[int], block_size: int = 128) -> NistResult:
+def _test_longest_run(bits: List[int], block_size: int = 128) -> NistResult:  # [NIST SP 800-22 §2.5] 推荐 block_size ≥ 128
     n = len(bits)
     N = n // block_size
     if N < 2:
@@ -210,7 +210,7 @@ def _test_dft(bits: List[int]) -> NistResult:
 
 # ── 检验 6: 近似熵 (Approximate Entropy) ──
 
-def _test_approximate_entropy(bits: List[int], m: int = 5) -> NistResult:
+def _test_approximate_entropy(bits: List[int], m: int = 5) -> NistResult:  # [NIST SP 800-22 §2.12] m < floor(log2 n)-2
     n = len(bits)
     if n < m + 2:
         return NistResult("近似熵 (ApEn)", 1.0, True, 0, "数据不足")
@@ -270,7 +270,7 @@ def _test_random_excursions(bits: List[int]) -> NistResult:
 
 # ── 检验 9-15: 简化但保留结构 ──
 
-def _test_serial(bits: List[int], m: int = 3) -> NistResult:
+def _test_serial(bits: List[int], m: int = 3) -> NistResult:  # [NIST SP 800-22 §2.11] m < floor(log2 n)-2
     n = len(bits)
     if n < m + 2:
         return NistResult("串行检验 (Serial)", 1.0, True, 0, "数据不足")
@@ -319,7 +319,7 @@ def _test_maurers_universal(bits: List[int]) -> NistResult:
                       statistic=fn, detail=f"fn={fn:.4f}")
 
 
-def _test_linear_complexity(bits: List[int], block_size: int = 256) -> NistResult:
+def _test_linear_complexity(bits: List[int], block_size: int = 256) -> NistResult:  # [NIST SP 800-22 §2.10] block_size ≥ 500 for full test
     n = len(bits)
     N = n // block_size
     if N < 2:

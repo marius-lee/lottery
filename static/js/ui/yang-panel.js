@@ -54,7 +54,7 @@ window._yangLoad = async function(){
   order.forEach(function(k){
     if(wxCount[k] > 0){
       h += '<span style="color:#E2E8F0;">'+k+':'+wxCount[k]+'个</span> ';
-      wxNums[k].forEach(function(n){ h += '<span style="color:#94A3B8;">'+n+'</span> '; });
+      wxNums[k].forEach(function(n){ h += '<span style="color:#FFFFFF;">'+n+'</span> '; });
       chain.push(k);
     }
   });
@@ -96,7 +96,7 @@ window._yangLoad = async function(){
 
   // 过滤+出号
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;">';
-  h += '<span style="font-size:16px;color:#94A3B8;">过滤:</span>';
+  h += '<span style="font-size:16px;color:#FFFFFF;">过滤:</span>';
   h += '<label style="font-size:16px;color:#E2E8F0;cursor:pointer;display:flex;align-items:center;gap:2px;"><input type="checkbox" id="yangPosDigit" checked><span>📍位置字头排除</span></label>';
   h += '<button class="btn btn-draw" onclick="window._yangDraw()" style="font-size:14px;padding:5px 16px;margin-left:auto;">杨情友综合出号</button>';
   h += '</div>';
@@ -125,7 +125,7 @@ window._yangDraw = async function(){
   } catch(e){ clearTimeout(t); el.innerHTML = '<div style="color:#EF4444;">'+(e.name==='AbortError'?'超时':'失败')+'</div>'; return; }
   if(!data||!data.ok){ el.innerHTML = '<div style="color:#EF4444;">'+(data.msg||'失败')+'</div>'; return; }
 
-  var h = '<div style="font-size:16px;color:#94A3B8;margin-bottom:4px;">'+data.algorithm+'</div>';
+  var h = '<div style="font-size:16px;color:#FFFFFF;margin-bottom:4px;">'+data.algorithm+'</div>';
   h += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
   (data.tickets||[]).forEach(function(tk){
     var rs = tk.reds.map(function(x){return String(x).padStart(2,'0')}).join(' ');

@@ -82,7 +82,7 @@ class SPRTState:
 
 
 def monitor_red_hits(actual_hits_per_draw: List[int],
-                     pool_v: int = 15,
+                     pool_v: int = 15,  # [工程] 回退默认值, 实际由 auto_v() 动态确定
                      p_alt_lift: float = 1.1):
     """监控红球命中率的SPRT.
 
@@ -97,7 +97,7 @@ def monitor_red_hits(actual_hits_per_draw: List[int],
     # 随机基线: 若池中有v个号, 每注期望命中 = 6 × v/33
     baseline_per_ticket = 6 * pool_v / 33
     # 转为"单期观测至少命中K个"的概率
-    K = 2  # 用户报告常中2个
+    K = 2  # 备择命中数 [数学]: 若池大小v与覆盖设计有效, 每注期望 ≥ baseline+σ
     p_null = 1 - sum(
         math.comb(6, k) * (pool_v/33)**k * ((33-pool_v)/33)**(6-k)
         for k in range(K)
@@ -113,7 +113,7 @@ def monitor_red_hits(actual_hits_per_draw: List[int],
 
 
 def monitor_blue_hits(blue_results: List[bool],
-                      pool_size: int = 6,
+                      pool_size: int = 6,  # [工程] 蓝球缩小池默认 top-6 (命中率 ~37.5% = 6/16)
                       p_alt_lift: float = 1.2):
     """监控蓝球命中率.
 

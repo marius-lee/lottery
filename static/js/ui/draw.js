@@ -147,6 +147,22 @@ export function updateRedMode() {
   store.redMode = document.querySelector("input[name=redMode]:checked")?.value || "pool";
 }
 
+export function updateTMode() {
+  store.t = parseInt(document.querySelector("input[name=tMode]:checked")?.value || "4");
+  var desc = document.getElementById('tModeDesc');
+  if (desc) {
+    if (store.t === 5) {
+      desc.textContent = '保证至少5个红球命中（三等奖）| 成本约为 t=4 的 4-6 倍 | 仅支持贪心覆盖（La Jolla 无 C(v,6,5) 完整表）';
+    } else {
+      desc.textContent = '保证至少4个红球命中（四等奖）| 注数取决于热号池大小 v | La Jolla 精确表 + 贪心覆盖';
+    }
+  }
+}
+
+export function updateMultiPeriod() {
+  store.multiPeriod = document.getElementById('multiPeriodToggle').checked;
+}
+
 export function toggleBanditMode() {
   store.strategyMode = store.strategyMode === 'bandit' ? null : 'bandit';
   var btn = document.getElementById('banditToggle');
@@ -176,7 +192,7 @@ async function drawTickets(luckMode) {
     const blueModeParam = '&blue_mode=' + (store.blueMode || 'freq');
     const redModeParam = '&red_mode=' + (store.redMode || 'pool');
     const strategyParam = store.strategyMode ? '&strategy=' + store.strategyMode : '';
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + backtest + freqBlue + blueModeParam + redModeParam + strategyParam + fivePeriod + patternRules + author + luckMode);
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + '&t=' + (store.t || 4) + (store.multiPeriod ? '&multi_period=1' : '') + advFilter + diversity + backtest + freqBlue + blueModeParam + redModeParam + strategyParam + fivePeriod + patternRules + author + luckMode);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';
@@ -200,10 +216,10 @@ async function drawTickets(luckMode) {
 
   // 信息栏
   const infoRow = document.createElement('div');
-  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;';
+  infoRow.style.cssText = 'font-size:11px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;';
 
   infoRow.style.background = 'rgba(255,255,255,0.06)';
-  infoRow.style.color = '#94a3b8';
+  infoRow.style.color = '#FFFFFF';
   const algo = data.algorithm || '';
 
   if (data.luck_mode === 'pure') {
@@ -364,7 +380,7 @@ export async function startWeierDraw() {
 
   // 条件检测信息栏
   const infoRow = document.createElement('div');
-  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:left;padding:8px 12px;border-radius:6px;background:rgba(5,150,105,0.1);color:#4ade80;line-height:1.6;';
+  infoRow.style.cssText = 'font-size:11px;margin-bottom:8px;text-align:left;padding:8px 12px;border-radius:6px;background:rgba(5,150,105,0.1);color:#4ade80;line-height:1.6;';
   let logHtml = `<b>微尔算法 · 8步条件过滤</b> `;
   if (data.filter_log) {
     const exact = data.filter_log.exact_pool_size || '';
@@ -439,7 +455,7 @@ export async function startCoveringDraw() {
 
   // 覆盖元数据栏
   const infoRow = document.createElement('div');
-  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;background:rgba(34,197,94,0.1);color:#4ade80;';
+  infoRow.style.cssText = 'font-size:11px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;background:rgba(34,197,94,0.1);color:#4ade80;';
   if (data.covering) {
     const cov = data.covering;
     infoRow.innerHTML = `覆盖设计(v=${cov.v},t=${cov.t}) · 覆盖率≥${(cov.estimated_coverage_pct||0).toFixed(0)}% · ${cov.guarantee || ''}`;
@@ -516,7 +532,7 @@ export async function startZhangDraw() {
 
   // 信息栏
   const infoRow = document.createElement('div');
-  infoRow.style.cssText = 'font-size:10px;margin-bottom:8px;text-align:left;padding:8px 12px;border-radius:6px;background:rgba(168,85,247,0.1);color:#A78BFA;line-height:1.6;';
+  infoRow.style.cssText = 'font-size:11px;margin-bottom:8px;text-align:left;padding:8px 12px;border-radius:6px;background:rgba(168,85,247,0.1);color:#A78BFA;line-height:1.6;';
 
   let infoHtml = '<b>张委铭 · ' + (data.algorithm || '') + '</b><br>';
 
@@ -524,19 +540,19 @@ export async function startZhangDraw() {
     const tv = data.twelve_value;
     infoHtml += `十二值红球: ${tv.candidate_count}个候选 [${(tv.candidates||[]).slice(0,12).join(' ')}${tv.candidate_count>12?'...':''}]<br>`;
     infoHtml += `策略: P1-2→前8, P3-4→池+邻, P5→避池选邻, P6→30-33<br>`;
-    infoHtml += `<span style="color:#94A3B8;">原书1767期: avg${tv.stats.avg_hits_per_period}个/期, ≥4占${tv.stats.pct_ge_4}%</span><br>`;
+    infoHtml += `<span style="color:#FFFFFF;">原书1767期: avg${tv.stats.avg_hits_per_period}个/期, ≥4占${tv.stats.pct_ge_4}%</span><br>`;
   }
   if (data.grid) {
     const g = data.grid;
     infoHtml += `行列网格: ${g.mode_desc}<br>`;
     infoHtml += `断行: [${(g.break_rows||[]).join(',')||'无'}] 断列: [${(g.break_cols||[]).join(',')}]<br>`;
-    infoHtml += `<span style="color:#94A3B8;">剩余${g.remaining_count}个号码: ${(g.remaining_numbers||[]).slice(0,15).join(' ')}${g.remaining_count>15?'...':''}</span><br>`;
+    infoHtml += `<span style="color:#FFFFFF;">剩余${g.remaining_count}个号码: ${(g.remaining_numbers||[]).slice(0,15).join(' ')}${g.remaining_count>15?'...':''}</span><br>`;
   }
   if (data.eight_value) {
     const ev = data.eight_value;
     infoHtml += `八值蓝球: ${ev.candidate_count}个候选 [${(ev.candidates||[]).join(' ')}]<br>`;
     infoHtml += `<span style="color:#FBBF24;">${ev.use_recommendation} (连续错${ev.consecutive_errors}次)</span> `;
-    infoHtml += `<span style="color:#94A3B8;">| 原书: ${ev.stats.success_rate_pct}%成功率 vs 理论${ev.stats.theoretical_rate_pct}%</span><br>`;
+    infoHtml += `<span style="color:#FFFFFF;">| 原书: ${ev.stats.success_rate_pct}%成功率 vs 理论${ev.stats.theoretical_rate_pct}%</span><br>`;
   }
 
   infoRow.innerHTML = infoHtml;

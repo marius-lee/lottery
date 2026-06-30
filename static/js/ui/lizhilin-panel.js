@@ -2,7 +2,7 @@
 window._showLiZhiLinPanel = function(){
   var el = document.getElementById('lizhilinContent');
   if(!el) return;
-  el.innerHTML = '<div style="color:#94A3B8;padding:8px;">加载中...</div>';
+  el.innerHTML = '<div style="color:#FFFFFF;padding:8px;">加载中...</div>';
 
   fetch('/api/lizhilin/tickets?n=0&dan8=1&dan3=1&trans=1&kill=1&btail=1&bten=0&bperiod=0').then(function(r){return r.json()}).then(function(d){
     render(d);
@@ -15,7 +15,7 @@ window._showLiZhiLinPanel = function(){
 
     // ═══ 红球方法 ═══
     h += '<div style="margin-bottom:8px;">';
-    h += '<span style="font-size:15px;color:#94A3B8;font-weight:600;">红球方法:</span>';
+    h += '<span style="font-size:15px;color:#FFFFFF;font-weight:600;">红球方法:</span>';
     h += '<label style="margin-left:8px;font-size:14px;color:#E2E8F0;cursor:pointer;">';
     h += '<input type="checkbox" id="lzlDan8" checked onchange="window._lzlUpdate()">八招定胆</label>';
     h += '<label style="margin-left:6px;font-size:14px;color:#E2E8F0;cursor:pointer;">';
@@ -28,7 +28,7 @@ window._showLiZhiLinPanel = function(){
 
     // ═══ 蓝球方法 ═══
     h += '<div style="margin-bottom:10px;">';
-    h += '<span style="font-size:15px;color:#94A3B8;font-weight:600;">蓝球方法:</span>';
+    h += '<span style="font-size:15px;color:#FFFFFF;font-weight:600;">蓝球方法:</span>';
     h += '<label style="margin-left:8px;font-size:14px;color:#E2E8F0;cursor:pointer;">';
     h += '<input type="checkbox" id="lzlBtail" checked onchange="window._lzlUpdate()">12种尾数杀号</label>';
     h += '<label style="margin-left:6px;font-size:14px;color:#E2E8F0;cursor:pointer;">';
@@ -39,7 +39,7 @@ window._showLiZhiLinPanel = function(){
 
     h += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">';
     h += '<button class="btn btn-draw" id="lzlDrawBtn" onclick="window._lzlDraw()" style="font-size:15px;padding:6px 16px;">李志林出号</button>';
-    h += '<span id="lzlStatus" style="font-size:14px;color:#94A3B8;"></span>';
+    h += '<span id="lzlStatus" style="font-size:14px;color:#FFFFFF;"></span>';
     h += '</div>';
 
     h += '<div id="lzlResult"></div>';
@@ -116,7 +116,7 @@ window._lzlDraw = function(){
     if(st) st.textContent = d.tickets.length+'注 · ¥'+(d.tickets.length*2);
 
     var rh = '<div style="margin-top:12px;">';
-    rh += '<div style="font-size:16px;color:#94A3B8;margin-bottom:8px;">'+d.algorithm+' | 红池'+d.red_pool_size+'号 | 蓝池'+d.blue_candidates.length+'号</div>';
+    rh += '<div style="font-size:16px;color:#FFFFFF;margin-bottom:8px;">'+d.algorithm+' | 红池'+d.red_pool_size+'号 | 蓝池'+d.blue_candidates.length+'号</div>';
     rh += '<table class="bt-table"><thead><tr><th>#</th><th>红球</th><th>蓝球</th></tr></thead><tbody>';
     d.tickets.forEach(function(t,i){
       rh += '<tr><td>'+(i+1)+'</td><td style="color:#cc4444;">'+(t.reds||[]).join(' ')+'</td><td style="color:#3366cc;">'+String(t.blue||'?').padStart(2,'0')+'</td></tr>';
