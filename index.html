@@ -105,23 +105,44 @@
         </label>
         <div class="option-detail">推荐开启。贪心算法最大化注间Jaccard距离，选出最分散的N注。自动启用分散。</div>
       </div>
-      <div class="option-card" style="border-color:rgba(245,158,11,0.15);">
-        <label>
-          <span style="color:#F59E0B;font-size:10px;">红球选号方法</span>
-        </label>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
-            <input type="radio" name="redMode" value="pool" checked onchange="updateRedMode()"> 池采样
-          </label>
-          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
-            <input type="radio" name="redMode" value="exact_cover" onchange="updateRedMode()"> 精确覆盖
-          </label>
-          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
-            <input type="radio" name="redMode" value="diffset" onchange="updateRedMode()"> 差集构造
-          </label>
-        </div>
-        <div style="font-size:8px;color:#64748B;margin-top:3px;">池采样=从有效池随机选 | 精确覆盖=La Jolla已知最优表保证最大t-覆盖 | 差集=数论构造保证2-覆盖</div>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="strategy-section">
+      <div class="section-label">红球选号方法</div>
+      <div class="radio-group" style="margin-bottom:6px;">
+        <label class="radio-item"><input type="radio" name="redMode" value="pool" checked onchange="updateRedMode()"> 池采样</label>
+        <label class="radio-item"><input type="radio" name="redMode" value="exact_cover" onchange="updateRedMode()"> 精确覆盖</label>
+        <label class="radio-item"><input type="radio" name="redMode" value="diffset" onchange="updateRedMode()"> 差集构造</label>
+        <label class="radio-item"><input type="radio" name="redMode" value="la_jolla_full" onchange="updateRedMode()"> La Jolla全量</label>
       </div>
+      <div class="method-desc">池采样=从有效池随机选 | 精确覆盖=La Jolla已知最优表保证最大t-覆盖 | 差集=数论构造保证2-覆盖 | La Jolla全量=使用完整C(v,6,4)覆盖表</div>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="strategy-section">
+      <div class="section-label">覆盖强度 (t) — 目标奖等</div>
+      <div class="radio-group">
+        <label class="radio-item"><input type="radio" name="tMode" value="4" checked onchange="updateTMode()"> t=4 · 四等奖 (200元)</label>
+        <label class="radio-item"><input type="radio" name="tMode" value="5" onchange="updateTMode()"> t=5 · 三等奖 (3,000元)</label>
+      </div>
+      <div class="method-desc" id="tModeDesc">保证至少4个红球命中 | 注数取决于热号池大小 v，t=5 成本约为 t=4 的 4-6 倍</div>
+    </div>
+
+    <div class="strategy-section">
+      <div class="section-label">多期联合优化</div>
+      <div class="option-row">
+        <label class="toggle-label" for="multiPeriodToggle">
+          <input type="checkbox" id="multiPeriodToggle" onchange="updateMultiPeriod()"> 跨期累积覆盖
+        </label>
+        <span class="option-hint">记录历史已覆盖的t-子集，下期优先补充未覆盖空间。多期累积远优于单期独立。</span>
+      </div>
+    </div>
+    <hr class="section-divider">
+
+    <div class="option-grid">
       <!-- ═══ 🔵 蓝球策略 ═══ -->
       <div class="option-section-label">🔵 蓝球 — 频率缩小池</div>
       <div class="option-card" id="card-freqBlue">
@@ -146,7 +167,7 @@
             <input type="radio" name="blueMode" value="entropy" disabled onchange="updateBlueMode()"> 条件熵Top-6
           </label>
         </div>
-        <div style="font-size:8px;color:#64748B;margin-top:3px;">频率=历史出现次数 | 条件熵=给定最近5期上下文，选规律最强的蓝球</div>
+        <div style="font-size:8px;color:#FFFFFF;margin-top:3px;">频率=历史出现次数 | 条件熵=给定最近5期上下文，选规律最强的蓝球</div>
       </div>
       <div class="option-card" style="border-color:rgba(34,197,94,0.15);">
         <label>
@@ -155,7 +176,7 @@
         <button class="btn-small" id="banditToggle" onclick="toggleBanditMode()" style="font-size:10px;padding:4px 10px;margin-top:4px;">
           <span class="btn-icon">🎲</span> 手动选择
         </button>
-        <div style="font-size:8px;color:#64748B;margin-top:3px;">Thompson抽样在线学习: 自动探索6种(蓝球×红球)策略组合, 收敛到最优</div>
+        <div style="font-size:8px;color:#FFFFFF;margin-top:3px;">Thompson抽样在线学习: 自动探索6种(蓝球×红球)策略组合, 收敛到最优</div>
       </div>
     </div>
 
@@ -187,16 +208,11 @@
         </button>
       </div>
     </div>
-    <div id="mergeStatus" style="text-align:center;font-size:11px;color:#64748B;margin-top:6px;"></div>
+    <div id="mergeStatus" style="display:none;font-size:11px;margin-top:6px;"></div>
 
   </section>
-</section>
 
   <!-- ===== Stage ===== -->
-  <div id="drawProgress" style="text-align:center;font-size:12px;color:#FFFFFF;margin:0 16px 4px 16px;"></div>
-  <div id="progressBarWrap" class="progress-wrap">
-    <div id="progressBar" class="progress-bar"></div>
-  </div>
   <div id="drawProgress" class="progress-text" style="margin:0 16px 4px;"></div>
   <div class="progress-wrap" style="margin:0 16px 4px;">
     <div id="progressBar" class="progress-bar"></div>
@@ -369,7 +385,7 @@
     <div style="padding:12px;max-width:720px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
         <h4 style="margin:0;color:#22C55E;font-size:15px;">🧮 Stefan Mandel 全买覆盖策略</h4>
-        <span style="font-size:10px;color:#64748B;">基于组合数学，不预测号码。</span>
+        <span style="font-size:10px;color:#FFFFFF;">基于组合数学，不预测号码。</span>
       </div>
 
       <!-- V 选择器 -->
@@ -399,7 +415,7 @@
 
       <!-- 完整对比表 -->
       <details style="margin-top:12px;">
-        <summary style="cursor:pointer;color:#64748B;font-size:12px;padding:4px 0;">V=8~15 完整成本/概率对比表</summary>
+        <summary style="cursor:pointer;color:#FFFFFF;font-size:12px;padding:4px 0;">V=8~15 完整成本/概率对比表</summary>
         <div style="overflow-x:auto;margin-top:8px;">
           <table class="bt-table" style="width:100%;font-size:10px;">
             <thead><tr><th>V</th><th>C(V,6)</th><th>总注数</th><th>成本/期</th><th>P(6红全在)</th><th>期望等待</th></tr></thead>
