@@ -20,7 +20,7 @@ export async function fetchMonitor() {
 
   try {
     var n = store.drawCount || 3;
-    var resp = await fetch('/api/monitor?n=' + n + '&v=15&blue=6&cap=5000');
+    var resp = await fetch('/api/monitor?n=' + n + '&v=15&blue=6');
     var d = await resp.json();
 
     if (!d.ok) {
@@ -111,7 +111,7 @@ function renderMonitorDetail(d) {
   var sprt = d.sprt || {};
   var kelly = d.kelly || {};
   var ka = kelly.ev_analysis || {};
-  var kp = kelly.capital_plan || {};
+
 
   var evNet = ka.net_ev != null ? ka.net_ev.toFixed(2) : '0.00';
   var evRatio = ka.ev_cost_ratio != null ? ka.ev_cost_ratio.toFixed(2) : '0.00';
@@ -138,7 +138,7 @@ function renderMonitorDetail(d) {
     (redSpark ? '<div style="color:#FFFFFF;">红球轨迹</div><div>' + redSpark + '</div>' : '') +
     (blueSpark ? '<div style="color:#FFFFFF;">蓝球轨迹</div><div>' + blueSpark + '</div>' : '') +
 
-    '<div><b style="color:#A78BFA;margin-top:6px;">Kelly 资金分配</b></div>' +
+    '<div><b style="color:#A78BFA;margin-top:6px;">Kelly 分析</b></div>' +
     '<div></div>' +
     '<div style="color:#FFFFFF;">每注EV</div>' +
     '<div style="color:#E2E8F0;">¥' + evNet + ' (比率 ' + evRatio + ')</div>' +
@@ -151,16 +151,10 @@ function renderMonitorDetail(d) {
     '<div style="color:#FFFFFF;">结论</div>' +
     '<div style="color:#EF4444;">' + (kelly.verdict || '负EV') + '</div>' +
 
-    '<div><b style="color:#A78BFA;margin-top:6px;">资本规划</b></div>' +
+    '<div><b style="color:#A78BFA;margin-top:6px;">成本分析</b></div>' +
     '<div></div>' +
-    '<div style="color:#FFFFFF;">本金</div>' +
-    '<div style="color:#E2E8F0;">¥' + (s.capital || 5000).toLocaleString() + '</div>' +
     '<div style="color:#FFFFFF;">每期成本</div>' +
     '<div style="color:#E2E8F0;">¥' + costPerDraw + ' / 期</div>' +
-    '<div style="color:#FFFFFF;">可持续</div>' +
-    '<div style="color:#E2E8F0;">' + susYears + ' 年</div>' +
-    '<div style="color:#FFFFFF;">破产评估</div>' +
-    '<div style="color:#EF4444;">' + (kp.ruin_assessment || '必然破产') + '</div>' +
 
     '<div><b style="color:#A78BFA;margin-top:6px;">历史命中</b></div>' +
     '<div></div>' +

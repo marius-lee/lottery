@@ -14,7 +14,7 @@
 from typing import Dict, List, Optional, Any
 
 
-def collect_signals(data, tickets=3, capital=5000) -> Dict[str, Any]:
+def collect_signals(data, tickets=3) -> Dict[str, Any]:
     """收集六路信号, 返回一个统一决策字典.
 
     generate_tickets() 读取此字典自动调整行为, 无需人工干预.
@@ -50,14 +50,14 @@ def collect_signals(data, tickets=3, capital=5000) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2. Kelly
+    # 2. Kelly — 基于策略EV推荐最优注数
     try:
-        from ml.kelly import ev_per_ticket, capital_allocation_plan
+        from ml.kelly import ev_per_ticket, kelly_fraction
         ev = ev_per_ticket(tickets)
-        plan = capital_allocation_plan(capital, tickets, ev)
-        if plan.get("ok"):
-            signals["kelly_recommended_n"] = max(1, plan.get("tickets_per_draw", tickets))
-            signals["kelly_verdict"] = plan.get("ruin_assessment", "")
+        kf = kelly_fraction(ev)
+        if kf.get("ok"):
+            signals["kelly_recommended_n"] = max(1, kf.get("quarter_kelly_tickets", tickets))
+            signals["kelly_verdict"] = kf.get("verdict", "")
     except Exception:
         pass
 

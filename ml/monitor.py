@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
 from ml.sprt import SPRTState, expected_sample_size
-from ml.kelly import ev_per_ticket, capital_allocation_plan, TICKET_PRICE
+from ml.kelly import ev_per_ticket, TICKET_PRICE
 
 
 def _load_hit_history(window=50):
@@ -87,9 +87,9 @@ def _interpret_sprt(state, label):
         return label + "数据积累中 (" + str(state["n"]) + "期)"
 
 
-def kelly_analysis(tickets=3, pool_v=15, pool_blue=6, capital=5000):
+def kelly_analysis(tickets=3, pool_v=15, pool_blue=6):
     ev = ev_per_ticket(tickets, pool_v)
-    plan = capital_allocation_plan(capital, tickets, ev)
+    cost_per_draw = tickets * TICKET_PRICE
 
     rand_6th = 1.0 / 17.0
     boosted_6th = pool_blue / 16.0
@@ -97,13 +97,13 @@ def kelly_analysis(tickets=3, pool_v=15, pool_blue=6, capital=5000):
     return {
         "ok": True,
         "ev_analysis": ev,
-        "capital_plan": plan,
+        "cost_per_draw": cost_per_draw,
         "blue_lift": round(boosted_6th / rand_6th, 1),
         "verdict": "负EV" if ev["net_ev"] < 0 else "正EV",
     }
 
 
-def monitor_panel(tickets=3, pool_v=15, pool_blue=6, capital=5000):
+def monitor_panel(tickets=3, pool_v=15, pool_blue=6):
     red_hits, blue_hits = _load_hit_history(50)
     claims = _load_claim_history()
 
@@ -138,7 +138,7 @@ def monitor_panel(tickets=3, pool_v=15, pool_blue=6, capital=5000):
         health = "与随机基线无差异"
 
     # Kelly 推荐注数 (离散化)
-    kp = kelly.get("capital_plan", {})
+    kp = kelly
     kp_ok = kp.get("ok", False)
     recommended_n = kp.get("tickets_per_draw", tickets)
 
@@ -155,7 +155,7 @@ def monitor_panel(tickets=3, pool_v=15, pool_blue=6, capital=5000):
             "tickets": tickets,
             "recommended_tickets": recommended_n,
             "cost_per_draw": tickets * TICKET_PRICE,
-            "capital": capital,
+            "cost_per_draw": kp.get("cost_per_draw", 0),
             "sustainable_years": kp.get("max_sustainable_years", 0) if kp_ok else 0,
         },
         "note": "组合数学 + 统计决策理论的诚实评估。不预测号码。",

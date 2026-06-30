@@ -106,7 +106,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 fdr=qbool(q, "fdr", True))),
             "/api/monitor": lambda: self._json(self.ml_bridge.monitor_api(
                 tickets=qint(q, "n", 3), pool_v=qint(q, "v", 15),
-                pool_blue=qint(q, "blue", 6), capital=qint(q, "cap", 5000))),
+                pool_blue=qint(q, "blue", 6))),
             "/api/advanced/generate": lambda: self._json(
                 self.ml_bridge.advanced_generate(n=qint(q, "n", 3))),
             "/api/claims/summary": lambda: self._json(self.ml_bridge.claims_summary_api()),

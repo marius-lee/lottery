@@ -867,7 +867,7 @@ def claims_run_api():
 # 策略监控面板 — SPRT + Kelly + EV 三位一体
 # ═══════════════════════════════════════════════════════════════════════════
 
-def monitor_api(tickets=3, pool_v=None, pool_blue=6, capital=5000):
+def monitor_api(tickets=3, pool_v=None, pool_blue=6):
     if pool_v is None:
         try:
             from ml.bias_v_selector import auto_v
@@ -878,7 +878,7 @@ def monitor_api(tickets=3, pool_v=None, pool_blue=6, capital=5000):
     try:
         from ml.monitor import monitor_panel
         return monitor_panel(tickets=tickets, pool_v=pool_v,
-                            pool_blue=pool_blue, capital=capital)
+                            pool_blue=pool_blue)
     except Exception as e:
         return {"ok": False, "msg": str(e)}
 
@@ -1005,14 +1005,14 @@ def kelly_api(tickets=3, pool_v=None, coverage_pct=36, blue_pct=37.5):
         except Exception:
             pool_v = 15
     """Kelly 最优投注比例."""
-    from ml.kelly import ev_per_ticket, kelly_fraction, capital_allocation_plan
+    from ml.kelly import ev_per_ticket, kelly_fraction
     ev = ev_per_ticket(tickets, pool_v,
                        pool_has_all_6_prob=0.00035,  # V=15时6红全在池概率
                        coverage_pct=coverage_pct,
                        blue_coverage_pct=blue_pct)
     kelly = kelly_fraction(ev)
-    plan = capital_allocation_plan(5000, tickets, ev)
-    return {"ok": True, "ev": ev, "kelly": kelly, "plan": plan}
+    cost_per_draw = tickets * 2  # ¥2 per ticket
+    return {"ok": True, "ev": ev, "kelly": kelly, "cost_per_draw": cost_per_draw}
 
 def sprt_monitor_api():
     """SPRT 序贯概率比检验: 当前策略是否偏离随机?"""

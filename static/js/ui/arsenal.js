@@ -93,9 +93,9 @@ async function loadKelly() {
     const d = await r.json();
     if(!d.ok){ el.innerHTML='<div style="color:#EF4444;">失败</div>'; return; }
 
-    const ev = d.ev, k = d.kelly, p = d.plan;
+    const ev = d.ev, k = d.kelly, costPerDraw = d.cost_per_draw || 0;
     let h = '<div style="font-size:11px;line-height:1.7;">';
-    h += '<b style="color:#4ADE80;">💰 Kelly 最优投注比例</b><br>';
+    h += '<b style="color:#4ADE80;">Kelly 最优投注比例</b><br>';
     h += '<span style="font-size:10px;color:#64748B;">Kelly 1956, Thorp 1997: 最大化对数效用的最优投注比例</span><br><br>';
 
     h += '<b>当前策略 EV:</b><br>';
@@ -110,12 +110,9 @@ async function loadKelly() {
     h += '1/4 Kelly (保守): <b style="color:#FBBF24;">' + (k.quarter_kelly_tickets||0) + '</b> 注/期<br>';
     h += '理由: ' + k.reason + '<br><br>';
 
-    h += '<b>¥5000本金规划:</b><br>';
-    h += '每期成本: ¥' + (p.cost_per_draw||0) + '<br>';
-    h += '可持续: ' + (p.max_sustainable_draws||0) + '期 (' + (p.max_sustainable_years||0) + '年)<br>';
-    h += '评估: <span style="color:#EF4444;">' + (p.ruin_assessment||'') + '</span><br>';
+    h += '<b>每期成本:</b> ¥' + costPerDraw + '<br>';
     h += '</div>';
-    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Kelly 1956, Bell System Tech. J. | MacLean, Thorp, Ziemba "Kelly Capital Growth Investment Criterion" 2011</div>';
+    h += '<div style="margin-top:8px;font-size:9px;color:#64748B;">Kelly 1956, Bell System Tech. J. | MacLean, Thorp, Ziemba 2011</div>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div style="color:#EF4444;">请求失败</div>'; }
 }

@@ -295,7 +295,7 @@ export async function proceedWithDraw() {
   var originalN = store.drawCount;
   if (store.useAutoKelly) {
     try {
-      var resp = await fetch('/api/monitor?n=' + originalN + '&v=15&blue=6&cap=5000');
+      var resp = await fetch('/api/monitor?n=' + originalN + '&v=15&blue=6');
       var d = await resp.json();
       if (d && d.ok) {
         var rec = (d.status && d.status.recommended_tickets != null) ? d.status.recommended_tickets : originalN;
@@ -323,7 +323,7 @@ export async function proceedWithDraw() {
   // 出号完成后刷新监控 (SPRT/Kelly 会反映新 prediction_log 数据)
   if (store.useAutoKelly) {
     try {
-      var md = await fetch('/api/monitor?n=' + store.drawCount + '&v=15&blue=6&cap=5000');
+      var md = await fetch('/api/monitor?n=' + store.drawCount + '&v=15&blue=6');
       if (md) {
         // refresh monitor.js cached data silently
         if (typeof window.fetchMonitor === 'function') {
