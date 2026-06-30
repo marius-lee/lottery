@@ -43,7 +43,7 @@
   <!-- ===== Strategy Panel ===== -->
   
   <!-- ═══ 系统声明 ═══ -->
-  <div class="sys-banner">
+    <div class="sys-banner">
     不预测号码。通过组合数学提高效率 —
     <b>缩小号码池</b> + <b>覆盖最大化</b>，让 <span id="bannerDrawCount">3</span> 注覆盖尽可能大的组合空间
   </div>
@@ -75,7 +75,6 @@
     </div>
 
         <div class="option-grid">
-      <!-- ═══ 🔴 红球策略 ═══ -->
       <div class="option-section-label">🔴 红球 — 组合空间过滤</div>
       <div class="option-card" id="card-advFilter">
         <label class="option-label" for="advFilterToggle">
@@ -105,45 +104,49 @@
         </label>
         <div class="option-detail">推荐开启。贪心算法最大化注间Jaccard距离，选出最分散的N注。自动启用分散。</div>
       </div>
-    </div>
-
-    <hr class="section-divider">
-
-    <div class="strategy-section">
-      <div class="section-label">红球选号方法</div>
-      <div class="radio-group" style="margin-bottom:6px;">
-        <label class="radio-item"><input type="radio" name="redMode" value="pool" checked onchange="updateRedMode()"> 池采样</label>
-        <label class="radio-item"><input type="radio" name="redMode" value="exact_cover" onchange="updateRedMode()"> 精确覆盖</label>
-        <label class="radio-item"><input type="radio" name="redMode" value="diffset" onchange="updateRedMode()"> 差集构造</label>
-        <label class="radio-item"><input type="radio" name="redMode" value="la_jolla_full" onchange="updateRedMode()"> La Jolla全量</label>
-      </div>
-      <div class="method-desc">池采样=从有效池随机选 | 精确覆盖=La Jolla已知最优表保证最大t-覆盖 | 差集=数论构造保证2-覆盖 | La Jolla全量=使用完整C(v,6,4)覆盖表</div>
-    </div>
-
-    <hr class="section-divider">
-
-    <div class="strategy-section">
-      <div class="section-label">覆盖强度 (t) — 目标奖等</div>
-      <div class="radio-group">
-        <label class="radio-item"><input type="radio" name="tMode" value="4" checked onchange="updateTMode()"> t=4 · 四等奖 (200元)</label>
-        <label class="radio-item"><input type="radio" name="tMode" value="5" onchange="updateTMode()"> t=5 · 三等奖 (3,000元)</label>
-      </div>
-      <div class="method-desc" id="tModeDesc">保证至少4个红球命中 | 注数取决于热号池大小 v，t=5 成本约为 t=4 的 4-6 倍</div>
-    </div>
-
-    <div class="strategy-section">
-      <div class="section-label">多期联合优化</div>
-      <div class="option-row">
-        <label class="toggle-label" for="multiPeriodToggle">
-          <input type="checkbox" id="multiPeriodToggle" onchange="updateMultiPeriod()"> 跨期累积覆盖
+      <div class="option-card" style="border-color:rgba(245,158,11,0.15);">
+        <label>
+          <span style="color:#F59E0B;font-size:10px;">红球选号方法</span>
         </label>
-        <span class="option-hint">记录历史已覆盖的t-子集，下期优先补充未覆盖空间。多期累积远优于单期独立。</span>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
+            <input type="radio" name="redMode" value="pool" checked onchange="updateRedMode()"> 池采样
+          </label>
+          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
+            <input type="radio" name="redMode" value="exact_cover" onchange="updateRedMode()"> 精确覆盖
+          </label>
+          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
+            <input type="radio" name="redMode" value="diffset" onchange="updateRedMode()"> 差集构造
+          </label>
+          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
+            <input type="radio" name="redMode" value="la_jolla_full" onchange="updateRedMode()"> La Jolla全量
+          </label>
+        </div>
+        <div style="font-size:8px;color:#FFFFFF;margin-top:3px;">池采样=从有效池随机选 | 精确覆盖=La Jolla已知最优表保证最大t-覆盖 | 差集=数论构造保证2-覆盖 | La Jolla全量=使用完整C(v,6,4)覆盖表</div>
       </div>
-    </div>
-    <hr class="section-divider">
-
-    <div class="option-grid">
-      <!-- ═══ 🔵 蓝球策略 ═══ -->
+      <div class="option-card" style="border-color:rgba(59,130,246,0.15);">
+        <label>
+          <span style="color:#3B82F6;font-size:10px;">覆盖强度 (t) — 目标奖等</span>
+        </label>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
+            <input type="radio" name="tMode" value="4" checked onchange="updateTMode()"> t=4 · 四等奖 (200元)
+          </label>
+          <label style="font-size:10px;color:#FFFFFF;cursor:pointer;">
+            <input type="radio" name="tMode" value="5" onchange="updateTMode()"> t=5 · 三等奖 (3,000元)
+          </label>
+        </div>
+        <div id="tModeDesc" style="font-size:8px;color:#FFFFFF;margin-top:3px;">保证至少4个红球命中 | 注数取决于热号池大小 v，t=5 成本约为 t=4 的 4-6 倍</div>
+      </div>
+      <div class="option-card" style="border-color:rgba(34,197,94,0.15);">
+        <label class="option-label" for="multiPeriodToggle">
+          <input type="checkbox" id="multiPeriodToggle" onchange="updateMultiPeriod()">
+          <span class="option-icon">📅</span>
+          <span class="option-name">多期联合覆盖</span>
+          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-advFilter').classList.toggle('expanded')">▸</span>
+        </label>
+        <div class="option-detail">记录历史已覆盖的t-子集，下期优先补充未覆盖空间。多期累积远优于单期独立。</div>
+      </div>
       <div class="option-section-label">🔵 蓝球 — 频率缩小池</div>
       <div class="option-card" id="card-freqBlue">
         <label class="option-label" for="freqBlueToggle">
@@ -180,7 +183,6 @@
       </div>
     </div>
 
-    <!-- 统一出号 -->
     <div class="draw-toolbar">
       <div class="draw-toolbar-primary">
         <button class="btn btn-draw btn-primary-draw" id="drawBtn" onclick="startDraw()">
@@ -210,12 +212,12 @@
     </div>
     <div id="mergeStatus" style="display:none;font-size:11px;margin-top:6px;"></div>
 
-  </section>
+  </section></section>
 
   <!-- ===== Stage ===== -->
-  <div id="drawProgress" class="progress-text" style="margin:0 16px 4px;"></div>
-  <div class="progress-wrap" style="margin:0 16px 4px;">
-    <div id="progressBar" class="progress-bar"></div>
+  <div id="drawProgress" style="text-align:center;font-size:12px;color:#FFFFFF;margin:0 16px 4px 16px;"></div>
+  <div id="progressBarWrap" style="margin:0 16px 4px 16px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;">
+    <div id="progressBar" style="height:100%;width:0;background:linear-gradient(90deg,#DC2626,#F97316);border-radius:2px;transition:width 0.3s;"></div>
   </div>
   <section class="stage" id="stage"></section>
 
