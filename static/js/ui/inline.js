@@ -424,3 +424,26 @@ window.positionDraw = async function(){
 
 
 ;
+
+// ═══ 安全存根 — 旧版按钮引用已废弃但 HTML 仍保留 ═══
+window.posDraw = function(){ window.startDraw&&window.startDraw(); };
+window.advancedDraw = function(){ window.startDraw&&window.startDraw(); };
+window.updateColorFilter = function(){};
+window.updateBlock9Filter = function(){};
+window.updatePengChannelFilter = function(){};
+window.updateSpreadFilter = function(){};
+window.updateAcFilter = function(){};
+window.updateOmissionFilter = function(){};
+window.updateGapFilter = function(){};
+window.updateLiuBlue = function(){};
+window.updateWumingBlue = function(){};
+window.updateWumingClockwise = function(){};
+window.updateWumingBSD = function(){};
+window.updateCaileleBlue = function(){};
+window.updateGongyiBlue = function(){};
+window.updateXiaBlue = function(){};
+window.checkJackpot = function(){};
+window.switchArsenalTab = function(){};  // 武器库tab切换已简化
+window.toggleTraditionalFilters = function(){};
+window.toggleAutoKelly = function(){};
+window.toggleMonitorDetail = function(){};
