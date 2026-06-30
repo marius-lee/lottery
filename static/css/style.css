@@ -371,12 +371,23 @@ h1 { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spaci
   .ball { width: 42px; height: 42px; font-size: 14px; }
   .strategy-panel { padding: 14px; }
   .bias-bar { flex-wrap: wrap; }
-  .option-row { flex-direction: column; gap: 4px; }
+  .option-row, .option-card-row {
+  align-items: flex-start; flex-direction: column; gap: 4px; }
+  .option-card-row .option-card { min-width: 100%; }
   .draw-actions { flex-direction: column; align-items: stretch; }
   .sub-actions { justify-content: center; }
 }
 
 /* ═══ 策略卡片 — option-card 折叠面板 ═══ */
+
+/* ═══ 红球筛选三卡并排 ═══ */
+.option-card-row {
+  align-items: flex-start;
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.option-card-row .option-card {
+  flex: 1; min-width: 160px;
+}
 .option-grid { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 12px; }
 .option-section-label { font-size: 12px; color: #A78BFA; font-weight: 600; margin: 6px 0 4px; }
 .option-card { padding: 8px 12px; border-radius: var(--radius); background: rgba(255,255,255,0.02); border: 1px solid rgba(139,92,246,0.1); transition: 0.15s ease; }
