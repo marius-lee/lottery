@@ -575,3 +575,56 @@ export async function startZhangDraw() {
   await delay(300);
   clearProgress(); restoreButtons(); clearTimeout(safety);
 }
+
+// ═══ 偏差信号面板 ═══
+export function fetchBiasStatus() {
+  fetch('/api/bias/status')
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+      var dot = document.getElementById('biasSignalDot');
+      var label = document.getElementById('biasSignalLabel');
+      var reason = document.getElementById('biasSignalReason');
+      var sel = document.getElementById('vOverride');
+      
+      // Update dot class
+      dot.className = 'bias-dot ' + (d.signal_level || 'none');
+      
+      // Update label
+      var labels = { strong: '强信号', moderate: '中等信号', weak: '弱信号', none: '无信号' };
+      label.textContent = '偏差: ' + (labels[d.signal_level] || '检测中...');
+      
+      // Update reasoning
+      reason.textContent = d.reasoning || '';
+      
+      // Update v selector
+      if (d.v_options && sel) {
+        sel.style.display = 'inline-block';
+        sel.querySelectorAll('option').forEach(function(opt){
+          opt.removeAttribute('selected');
+        });
+        d.v_options.forEach(function(o){
+          var el = sel.querySelector('option[value="' + o.v + '"]');
+          if (!el) {
+            el = document.createElement('option');
+            el.value = o.v;
+            el.textContent = o.label;
+            sel.appendChild(el);
+          }
+          if (o.active) el.selected = true;
+        });
+      }
+    })
+    .catch(function(){});
+}
+
+export function updateVOverride() {
+  var sel = document.getElementById('vOverride');
+  if (!sel) return;
+  var v = parseInt(sel.value);
+  if (v === 0) {
+    window.store.vOverride = null;
+  } else {
+    window.store.vOverride = v;
+  }
+}
