@@ -1,4 +1,4 @@
-/** 面板切换 — 纯 DOM 操作，各面板模块独立订阅 panel-shown 事件 */
+/** 面板切换 */
 import { store } from '../store.js';
 
 export function togglePanel(name) {
@@ -10,16 +10,9 @@ export function togglePanel(name) {
     panel.classList.remove('show');
     if (btn) btn.classList.remove('active');
   } else {
-    // If panel was moved into traditionalContent by switchTraditionalPanel,
-    // restore it to its original location so main-nav toggles work naturally.
-    var tradContent = document.getElementById('traditionalContent');
-    if (tradContent && panel.parentElement === tradContent && panel._originalParent) {
-      panel._originalParent.appendChild(panel);
-    }
     panel.classList.add('show');
     if (btn) btn.classList.add('active');
     panel.dispatchEvent(new CustomEvent('panel-shown'));
-    if (name === 'help') panel.scrollTop = 0;
   }
 }
 
@@ -44,14 +37,11 @@ export function toggleOfficialHistory() {
   const usrBtn = document.getElementById('userHistoryToggle');
 
   if (panel.classList.contains('open')) {
-    panel.classList.remove('open');
-    btn.classList.remove('active');
-    btn.textContent = '官方历史开奖号码';
-    wrapper.classList.remove('open');
+    panel.classList.remove('open'); btn.classList.remove('active');
+    btn.textContent = '官方历史开奖号码'; wrapper.classList.remove('open');
   } else {
     if (usrPanel.classList.contains('open')) {
-      usrPanel.classList.remove('open');
-      usrBtn.classList.remove('active');
+      usrPanel.classList.remove('open'); usrBtn.classList.remove('active');
       usrBtn.textContent = '历史开奖号码';
     }
     let html = '';
@@ -61,10 +51,8 @@ export function toggleOfficialHistory() {
       html += `<div class="row"><span class="pid">${row[0]}</span><span class="reds">${reds}</span><span class="blue">${String(row[7]).padStart(2, '0')}</span></div>`;
     }
     panel.innerHTML = html;
-    panel.classList.add('open');
-    btn.classList.add('active');
-    btn.textContent = '官方历史开奖号码 ▲';
-    wrapper.classList.add('open');
+    panel.classList.add('open'); btn.classList.add('active');
+    btn.textContent = '官方历史开奖号码 ▲'; wrapper.classList.add('open');
   }
 }
 
@@ -76,14 +64,11 @@ export function toggleUserHistory() {
   const offBtn = document.getElementById('officialHistoryToggle');
 
   if (panel.classList.contains('open')) {
-    panel.classList.remove('open');
-    btn.classList.remove('active');
-    btn.textContent = '历史开奖号码';
-    wrapper.classList.remove('open');
+    panel.classList.remove('open'); btn.classList.remove('active');
+    btn.textContent = '历史开奖号码'; wrapper.classList.remove('open');
   } else {
     if (offPanel.classList.contains('open')) {
-      offPanel.classList.remove('open');
-      offBtn.classList.remove('active');
+      offPanel.classList.remove('open'); offBtn.classList.remove('active');
       offBtn.textContent = '官方历史开奖号码';
     }
     fetch('/api/user-picks')
@@ -102,23 +87,14 @@ export function toggleUserHistory() {
         panel.innerHTML = html;
       })
       .catch(() => { panel.innerHTML = '<div style="padding:10px;color:#c33;">加载失败</div>'; });
-    panel.classList.add('open');
-    btn.classList.add('active');
-    btn.textContent = '历史开奖号码 ▲';
-    wrapper.classList.add('open');
+    panel.classList.add('open'); btn.classList.add('active');
+    btn.textContent = '历史开奖号码 ▲'; wrapper.classList.add('open');
   }
 }
 
 export function saveCurrentDraw() {
-  // 优先读 store.lastDrawResults（一键出号），回退到 window._lastMergeResult（旧手动流程）
-  var results = (window.store && window.store.lastDrawResults) || null;
-  var merged = results ? {
-    reds: results.map(function(r){ return r.reds; }),
-    blues: results.map(function(r){ return r.blue; }),
-    n: results.length
-  } : (window._lastMergeResult || null);
-  if (!merged || !merged.reds || !merged.blues) return;
-  if (merged.reds.length === 0 || merged.blues.length === 0) return;
+  const results = (window.store && window.store.lastDrawResults) || null;
+  if (!results || results.length === 0) return;
 
   let maxPeriod = 0;
   store.DATA.forEach(r => { if (r[0] > maxPeriod) maxPeriod = r[0]; });
@@ -131,14 +107,10 @@ export function saveCurrentDraw() {
   const seq = period % 1000;
   if (seq > 153) period = (year + 1) * 1000 + 1;
 
-  var n = Math.min(merged.reds.length, merged.blues.length);
-  var picks = [];
-  for (var i=0; i<n; i++){
-    picks.push({
-      period, reds: merged.reds[i], blue: merged.blues[i] || merged.blues[0],
-      strategy: 'manual-merge', score: 0,
-    });
-  }
+  const picks = results.map(r => ({
+    period, reds: r.reds, blue: r.blue,
+    strategy: 'pool-sampling', score: 0,
+  }));
 
   fetch('/api/save', {
     method: 'POST',
@@ -146,34 +118,14 @@ export function saveCurrentDraw() {
     body: JSON.stringify({ picks }),
   }).catch(() => {});
 
-  var logEntries = picks.map(function(p){ return {
-    period, source: 'manual-merge',
+  const logEntries = picks.map(p => ({
+    period, source: 'pool-sampling',
     reds_json: JSON.stringify(p.reds), blue: p.blue,
-  };});
-  fetch('/api/prediction-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ entries: logEntries }),
-  }).catch(() => {});
-
+  }));
   const msg = document.getElementById('dataMsg');
   if (msg) {
     msg.textContent = `已保存 ${picks.length} 注 (期号 ${period})`;
     msg.style.color = '#33aa33';
   }
-  if (document.getElementById('officialHistoryPanel').classList.contains('open')) {
-    document.getElementById('officialHistoryPanel').classList.remove('open');
-    toggleOfficialHistory();
-  }
   setTimeout(() => { if (msg) msg.textContent = ''; }, 5000);
-  if (window.fetchMonitor) { window.fetchMonitor(); }
-}
-
-export function toggleTraditionalFilters() {
-  var wrap = document.getElementById('tradFiltersWrap');
-  var btn = document.getElementById('tradFiltersToggle');
-  if (!wrap || !btn) return;
-  var visible = wrap.style.display !== 'none';
-  wrap.style.display = visible ? 'none' : 'flex';
-  btn.textContent = visible ? '▸ 辅助过滤' : '▾ 辅助过滤';
 }

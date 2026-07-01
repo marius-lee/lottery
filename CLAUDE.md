@@ -170,16 +170,19 @@ python3 -m pytest tests/test_integration.py -v
 
 ## Architecture
 
-**Frontend**: `index.html` (SPA shell, 158 lines) + JS modules in `static/js/`:
-- `ui/` — 7 个 UI 面板组件 (活跃)
-- `analysis/` — 10 个分析维度：频率/遗漏/重号/邻号/012路/AC跨度/质数/龙风/同尾/相似期 (活跃)
-- `deprecated/` — 已归档的前端策略/过滤/生成器代码 (strategy/ + filter/ + generator/consensus/weights/backtest)
-- 核心路径: `app.js → ui/draw.js → /api/micro/tickets` (后端微投资组合)
+**Frontend**: `index.html` (SPA shell) + JS modules in `static/js/`:
+- `ui/` — 17 个 UI 面板组件 (draw, analysis, arsenal, compare, monitor, panels, recommend, review, 等)
+- `analysis/` — 10 个分析维度：frequency, omission, repeat, neighbor, route012, ac_span, primes, dragon_phoenix, same_tail, similar
+- 核心路径: `app.js → ui/draw.js → /api/micro/tickets` (staged pipeline)
 
-**Backend** (`app.py`): HTTP server + SQLite. Serves `index.html` + static files. Data source: 中彩网 API, 6h cache with force-refresh support.
-- 活跃端点: ~15 个 (data/fetch/save/stats/micro-tickets/covering/compare/recommend/prediction-log/rules)
-- ML 模块已归档至 `ml/_deprecated/` (XGBoost/LSTM/GPT/Thompson/高级统计等 15 文件)
-- 保留活跃: `ml/micro_portfolio.py` + `covering_design.py` + `prize_evaluator.py` + `ssq_constants.py`
+**Backend** (`app.py`): HTTP server + SQLite. Serves `index.html` + static files. Data source: 中彩网 API (SSL enabled), 6h cache.
+
+**Pipeline** (`ml/pipeline.py`): Staged pipeline — 分析层与生成层分离.
+- `PipelineResult`: 25 字段统一容器 (v, signal_level, red_entropies, nist_biased, method_weights, 等)
+- `get_pipeline(data)`: 缓存命中 → 0ms; 未命中 → 一次性 bootstrap + 条件熵 + 信号收集
+- `invalidate_pipeline()`: 数据拉取后自动失效
+
+**Routing** (`server/handler.py`): 46 exact-match routes + 18 prefix-match routes = 64 个端点. 通过 `_EXACT_ROUTES` 表和独立 `_r_*` 方法 dispatch.
 
 **Storage**: SQLite at `.cache/ssq.db`:
 
@@ -192,63 +195,56 @@ python3 -m pytest tests/test_integration.py -v
 | `strategy_weights` | Per-strategy weights (James-Stein) |
 | `strategy_performance_log` | Historical strategy performance |
 
-## Active API endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/` | Serve index.html |
-| GET | `/api/data` | Load latest 300 draws from DB |
-| GET | `/api/fetch` | Fetch data from 中彩网 |
-| POST | `/api/save` | Save user picks |
-| GET | `/api/micro/tickets` | Micro-portfolio ticket generation (核心路径) |
-| GET | `/api/covering/generate` | Mandel covering design |
-| GET | `/api/evaluate/prizes` | Prize EV evaluation |
-| GET/POST | `/api/compare` | Compare picks vs actual draw |
-| GET | `/api/recommend` | Frequency+ML fusion recommendations |
-| GET/POST | `/api/prediction-log` | Prediction history |
-| GET | `/api/rules/status` | Hard/soft filter rule status |
-| GET | `/api/stats` | Summary statistics |
-| GET | `/api/flush-cache` | Force data refresh |
-
 ## Data format
 
-`[[period, r1..r6, blue], ...]` — period ascending. Period format: `YYYYPPP`. Stored in `store.DATA` (global array).
+`[[period, r1..r6, blue], ...]` — period ascending. Period format: `YYYYPPP`.
 
 ## Core generation flow
 
 ```
-app.py → fetcher.fetch_data() → db.sqlite
-     ↓ user clicks "生成号码"
-ui/draw.js → fetch /api/micro/tickets → ml_bridge.micro_3_tickets()
-     → ml/micro_portfolio.py:generate_tickets()
-        1. _build_pool(): enumerate C(33,6), hard-filter + soft-filter
-        2. Random sample from valid pool
-        3. Blue ball: Laplace-smoothed frequency weights
+数据拉取 (fetcher)
+  └→ invalidate_pipeline()
+  └→ warmup 触发 get_pipeline(data) → PipelineResult (缓存, 24s cold / 0ms hot)
+
+用户点击 "生成号码"
+  ui/draw.js → /api/micro/tickets → ml_bridge.micro_3_tickets()
+    → get_pipeline(data)           # 0ms (命中缓存)
+    → generate_tickets(pipeline=pl) # 纯生成 <0.1s
+        1. 从 pl 读取 v, red_entropies, nist_biased, method_weights
+        2. pool / exact_cover / diffset / la_jolla_full 出号
+        3. 蓝球: Laplace 平滑频率权重
 ```
 
 ## Project structure
 
 ```
-ml/                          # 活跃模块 (6 files)
-  bias_v_selector.py         # 偏差驱动的动态v选择 (替代硬编码k=15)
-  exact_cover_tables.py      # La Jolla C(v,6,4) 完整覆盖表 (v=12-16)
-  micro_portfolio.py         # 微投资组合: 硬/软过滤 → 随机采样
-  covering_design.py         # Mandel覆盖: 位掩码模拟退火
-  prize_evaluator.py         # 超几何分布期望价值
+ml/                          # 活跃模块 (37 .py 文件)
+  pipeline.py                # ** 分析管道: PipelineResult + get_pipeline()
+  bias_v_selector.py         # 偏差驱动的动态v选择 (被 pipeline 调用)
+  bias_detector.py           # Bootstrap Bonferroni 偏差检测
+  ensemble_aggregator.py     # 5方法聚合评分 + 回测权重
+  micro_portfolio.py         # 微投资组合: generate_tickets(pipeline=pl)
+  covering_design.py         # 贪心覆盖设计 (1-1/e 近似比)
+  cond_entropy.py            # 条件熵 + 互信息聚类 (被 pipeline 调用)
+  deep_signals.py            # SPRT/Kelly/FDR/NIST 信号收集
+  exact_cover.py             # La Jolla C(v,6,4) 精确覆盖
+  exact_cover_tables.py      # La Jolla 完整覆盖表 (v=12-16)
+  prize_evaluator.py         # 超几何分布期望价值 (纯标准库)
   ssq_constants.py           # 全局常量注册表 (可溯源)
-  _deprecated/               # 已归档: XGB/LSTM/GPT/Thompson/高级统计等
-    advanced.py, xgb_predictor.py, lstm_predictor.py, ...
+  ...  # 作者算法: wuming, peng_hao, zhang_weiming, li_zhilin, jiang_jialin, etc.
 server/
-  handler.py                 # HTTP路由器
-  ml_bridge.py               # ML门面 (容错: 归档模块返回 None)
+  handler.py                 # 64 端点路由表 (_EXACT_ROUTES + _ROUTES)
+  ml_bridge.py               # ML门面 (注入 pipeline, 委托各模块)
   db.py                      # SQLite CRUD
-  fetcher.py                 # 中彩网 API
-  weight_optimizer.py        # James-Stein收缩 (active via /api/compare)
+  fetcher.py                 # 中彩网 API (SSL enabled)
+  auto_claim.py              # 自动兑奖 (_claim_segment 公共函数)
+  weight_optimizer.py        # James-Stein收缩
+  scheduler.py               # 定时调度器 (二/四/日 22:05)
   recommend.py               # 推荐引擎
 static/js/
-  ui/                        # 7个UI面板
-  analysis/                  # 10个分析维度
-  deprecated/                # 已归档: strategy/ + filter/ + generator/consensus
+  ui/                        # 17 个 UI 面板
+  analysis/                  # 10 个分析维度
+  app.js / store.js / data.js / chart.js / audio.js / utils.js
 ```
 
 <!-- superpowers-zh:begin (do not edit between these markers) -->

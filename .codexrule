@@ -1,0 +1,27 @@
+# Lottery 项目节省 token 规则
+
+## 读文件
+- 用 `sed -n 'M,Np' file | nl -ba` 取指定行范围，不要 `cat` 全文件
+- 用 `grep -n "pattern" file` 定位行号，然后按需截取
+- 避免 `cat` 超过 200 行的文件
+
+## 预检
+- 每次编辑后，先跑 `python3 -c "from server import ml_bridge; print('OK')"` 验证导入（<0.1s）
+- 需要验证 API 时，`python3 -c "..."` 直接调用函数，不要跑 curl
+- 所有导入和调用验证通过后，最后一把跑 pytest
+
+## 测试
+- 编辑期间不触发 pytest，用 import 预检替代
+- 所有修改完成、import 预检通过后，才跑一次 `pytest tests/ -v --tb=short`
+- 测试失败时，先看失败的测试名，只跑那个文件：`pytest tests/test_specific.py -v`
+
+## 编辑
+- 避免 `git checkout` 回滚。回滚会丢失中间修复，导致重复劳动
+- 用 Python 脚本批量替换，一次性处理多个函数
+- AST 扫描定位死代码优于逐个 grep
+- 文件用 `python3 << 'PYEOF'` 脚本修改，不用 `sed -i` 逐行改
+
+## 启动服务器
+- `python3 app.py &` 在沙箱里不稳定，子进程可能被杀
+- 用 `exec_command` 直接启动，会话保持存活
+- 或者不启动服务器，用 `python3 -c "from server.handler import *"` 验证路由

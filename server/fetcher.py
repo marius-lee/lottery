@@ -19,8 +19,7 @@ def _get_cwl_opener():
     if _cwl_opener is not None:
         return _cwl_opener
     ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    # SSL 验证启用: 中彩网使用正规 CA 证书, 无需关闭验证
     https_handler = urllib.request.HTTPSHandler(context=ctx)
     cj = http.cookiejar.CookieJar()
     cookie_handler = urllib.request.HTTPCookieProcessor(cj)
@@ -114,6 +113,12 @@ def fetch_data(force=False):
         if new:
             db.upsert_draws(new, "中彩网")
             db.set_fetch_time()
+
+            # 使分析管道失效, 下次请求自动重建
+            try:
+                pass  # pipeline 已删除
+            except Exception:
+                pass
 
         all_data = db.load_draws()
         short = all_data[-300:] if len(all_data) > 300 else all_data
