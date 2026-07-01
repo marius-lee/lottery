@@ -41,7 +41,7 @@ function renderSignals(sigs, bt, el) {
       var hue = 40 - intensity * 30;
       html += '<span style="display:inline-block;width:var(--sig-ball-diam);height:var(--sig-ball-diam);line-height:var(--sig-ball-diam);text-align:center;'
         + 'border-radius:50%;background:hsl(' + hue + ',80%,' + (50 + intensity*15) + '%);'
-        + 'color:#000;font-weight:700;font-size:var(--sig-ball);margin:2px;"'
+        + 'color:#000;font-weight:700;font-size:var(--sig-ball);margin:3px;"'
         + ' title="权重 ' + w.toFixed(3) + '">' + num + '</span>';
     });
   }
@@ -59,7 +59,7 @@ function renderSignals(sigs, bt, el) {
       var intensity = Math.min(1, (w - 1.05) / 0.3);
       html += '<span style="display:inline-block;width:var(--sig-ball-diam);height:var(--sig-ball-diam);line-height:var(--sig-ball-diam);text-align:center;'
         + 'border-radius:50%;background:hsl(220,70%,' + (45 + intensity*20) + '%);'
-        + 'color:#fff;font-weight:700;font-size:var(--sig-ball);margin:2px;"'
+        + 'color:#fff;font-weight:700;font-size:var(--sig-ball);margin:3px;"'
         + ' title="权重 ' + w.toFixed(3) + '">' + num + '</span>';
     });
   }
