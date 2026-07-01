@@ -79,7 +79,7 @@ export function refreshReviewPanel() {
           : '待开奖';
         const cls = e.red_hits >= 4 ? 'highlight' : '';
         const bi = e.blue_hit === 1 ? '✅' : e.blue_hit === 0 ? '❌' : '—';
-        html += `<tr><td>${e.period}</td><td>${e.strategy || '—'}</td>
+        html += `<tr><td>${e.period}</td>
           <td style="font-family:monospace;font-size:10px;"><span style="color:#EF4444;">${predStr}</span> <span style="color:#3B82F6;">${String(e.blue).padStart(2,'0')}</span></td>
           <td style="font-family:monospace;font-size:10px;">${actualStr} ${e.actual_reds ? '<span style="color:#3B82F6;">'+String(drawMap[e.period].blue).padStart(2,'0')+'</span>' : ''}</td>
           <td class="${cls}">${e.red_hits >= 0 ? e.red_hits + '个' : '—'}</td>

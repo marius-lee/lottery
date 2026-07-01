@@ -4,11 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0F0F23">
-  <title>双色球 · 近期偏差出号</title>
+  <title>双色球 · 智能选号</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><radialGradient id='g' cx='40%' cy='35%'><stop offset='0%' stop-color='%23EF4444'/><stop offset='100%' stop-color='%23991B1B'/></radialGradient></defs><circle cx='16' cy='16' r='15' fill='url(%23g)' stroke='%23FCA5A5' stroke-width='1'/><text x='16' y='22' text-anchor='middle' font-size='14' font-weight='bold' fill='white' font-family='sans-serif'>SSQ</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
@@ -21,7 +18,7 @@
       <svg class="brand-dot" viewBox="0 0 12 12" width="14" height="14" fill="currentColor">
         <circle cx="6" cy="6" r="6"/>
       </svg>
-      <h1>双色球 · 近期偏差出号</h1>
+      <h1>双色球 · 智能选号</h1>
     </div>
     <div class="header-meta">
       <span id="dataBtnText" class="data-label">默认数据</span>
@@ -35,12 +32,6 @@
       <span id="dataMsg" class="data-msg"></span>
     </div>
   </header>
-
-  <!-- 系统声明 -->
-  <div class="sys-banner">
-    近100期二项检验检测偏热号码 + best-of-20加权池采样 —
-    让 <span id="bannerDrawCount">3</span> 注倾向近期偏热号码
-  </div>
 
   <!-- 策略面板 -->
   <section class="strategy-panel">
@@ -62,36 +53,6 @@
       </div>
     </div>
 
-    <div class="option-grid">
-      <div class="option-section-label">🔴 红球 — 硬过滤</div>
-      <div class="option-card-row">
-        <div class="option-card">
-          <div class="option-label">
-            <span class="option-icon">✅</span>
-            <span class="option-name">等差序列</span>
-            <span class="option-tag">始终</span>
-          </div>
-          <div class="option-detail">自动排除算术级数组合（如1,5,9,13,17,21）。</div>
-        </div>
-        <div class="option-card">
-          <div class="option-label">
-            <span class="option-icon">🚫</span>
-            <span class="option-name">历史重复</span>
-            <span class="option-tag">始终</span>
-          </div>
-          <div class="option-detail">自动排除历史上已开出的红球组合。</div>
-        </div>
-        <div class="option-card">
-          <div class="option-label">
-            <span class="option-icon">📐</span>
-            <span class="option-name">全局约束</span>
-            <span class="option-tag">始终</span>
-          </div>
-          <div class="option-detail">Stage 2: 和值/跨度/奇偶比/AC值 校验过滤。</div>
-        </div>
-      </div>
-    </div>
-
     <div class="draw-toolbar">
       <button class="btn btn-draw btn-primary-draw" id="drawBtn" onclick="startDraw()">
         <span class="btn-icon">🎰</span> 出号
@@ -101,10 +62,10 @@
       </button>
     </div>
 
-    <!-- 多算法信号 -->
-    <div class="option-section-label" style="margin-top:16px;">🧬 多算法信号融合</div>
+    <!-- 信号面板 -->
+    <div class="option-section-label" style="margin-top:12px;">🧬 信号融合</div>
     <div id="signalsPanel" style="padding:0 4px;margin-bottom:8px;">
-      <div id="signalsContent" style="font-size:10px;color:#A78BFA;padding:4px 0;">加载中...</div>
+      <div id="signalsContent" style="font-size:12px;color:#A78BFA;padding:4px 0;">加载中...</div>
     </div>
   </section>
 
@@ -115,103 +76,19 @@
   </div>
   <section class="stage" id="stage"></section>
 
-  <!-- Panel Nav -->
-  <nav class="panel-nav" role="tablist">
-    <span class="panel-nav-group">
-      <button class="panel-tab" id="compareToggle" onclick="togglePanel('compare')" role="tab">开奖对比</button>
-      <button class="panel-tab" id="reviewToggle" onclick="togglePanel('review')" role="tab">复盘跟踪</button>
-    </span>
-    <span class="panel-nav-sep">|</span>
-    <span class="panel-nav-group">
-      <span class="panel-nav-label">参考</span>
-      <button class="panel-tab" id="helpToggle" onclick="togglePanel('help')" role="tab">说明</button>
-    </span>
-  </nav>
-
-  <!-- 遗漏 -->
-  <div class="content-panel" id="omissionPanel">
-    <div class="omission-grid" id="redOmission"></div>
-    <div class="omission-grid" id="blueOmission" style="margin-top:12px;"></div>
-  </div>
-
-  <!-- 分析 -->
-  <div class="content-panel" id="analysisPanel">
-    <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchAnalysisTab('indicators', this)">统计指标</button>
-      <button class="tab-btn" onclick="switchAnalysisTab('weights', this)">综合权重</button>
-      <button class="tab-btn" onclick="switchAnalysisTab('similar', this)">相似期</button>
-      <button class="tab-btn" onclick="switchAnalysisTab('charts', this)">走势图</button>
-    </div>
-    <div class="tab-content active" id="tab-indicators"><div id="indicatorsGrid"></div></div>
-    <div class="tab-content" id="tab-weights"><div id="weightsGrid"></div></div>
-    <div class="tab-content" id="tab-similar"><div id="similarContent"></div></div>
-    <div class="tab-content" id="tab-charts">
-      <div class="chart-controls">
-        <button class="panel-toggle active" onclick="switchChart('sum', this)">和值</button>
-        <button class="panel-toggle" onclick="switchChart('span', this)">跨度</button>
-        <button class="panel-toggle" onclick="switchChart('odd', this)">奇偶</button>
-        <button class="panel-toggle" onclick="switchChart('zone', this)">三区</button>
-      </div>
-      <canvas class="trend-canvas" id="trendCanvas" width="660" height="280"></canvas>
-    </div>
-  </div>
-
-  <!-- 对比 -->
-  <div class="content-panel" id="comparePanel">
-    <div class="compare-bar">
-      <button class="btn-compare" onclick="runAutoCompare()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <path d="m21 21-4.35-4.35"/>
-        </svg>
-        对比最新开奖
-      </button>
-      <span id="compareStatus" class="compare-status"></span>
-    </div>
-    <div id="compareResult"></div>
-  </div>
-
   <!-- 复盘 -->
-  <div class="content-panel" id="reviewPanel">
-    <div class="review-header">
-      <button class="btn-small" onclick="refreshReviewPanel()">
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12a9 9 0 1 1-9-9"/>
-          <path d="M21 3v6h-6"/>
-        </svg>
-        刷新
-      </button>
+  <div class="review-section" style="margin:16px;">
+    <div class="review-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <h3 style="color:#FFFFFF;font-size:14px;">复盘跟踪</h3>
+      <button class="btn-small" onclick="refreshReviewPanel()" style="background:#1A1A25;border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:#FFFFFF;padding:4px 10px;cursor:pointer;font-size:12px;">刷新</button>
     </div>
-    <div id="reviewSummary"></div>
-    <div class="bt-scroll">
-      <table class="bt-table">
-        <thead><tr><th>期号</th><th>来源</th><th>预测</th><th>实际</th><th>红球命中</th><th>蓝球</th></tr></thead>
+    <div id="reviewSummary" style="font-size:12px;color:#999;margin-bottom:8px;"></div>
+    <div class="bt-scroll" style="max-height:400px;overflow-y:auto;">
+      <table class="bt-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="color:#999;"><th>期号</th><th>预测</th><th>实际</th><th>红球命中</th><th>蓝球</th></tr></thead>
         <tbody id="reviewTbody"></tbody>
       </table>
     </div>
-    <div id="reviewCount" class="review-count"></div>
-  </div>
-
-  <!-- 说明 -->
-  <div class="content-panel" id="helpPanel">
-    <div class="help-grid">
-      <h4>双色球 · 近期偏差出号</h4>
-      <p>基于组合数学的号码筛选系统。不预测开奖号码，仅用近期频率偏差做加权采样。</p>
-      <h4>核心算法</h4>
-      <p>近100期二项检验检测偏热号码 → best-of-20池加权采样。从 C(33,6) 有效池中倾向近期偏热组合。</p>
-      <h4>使用方法</h4>
-      <p>1. 点击「更新数据」加载最新开奖<br>2. 选择注数，勾选选项 → 点击「出号」生成<br>3. 保存 → 开奖后点击「开奖对比」查看命中</p>
-    </div>
-  </div>
-
-  <!-- History -->
-  <nav class="panel-nav" style="margin-top:8px;">
-    <button class="panel-tab" id="officialHistoryToggle" onclick="toggleOfficialHistory()">官方历史开奖号码</button>
-    <button class="panel-tab" id="userHistoryToggle" onclick="toggleUserHistory()">历史开奖号码</button>
-  </nav>
-  <div class="wrapper" id="historyWrapper">
-    <div class="history-panel" id="officialHistoryPanel"></div>
-    <div class="history-panel" id="userHistoryPanel"></div>
   </div>
 
 </div>
