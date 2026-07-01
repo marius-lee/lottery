@@ -225,7 +225,7 @@ class TestEndToEnd(unittest.TestCase):
             self.assertTrue(0.5 <= w[n] <= 2.0,
                             f"gap 权重 {n}={w[n]} 越界")
         self.assertIn("hot", d)
-        self.assertIn("shape_by_num", d)
+        self.assertIn("shapes", d)
 
     def test_e2e_position_weights(self):
         """position_model 在真实数据上正常返回"""

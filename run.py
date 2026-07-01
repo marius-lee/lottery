@@ -41,13 +41,26 @@ def main():
     python = sys.executable
     proc = None
     baseline = None
+    restart_count = 0
+    max_restarts = 20  # 防止无限重启
+    backoff_base = 0.5  # 首次退避 0.5s
 
-    while True:
+    while restart_count < max_restarts:
         # 启动
         print(f"\n▶ 启动服务器...", flush=True)
         proc = subprocess.Popen([python, "app.py"],
                                 stdout=sys.stdout, stderr=sys.stderr)
+        restart_count += 1
         baseline = collect_mtimes()
+
+        # 检查是否立刻崩溃
+        time.sleep(0.5)
+        if proc.poll() is not None and proc.returncode != 3:
+            # 非 reload 退出 — 真正的错误 (如端口占用)
+            print(f"  ❌ 服务器异常退出 (code={proc.returncode})，{3-restart_count}次重试后停止",
+                  flush=True)
+            time.sleep(backoff_base * restart_count)
+            continue
 
         # 监控循环
         try:

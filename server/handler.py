@@ -177,16 +177,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── API: 多算法信号 ──
 
     def _api_signals(self):
-        """返回 gap + position 双算法信号摘要."""
-        from ml.signal_aggregator import collect_all_signals
+        """返回 gap + position 双算法信号摘要 (红球+蓝球)."""
+        from ml.signal_aggregator import collect_all_signals, collect_blue_signals
         data = db.load_draws()
         fused_w, diag = collect_all_signals(data)
-        # 提取偏热号码 (fused > 1.1)
+        blue_w, blue_d = collect_blue_signals(data)
         hot = [(n, round(fused_w[n], 3)) for n in range(1, 34) if fused_w[n] > 1.1]
         hot.sort(key=lambda x: -x[1])
+        blue_hot = [(b, round(blue_w[b], 3)) for b in range(1, 17) if blue_w[b] > 1.05]
+        blue_hot.sort(key=lambda x: -x[1])
         return self._json({
             "ok": True,
             "hot_numbers": hot[:12],
+            "blue_hot": blue_hot[:8],
             "weights": [round(fused_w[n], 3) for n in range(1, 34)],
             "algorithms": diag,
         })

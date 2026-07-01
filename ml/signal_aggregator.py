@@ -1,11 +1,11 @@
 """信号融合 — 双算法加权组合 + walk-forward 回测
 
 仅用回测验证的两个有效算法:
-  A. gap_analysis    — 间隔/存活分析 (Weibull, lift +2.60%, 9/10)
-  B. position_model  — 位置条件概率 (lift +1.28%, 8/10)
+  A. gap_analysis    — 间隔/存活分析 (Weibull MLE, window=50, lift +1.9%)
+  B. position_model  — 位置条件概率 (window=100, lift +1.3%)
 
-融合策略: 等权平均 (后续可根据回测结果微调).
-蓝球: 历史频率加权 (1/16 无显著信号).
+融合策略: 加权平均 (gap 0.6, position 0.4).
+蓝球: 间隔分析 (Weibull MLE, window=50).
 """
 import math
 import random
@@ -21,7 +21,7 @@ def collect_all_signals(data, window=200, active=None):
     # ── A: gap_analysis ──
     try:
         from ml.gap_analysis import compute_gap_weights
-        gap_w, gap_d = compute_gap_weights(data, window=min(window, 200))
+        gap_w, gap_d = compute_gap_weights(data, window=min(window, 50))
         weights_pool["gap_analysis"] = gap_w
         diag["gap_analysis"] = {
             "hot": gap_d.get("hot", [])[:8],
@@ -36,7 +36,7 @@ def collect_all_signals(data, window=200, active=None):
     # ── B: position_model ──
     try:
         from ml.position_model import compute_position_weights
-        pos_probs, pos_d = compute_position_weights(data, window=min(window, 200))
+        pos_probs, pos_d = compute_position_weights(data, window=min(window, 100))
         pos_w = [0.0] * 34
         for num in range(1, 34):
             pos_w[num] = sum(pos_probs[p][num] for p in range(1, 7)) / 6.0
@@ -84,15 +84,25 @@ def collect_all_signals(data, window=200, active=None):
 # ═══ 蓝球权重 (简单频率) ═══
 
 def collect_blue_signals(data, window=None, active=None):
-    """蓝球: 历史频率加权 (无复杂算法).
+    """蓝球: 间隔分析 + 频率 融合.
 
-    双色球蓝球 16 选 1, 2000+ 期数据未发现任何显著预测信号.
-    采用窗口频率作为轻度先验 (max ±20% 偏离均匀).
+    优先使用 gap_analysis 蓝球 (Weibull MLE),
+    降级时使用频率加权.
     """
     diag = {}
+    try:
+        from ml.gap_analysis import compute_blue_gap_weights
+        weights, gap_d = compute_blue_gap_weights(data, window=min(window or 50, 50))
+        diag["algorithm"] = "间隔分析蓝球"
+        diag["n_hot"] = gap_d.get("n_hot", 0)
+        diag["hot"] = gap_d.get("hot", [])[:6]
+        return weights, diag
+    except Exception:
+        pass
+
+    # 降级: 频率加权
     if not data:
         return [1.0] * 17, diag
-
     recent = data[-(window or 100):]
     blue_counts = [0] * 17
     for row in recent:
@@ -105,12 +115,9 @@ def collect_blue_signals(data, window=None, active=None):
         ratio = blue_counts[b] / expected if expected > 0 else 1.0
         weights[b] = max(0.5, min(2.0, ratio))
 
-    hot = sorted([(b, round(weights[b], 3)) for b in range(1, 17) if weights[b] > 1.05],
-                 key=lambda x: -x[1])
-    diag["algorithm"] = "频率蓝球"
-    diag["n_hot"] = len(hot)
-    diag["hot"] = hot[:6]
-
+    diag["algorithm"] = "频率蓝球(降级)"
+    diag["n_hot"] = sum(1 for b in range(1, 17) if weights[b] > 1.05)
+    diag["hot"] = [(b, round(weights[b], 3)) for b in range(1, 17) if weights[b] > 1.05][:6]
     return weights, diag
 
 
@@ -185,12 +192,12 @@ def run_all_backtests(data):
 
     def algo_gap(train_data):
         from ml.gap_analysis import compute_gap_weights
-        w, _ = compute_gap_weights(train_data, window=min(len(train_data), 200))
+        w, _ = compute_gap_weights(train_data, window=min(len(train_data), 50))
         return w
 
     def algo_position(train_data):
         from ml.position_model import compute_position_weights
-        pos_probs, _ = compute_position_weights(train_data, window=min(len(train_data), 200))
+        pos_probs, _ = compute_position_weights(train_data, window=min(len(train_data), 100))
         pos_w = [0.0] * 34
         for num in range(1, 34):
             pos_w[num] = sum(pos_probs[p][num] for p in range(1, 7)) / 6.0
