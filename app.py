@@ -13,6 +13,15 @@ HOST, PORT = "0.0.0.0", 8520
 def main():
     db.init_db()
 
+    # 日志截断: > 10MB 时清空
+    import os as _os
+    for _log_f in ["logs/server.log", "logs/server.err"]:
+        try:
+            if _os.path.isfile(_log_f) and _os.path.getsize(_log_f) > 10 * 1024 * 1024:
+                _os.remove(_log_f)
+        except OSError:
+            pass
+
     def _bg_fetch():
         time.sleep(3)
         try:

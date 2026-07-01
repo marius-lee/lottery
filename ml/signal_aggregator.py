@@ -25,9 +25,7 @@ def collect_all_signals(data, window=200, active=None):
         weights_pool["gap_analysis"] = gap_w
         diag["gap_analysis"] = {
             "hot": gap_d.get("hot", [])[:8],
-            "cold": gap_d.get("cold", [])[:8],
             "n_hot": gap_d.get("n_hot", 0),
-            "n_cold": gap_d.get("n_cold", 0),
         }
     except Exception:
         weights_pool["gap_analysis"] = [1.0] * 34
