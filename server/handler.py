@@ -109,14 +109,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return generate_tickets(n=3)
         q = _parse_query(path)
         n = qint(q, "n", 3)
-        soft = qbool(q, "adv_filter") or qbool(q, "soft")
         mo = qint(q, "max_overlap", -1)
         max_overlap = None if mo < 0 else mo
         cl = q.get("constraint_level")
         constraint_level = cl if cl in ("loose", "normal", "strict") else "normal"
         return generate_tickets(
-            n=n, soft=soft, max_overlap=max_overlap,
-            use_freq_blue=qbool(q, 'freq_blue'),
+            n=n, max_overlap=max_overlap,
             constraint_level=constraint_level,
         )
 

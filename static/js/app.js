@@ -1,50 +1,34 @@
-/** 应用入口 */
-import { store, subscribe } from './store.js';
-import { loadFromServer, fetchLatestData } from './data.js';
-import { renderPlaceholders, proceedWithDraw, updateAdvFilter, updateMaxOverlap, updateDiversity, updateGreedy, updateFreqBlue } from './ui/draw.js';
-import { togglePanel, resetHistoryPanels, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw } from './ui/panels.js';
-import { switchAnalysisTab } from './ui/analysis.js';
-import { switchChart } from './chart.js';
-import { runAutoCompare } from './ui/compare.js';
-import { refreshReviewPanel } from './ui/review.js';
-import './ui/omission.js';
-import './ui/signals.js';
+/** 双色球 — 入口 */
+import { store, subscribe, notify, updateData } from './store.js';
+import { fetchData } from './ui/data.js';
+import { startDraw, saveCurrentDraw, restoreButtons } from './ui/draw.js';
+import { renderPanels } from './ui/panels.js';
+import { fetchSignals } from './ui/signals.js';
+import { renderReview } from './ui/review.js';
 
-function startDraw() {
-  proceedWithDraw();
-}
+// 全局暴露
+window.startDraw = startDraw;
+window.saveCurrentDraw = saveCurrentDraw;
+window.updateMaxOverlap = function(v) { store.maxOverlap = v; };
 
-function updateDrawCount() {
-  store.drawCount = parseInt(document.getElementById('drawCount').value);
-  const bdc = document.getElementById('bannerDrawCount');
-  if (bdc) bdc.textContent = store.drawCount;
-  renderPlaceholders();
-}
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+  fetchData();
+  fetchSignals();
+  renderPanels();
+  renderReview();
+  restoreButtons();
 
-subscribe('data-changed', () => {
-  renderPlaceholders();
-  resetHistoryPanels();
+  var nSelect = document.getElementById('drawCountSelect');
+  if (nSelect) {
+    nSelect.addEventListener('change', function() {
+      store.drawCount = parseInt(nSelect.value, 10);
+    });
+  }
 });
 
-function init() {
-  window.store = store;
-  loadFromServer().then(loaded => {
-    if (!loaded) {
-      const el = document.getElementById('dataMsg');
-      if (el) { el.textContent = '未加载数据，请点「更新数据」初始化'; el.style.color = '#cc8800'; }
-    }
-  });
-
-  Object.assign(window, {
-    startDraw, updateDrawCount,
-    updateAdvFilter, updateMaxOverlap, updateDiversity, updateGreedy, updateFreqBlue,
-    togglePanel, toggleOfficialHistory, toggleUserHistory, saveCurrentDraw,
-    runAutoCompare, fetchLatestData,
-    switchAnalysisTab, switchChart, refreshReviewPanel,
-  });
-
-  renderPlaceholders();
-  updateFreqBlue();
-}
-
-init();
+subscribe('data-changed', function() {
+  fetchSignals();
+  renderReview();
+  renderPanels();
+});

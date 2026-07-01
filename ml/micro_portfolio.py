@@ -15,13 +15,9 @@ from ml.ssq_constants import TICKET_PRICE
 
 class _State:
     """池缓存. valid_reds 是 C(33,6) 扁平列表, 每6个一组."""
-    __slots__ = ('valid_reds', 'soft_excluded', 'param_excluded',
-                 'rule_status', 'past_count',
-                 'sum_min', 'sum_max')
+    __slots__ = ('valid_reds', 'rule_status', 'past_count', 'sum_min', 'sum_max')
     def __init__(self):
         self.valid_reds = None
-        self.soft_excluded = None
-        self.param_excluded = None
         self.rule_status = {}
         self.past_count = 0
         self.sum_min = None
@@ -47,28 +43,6 @@ def _check_hard(reds):
     return []
 
 
-def _check_soft(reds, sum_min=None, sum_max=None):
-    """只在 _build_pool 中调用, sum_min/max 由调用方传入避免读 _state."""
-    s = sorted(reds)
-    v = []
-    run = cur = 1
-    for i in range(1, 6):
-        if s[i] - s[i-1] == 1:
-            cur += 1; run = max(run, cur)
-        else:
-            cur = 1
-    if run >= 5:
-        v.append("s1_consecutive")
-    if max(s[i+1] - s[i] for i in range(5)) >= 24:
-        v.append("s4_max_gap")
-    odd = sum(1 for n in s if n % 2 == 1)
-    if odd <= 1 or odd >= 5:
-        v.append("s6_odd_even")
-    if sum_min is not None and sum_max is not None:
-        total = sum(s)
-        if total < sum_min or total > sum_max:
-            v.append("s7_sum_range")
-    return v
 
 
 # ═══ 池构建 ═══
@@ -88,8 +62,6 @@ def _build_pool():
                 cached = pickle.load(f)
             if cached.get('past_count') == _state.past_count:
                 _state.valid_reds = cached['valid_reds']
-                _state.soft_excluded = cached['soft_excluded']
-                _state.param_excluded = cached['param_excluded']
                 _state.rule_status = cached['rule_status']
                 return
         except Exception:
@@ -111,10 +83,7 @@ def _build_pool():
             pos_seen[p].add(r[p-1])
 
     valid = []
-    soft = set()
-    param = set()
     h2, h3 = 0, 0
-    s1, s4, s5, s6, s7 = 0, 0, 0, 0, 0
 
     for c in itertools.combinations(range(1, 34), 6):
         if _check_hard(c):
@@ -122,28 +91,11 @@ def _build_pool():
         if c in past_reds:
             h3 += 1; continue
         valid.extend(c)
-        sv = _check_soft(c, sum_min, sum_max)
-        if "s1_consecutive" in sv: s1 += 1; soft.add(c)
-        if "s4_max_gap" in sv:     s4 += 1; soft.add(c)
-        if "s6_odd_even" in sv:    s6 += 1; param.add(c)
-        if "s7_sum_range" in sv:   s7 += 1; param.add(c)
-        s = sorted(c)
-        for p in range(1, 7):
-            if s[p-1] not in pos_seen[p]:
-                s5 += 1; soft.add(c)
-                break
 
     _state.valid_reds = valid
-    _state.soft_excluded = soft
-    _state.param_excluded = param
     _state.rule_status = {
         "h2_arithmetic":  {"type": "hard", "excluded": h2},
         "h3_historical":  {"type": "hard", "excluded": h3},
-        "s1_consecutive": {"type": "soft", "excluded": s1},
-        "s4_max_gap":     {"type": "soft", "excluded": s4},
-        "s5_position":    {"type": "soft", "excluded": s5},
-        "s6_odd_even":    {"type": "param", "excluded": s6},
-        "s7_sum_range":   {"type": "param", "excluded": s7},
     }
 
     # 写缓存
@@ -153,8 +105,6 @@ def _build_pool():
             pickle.dump({
                 'past_count': _state.past_count,
                 'valid_reds': valid,
-                'soft_excluded': soft,
-                'param_excluded': param,
                 'rule_status': _state.rule_status,
             }, f)
     except Exception:
@@ -179,14 +129,6 @@ def _blue_freq_weights():
     return [w / total for w in weights]
 
 
-def _freq_blue_candidates(n=6):
-    from server.db import load_draws
-    data = load_draws()
-    counts = [1.0] * 16
-    for row in data:
-        counts[row[7] - 1] += 1.0
-    ranked = sorted(range(16), key=lambda i: counts[i], reverse=True)
-    return set(i + 1 for i in ranked[:n])
 
 
 def _weighted_choice(weights, candidates, rng=random):
@@ -258,14 +200,12 @@ def _random_tickets(n, max_overlap=None, constraint_level='normal'):
 
 # ═══ 主入口 ═══
 
-def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constraint_level='normal', **kwargs):
+def generate_tickets(n=3, max_overlap=0, constraint_level='normal', **kwargs):
     """生成号码 — gap+position 信号融合 + 全局约束过滤.
 
     Args:
         n: 注数 (1-3)
-        soft: 启用软过滤
         max_overlap: 注间最大红球重叠 (0=不重叠, None=不限)
-        use_freq_blue: 蓝球缩小池 (top-6)
         constraint_level: 全局约束 'loose'|'normal'|'strict'
     """
     from server.db import load_draws
@@ -279,45 +219,28 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
 
     if _state.valid_reds is None:
         tickets = _random_tickets(n, max_overlap, constraint_level=constraint_level)
-        return _response(tickets, n, "Fallback-Random", soft, False)
+        return _response(tickets, n, "Fallback-Random")
 
-    exclude = _state.soft_excluded if soft else set()
     n_combos = len(_state.valid_reds) // 6
     if n_combos * 6 != len(_state.valid_reds) or n_combos == 0:
         tickets = _random_tickets(n, max_overlap, constraint_level=constraint_level)
-        return _response(tickets, n, "Fallback-Random", soft, False)
+        return _response(tickets, n, "Fallback-Random")
 
-    # 蓝球 — 频率加权
-    blue_method = "频率加权"
+    # 蓝球 — 间隔分析
+    blue_method = "间隔分析蓝球"
     try:
         from ml.signal_aggregator import collect_blue_signals
         blue_fused, blue_diag = collect_blue_signals(load_draws())
-    except Exception:
-        blue_fused = None
-
-    if blue_fused is None:
-        blue_weights = _blue_freq_weights()
-        blue_method = "均匀蓝球(降级)"
-    elif use_freq_blue:
-        # 缩小池模式: 取融合权重 top-6 蓝球, 用融合权重做加权
-        ranked = sorted([(b, blue_fused[b]) for b in range(1, 17)], key=lambda x: -x[1])
-        blue_candidates = set(b for b, _ in ranked[:6])
-        blue_weights = [0.0] * 16
-        for b in blue_candidates:
-            blue_weights[b - 1] = blue_fused[b]
-        total = sum(blue_weights)
-        if total > 0:
-            blue_weights = [w / total for w in blue_weights]
-        blue_method = "频率Top-6"
-    else:
-        # 全池模式: 直接使用融合权重
         blue_weights = [0.0] * 16
         for b in range(1, 17):
             blue_weights[b - 1] = blue_fused[b]
         total = sum(blue_weights)
         if total > 0:
             blue_weights = [w / total for w in blue_weights]
-        blue_method = "频率加权"
+        blue_method = blue_diag.get("algorithm", "间隔分析蓝球")
+    except Exception:
+        blue_weights = _blue_freq_weights()
+        blue_method = "频率蓝球(降级)"
 
     # 红球信号融合 (gap_analysis + position_model)
     red_w = [1.0] * 34
@@ -330,7 +253,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
         pass  # 降级为均匀权重
 
     # best-of-20 加权采样
-    def _pick(n_combos=n_combos):
+    def _pick():
         c = random.sample(range(n_combos), min(20, n_combos))
         return max(c, key=lambda i: sum(red_w[v] for v in _state.valid_reds[i*6:i*6+6]))
 
@@ -342,13 +265,12 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
             if idx in used_idx:
                 continue
             reds = tuple(_state.valid_reds[idx*6:idx*6+6])
-            if reds in exclude or reds in used_reds:
+            if reds in used_reds:
                 continue
             t = _try_one_ticket(reds, used_reds, used_blues, tickets, blue_weights, max_overlap, constraint_level=constraint_level)
             if t:
                 used_idx.add(idx); tickets.append(t); break
         else:
-            # 池采样失败, 随机 fallback
             for _ in range(500):
                 c = tuple(sorted(random.sample(range(1, 34), 6)))
                 if c in used_reds:
@@ -362,18 +284,17 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
                     used_blues.add(blue)
                 tickets.append({"reds": [1, 2, 3, 4, 5, 6], "blue": blue})
 
-    return _response(tickets, n, "Pool-Sampling+Gap+Position", soft,
-                     soft_excluded=len(exclude), pool_valid=sum(1 for c in _state.valid_reds) // 6 - len(exclude),
-                     blue_method=blue_method, rule_status=_state.rule_status)
+    pool_valid = sum(1 for _ in _state.valid_reds) // 6
+    return _response(tickets, n, "Pool-Sampling+Gap+Position",
+                     pool_valid=pool_valid, blue_method=blue_method, rule_status=_state.rule_status)
 
 
-def _response(tickets, n, algo, soft, soft_excluded=0, pool_valid=None, blue_method="均匀分布", rule_status=None):
+def _response(tickets, n, algo, pool_valid=None, blue_method="间隔分析蓝球", rule_status=None):
     return {
         "ok": True, "algorithm": algo, "tickets": tickets, "budget": n,
         "cost_rmb": n * TICKET_PRICE,
         "pool_size": (pool_valid or 0) * 16,
         "pool_valid_reds": pool_valid,
-        "soft_filter": soft, "soft_excluded": soft_excluded,
         "rule_status": rule_status or {},
         "blue_method": blue_method,
     }

@@ -1,112 +1,50 @@
-/** 出号 UI — 近期偏差加权出号 */
-import { store } from '../store.js';
-import { playTick } from '../audio.js';
+/** 出号 UI — gap + position 信号融合出号 */
+import { store, subscribe } from '../store.js';
 
-const delay = ms => new Promise(r => setTimeout(r, ms));
+// 进度条
+var _progressTimer = null;
+function progressEl() { return document.getElementById('progressBar'); }
+function stageEl() { return document.getElementById('ticketStage'); }
+function infoRowEl() { return document.getElementById('drawInfo'); }
 
-function createBall(num, type, cls) {
-  const el = document.createElement('div');
-  el.className = `ball ${type} ${cls || ''}`;
-  el.textContent = String(num).padStart(2, '0');
-  return el;
+export function updateProgress(msg, pct) {
+  var el = progressEl();
+  if (!el) return;
+  el.style.width = Math.min(100, pct) + '%';
+  el.textContent = msg + ' ' + pct + '%';
 }
 
-function createPlaceholder() {
-  const el = document.createElement('div');
-  el.className = 'ball placeholder';
-  el.textContent = '?';
-  return el;
+export function clearProgress() {
+  var el = progressEl();
+  if (el) { el.style.width = '0%'; el.textContent = ''; }
 }
 
-function stageEl() { return document.getElementById('stage'); }
-function progressEl() { return document.getElementById('drawProgress'); }
-function progressBarEl() { return document.getElementById('progressBar'); }
-function drawBtn() { return document.getElementById('drawBtn'); }
-function saveBtn() { return document.getElementById('saveBtn'); }
-
-function restoreButtons() {
-  const db = drawBtn(), sb = saveBtn();
-  if (db) db.disabled = false;
-  if (sb) sb.disabled = false;
+export function restoreButtons() {
+  document.getElementById('drawBtn').disabled = false;
+  document.getElementById('saveBtn').disabled = true;
 }
 
-function disableButtons() {
-  const db = drawBtn(), sb = saveBtn();
-  if (db) db.disabled = true;
-  if (sb) sb.disabled = true;
+// === 出号 ===
+
+export async function startDraw() {
+  var btn = document.getElementById('drawBtn');
+  btn.disabled = true;
+  document.getElementById('saveBtn').disabled = true;
+  stageEl().innerHTML = '';
+  infoRowEl().innerHTML = '';
+
+  await drawTickets();
 }
-
-function updateProgress(text, pct) {
-  const el = progressEl(), bar = progressBarEl();
-  if (el) el.textContent = text;
-  if (bar) bar.style.width = (pct || 0) + '%';
-}
-
-function clearProgress() {
-  const el = progressEl(), bar = progressBarEl();
-  if (el) el.textContent = '';
-  if (bar) bar.style.width = '0%';
-}
-
-export function renderPlaceholders() {
-  const stage = stageEl();
-  stage.innerHTML = '';
-  for (let d = 0; d < store.drawCount; d++) {
-    const row = document.createElement('div');
-    row.className = 'draw-row';
-    row.id = 'row-' + d;
-    const label = document.createElement('span');
-    label.className = 'draw-label';
-    label.textContent = '#' + (d + 1);
-    row.appendChild(label);
-    for (let i = 0; i < 6; i++) row.appendChild(createPlaceholder());
-    row.appendChild(createPlaceholder());
-    stage.appendChild(row);
-  }
-}
-
-// === 选项更新 ===
-
-export function updateAdvFilter() {
-  store.useAdvFilter = document.getElementById('advFilterToggle').checked;
-}
-
-export function updateMaxOverlap() {
-  const v = document.getElementById('maxOverlap').value;
-  store.maxOverlap = v === 'none' ? null : parseInt(v);
-}
-
-export function updateDiversity() {
-  store.useDiversity = document.getElementById('diversityToggle').checked;
-}
-
-export function updateGreedy() {
-  store.useGreedy = document.getElementById('greedyToggle').checked;
-  if (store.useGreedy) {
-    document.getElementById('diversityToggle').checked = true;
-    store.useDiversity = true;
-  }
-}
-
-export function updateFreqBlue() {
-  store.useFreqBlue = document.getElementById('freqBlueToggle').checked;
-}
-
-// === API 调用 ===
 
 async function drawTickets() {
   updateProgress('生成中...', 20);
-  const advFilter = store.useAdvFilter ? '&adv_filter=1' : '';
-  const overlapParam = store.maxOverlap != null ? '&max_overlap=' + store.maxOverlap : '';
-  const diversity = store.useGreedy
-    ? '&div=1' + (store.maxOverlap == null ? '&max_overlap=2' : overlapParam)
-    : (store.useDiversity ? (store.maxOverlap != null ? overlapParam : '&max_overlap=2') : overlapParam);
-  const freqBlue = store.useFreqBlue ? '&freq_blue=1' : '';
-  const constraintLevel = store.constraintLevel || 'normal';
+  var params = '?n=' + store.drawCount;
+  if (store.maxOverlap != null) params += '&max_overlap=' + store.maxOverlap;
+  params += '&constraint_level=normal';
 
-  let data;
+  var data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + freqBlue + '&constraint_level=' + constraintLevel);
+    var r = await fetch('/api/micro/tickets' + params);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';
@@ -117,56 +55,60 @@ async function drawTickets() {
     clearProgress(); restoreButtons(); return;
   }
 
-  const apiTickets = data.tickets.slice(0, store.drawCount);
-  const results = apiTickets.map(t => ({ reds: t.reds, blue: t.blue, score: 5, fails: {} }));
-  store.lastDrawResults = results;
-  const stage = stageEl();
-  stage.innerHTML = '';
+  updateProgress('渲染...', 90);
+  var apiTickets = data.tickets.slice(0, store.drawCount);
+  var results = apiTickets.map(function(t) { return { reds: t.reds, blue: t.blue, score: 5, fails: {} }; });
 
-  // 信息栏
-  const infoRow = document.createElement('div');
-  infoRow.style.cssText = 'font-size:11px;margin-bottom:8px;text-align:center;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#FFFFFF;';
-  const rs = data.rule_status || {};
-  const h2 = rs.h2_arithmetic?.excluded || 0;
-  const h3 = rs.h3_historical?.excluded || 0;
-  const softTag = data.soft_filter ? ` + 高级过滤 排除${(data.soft_excluded||0).toLocaleString()}` : '';
-  const poolStr = data.pool_valid_reds != null ? ` → 有效池 ${data.pool_valid_reds.toLocaleString()} 红球` : '';
-  const blueMethod = data.blue_method ? ` · ${data.blue_method}` : '';
-  infoRow.innerHTML = `硬过滤[排除${h2+h3}组合]${softTag}${poolStr}${blueMethod} · ${data.algorithm || ''}`;
-  stage.appendChild(infoRow);
-
-  // 票面
-  for (let d = 0; d < results.length; d++) {
-    const row = document.createElement('div');
-    row.className = 'draw-row';
-    const label = document.createElement('span');
-    label.className = 'draw-label';
-    label.textContent = '#' + (d + 1);
-    row.appendChild(label);
-    results[d].reds.forEach(n => row.appendChild(createBall(n, 'red', 'landed')));
-    row.appendChild(createBall(results[d].blue, 'blue', 'landed'));
-    stage.appendChild(row);
-  }
-
-  // 偏差摘要
-  if (data.recent_bias) {
-    const biasRow = document.createElement('div');
-    biasRow.style.cssText = 'font-size:10px;margin-top:6px;text-align:center;color:#A78BFA;';
-    const hot = data.recent_bias.slice(0, 8).map(i => '#' + i).join(' ');
-    biasRow.textContent = '偏热号码: ' + hot;
-    stage.appendChild(biasRow);
-  }
-
-  updateProgress('完成', 100);
-  await delay(300);
-  clearProgress();
+  store.lastDrawResults = { tickets: results, info: data };
+  notify('draw-complete', results);
+  renderTickets(results, data);
+  updateProgress('', 100);
   restoreButtons();
 }
 
-export async function proceedWithDraw() {
-  disableButtons();
-  store.lastDrawResults = null;
-  renderPlaceholders();
-  const safety = setTimeout(() => { restoreButtons(); clearProgress(); }, 30000);
-  await drawTickets().finally(() => clearTimeout(safety));
+function renderTickets(tickets, data) {
+  var poolStr = data.pool_valid_reds ? ' 组合池有效' + data.pool_valid_reds.toLocaleString() : '';
+  var blueMethod = data.blue_method || '间隔分析蓝球';
+  infoRowEl().innerHTML = '硬过滤[排除历史]' + poolStr + ' · ' + blueMethod + ' · ' + (data.algorithm || '');
+
+  var html = tickets.map(function(t, i) {
+    var redsHtml = t.reds.map(function(num) {
+      return '<span class="ball ball-red">' + num + '</span>';
+    }).join('');
+    return '<div class="ticket-row">'
+      + '<span class="ticket-num">' + (i + 1) + '</span>'
+      + redsHtml
+      + '<span class="ball ball-blue">' + t.blue + '</span>'
+      + '</div>';
+  }).join('');
+  stageEl().innerHTML = html;
 }
+
+// === 保存 ===
+
+export function saveCurrentDraw() {
+  var results = store.lastDrawResults;
+  if (!results || !results.tickets) return;
+  fetch('/api/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tickets: results.tickets.map(function(t) { return { reds: t.reds, blue: t.blue }; }),
+      strategy: 'Gap+Position',
+    }),
+  }).then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      document.getElementById('saveBtn').disabled = true;
+      document.getElementById('saveBtn').textContent = '已保存';
+      notify('data-changed');
+    }
+  });
+}
+
+// === 选区无状态变化 — 不再需要 toggle 函数 ===
+
+subscribe('data-changed', function() {
+  // auto-refresh signals on data change
+  import('./signals.js').then(function(m) { m.fetchSignals(); });
+});

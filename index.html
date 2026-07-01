@@ -63,48 +63,32 @@
     </div>
 
     <div class="option-grid">
-      <div class="option-section-label">🔴 红球 — 组合空间过滤</div>
+      <div class="option-section-label">🔴 红球 — 硬过滤</div>
       <div class="option-card-row">
-        <div class="option-card" id="card-advFilter">
-          <label class="option-label" for="advFilterToggle">
-            <input type="checkbox" id="advFilterToggle" onchange="updateAdvFilter()">
-            <span class="option-icon">🔍</span>
-            <span class="option-name">高级过滤</span>
-            <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-advFilter').classList.toggle('expanded')">▸</span>
-          </label>
-          <div class="option-detail">排除历史上极少出现的红球组合（≥5连号、间距≥24、位置未出现、极端奇偶比、和值异常）。</div>
+        <div class="option-card">
+          <div class="option-label">
+            <span class="option-icon">✅</span>
+            <span class="option-name">等差序列</span>
+            <span class="option-tag">始终</span>
+          </div>
+          <div class="option-detail">自动排除算术级数组合（如1,5,9,13,17,21）。</div>
         </div>
-        <div class="option-card" id="card-diversity">
-          <label class="option-label" for="diversityToggle">
-            <input type="checkbox" id="diversityToggle" onchange="updateDiversity()">
-            <span class="option-icon">↔</span>
-            <span class="option-name">分散红球</span>
-            <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-diversity').classList.toggle('expanded')">▸</span>
-          </label>
-          <div class="option-detail">任意两注间共享红球不超过2个。</div>
+        <div class="option-card">
+          <div class="option-label">
+            <span class="option-icon">🚫</span>
+            <span class="option-name">历史重复</span>
+            <span class="option-tag">始终</span>
+          </div>
+          <div class="option-detail">自动排除历史上已开出的红球组合。</div>
         </div>
-        <div class="option-card" id="card-greedy">
-          <label class="option-label" for="greedyToggle">
-            <input type="checkbox" id="greedyToggle" onchange="updateGreedy()">
-            <span class="option-icon">◆</span>
-            <span class="option-name">贪心优化</span>
-            <span class="option-tag">推荐</span>
-            <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-greedy').classList.toggle('expanded')">▸</span>
-          </label>
-          <div class="option-detail">推荐开启。贪心算法最大化注间Jaccard距离，选出最分散的N注。自动启用分散。</div>
+        <div class="option-card">
+          <div class="option-label">
+            <span class="option-icon">📐</span>
+            <span class="option-name">全局约束</span>
+            <span class="option-tag">始终</span>
+          </div>
+          <div class="option-detail">Stage 2: 和值/跨度/奇偶比/AC值 校验过滤。</div>
         </div>
-      </div>
-
-      <div class="option-section-label">🔵 蓝球 — 频率缩小池</div>
-      <div class="option-card" id="card-freqBlue">
-        <label class="option-label" for="freqBlueToggle">
-          <input type="checkbox" id="freqBlueToggle" onchange="updateFreqBlue()">
-          <span class="option-icon">🎯</span>
-          <span class="option-name">蓝球缩小池</span>
-          <span class="option-tag">推荐</span>
-          <span class="option-expand" onclick="event.preventDefault();document.getElementById('card-freqBlue').classList.toggle('expanded')">▸</span>
-        </label>
-        <div class="option-detail">推荐开启。Laplace频率top-6蓝球，将蓝球池从16个缩小到6个。</div>
       </div>
     </div>
 

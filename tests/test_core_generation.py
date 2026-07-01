@@ -41,10 +41,10 @@ class TestGenerateTickets(unittest.TestCase):
 
     def test_soft_filter(self):
         from ml.micro_portfolio import generate_tickets
-        r = generate_tickets(n=3, soft=True)
+        # soft_filter 已移除 — Stage 2 全局约束替代
+        r = generate_tickets(n=3, constraint_level='normal')
         self.assertTrue(r["ok"])
-        self.assertTrue(r["soft_filter"])
-        self.assertGreater(r["soft_excluded"], 0)
+        self.assertEqual(len(r["tickets"]), 3)
 
     def test_reds_sorted(self):
         from ml.micro_portfolio import generate_tickets
@@ -127,12 +127,6 @@ class TestBlueWeights(unittest.TestCase):
             b = _weighted_choice(w, range(1, 17))
             self.assertTrue(1 <= b <= 16)
 
-    def test_freq_candidates(self):
-        from ml.micro_portfolio import _freq_blue_candidates
-        c = _freq_blue_candidates(n=6)
-        self.assertEqual(len(c), 6)
-        for b in c:
-            self.assertTrue(1 <= b <= 16)
 
 
 class TestEndToEnd(unittest.TestCase):

@@ -2,11 +2,7 @@
 export const store = {
   DATA: [],
   drawCount: 3,
-  useAdvFilter: false,
-  useDiversity: false,
-  useGreedy: false,
   lastDrawResults: null,
-  useFreqBlue: false,
   maxOverlap: 0,
 };
 
