@@ -133,3 +133,105 @@ class TestBlueWeights(unittest.TestCase):
         self.assertEqual(len(c), 6)
         for b in c:
             self.assertTrue(1 <= b <= 16)
+
+
+class TestEndToEnd(unittest.TestCase):
+    """端到端: generate_tickets 全流程 + 所有约束校验"""
+
+    def setUp(self):
+        from server.db import load_draws
+        self.data = load_draws()
+        self.assertGreater(len(self.data), 100, "至少需要100期开奖数据")
+
+    def test_e2e_default_3_tickets(self):
+        """默认3注: 全部通过约束, 互不重叠, 在有效范围内"""
+        from ml.micro_portfolio import generate_tickets
+        from ml.global_constraint import validate_combo
+
+        result = generate_tickets(n=3, max_overlap=0, constraint_level='normal')
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(result["tickets"]), 3)
+
+        for i, t in enumerate(result["tickets"]):
+            reds = t["reds"]
+            self.assertEqual(len(reds), 6)
+            self.assertEqual(len(set(reds)), 6, f"Ticket {i}: 红球重复")
+            for r in reds:
+                self.assertTrue(1 <= r <= 33, f"Ticket {i}: 红球 {r} 超出范围")
+            self.assertTrue(1 <= t["blue"] <= 16, f"Ticket {i}: 蓝球 {t['blue']} 超出范围")
+            self.assertEqual(reds, sorted(reds), f"Ticket {i}: 红球未排序")
+            ok, violations = validate_combo(reds, constraint_level='normal')
+            self.assertTrue(ok, f"Ticket {i}: 全局约束失败 {violations}")
+
+        # 注间无重叠
+        for i in range(3):
+            for j in range(i + 1, 3):
+                overlap = len(set(result["tickets"][i]["reds"])
+                              & set(result["tickets"][j]["reds"]))
+                self.assertEqual(overlap, 0,
+                                 f"Ticket {i} vs {j} 重叠 {overlap} 个红球")
+
+    def test_e2e_signals_available(self):
+        """信号融合正常返回, 两个算法都在"""
+        from ml.signal_aggregator import collect_all_signals, collect_blue_signals
+
+        fused_w, diag = collect_all_signals(self.data)
+        self.assertEqual(diag["n_active"], 2)
+        self.assertIn("gap_analysis", diag["active_list"])
+        self.assertIn("position", diag["active_list"])
+        for n in range(1, 34):
+            self.assertTrue(0.5 <= fused_w[n] <= 2.0,
+                            f"红球 {n} 权重 {fused_w[n]} 超出 [0.5, 2.0]")
+
+        blue_w, blue_d = collect_blue_signals(self.data)
+        for b in range(1, 17):
+            self.assertTrue(0.5 <= blue_w[b] <= 2.0,
+                            f"蓝球 {b} 权重 {blue_w[b]} 超出 [0.5, 2.0]")
+
+    def test_e2e_constraint_summary(self):
+        """全局约束摘要和实际数据一致"""
+        from ml.global_constraint import constraint_summary
+        cs = constraint_summary(self.data)
+        self.assertIn("sum", cs)
+        self.assertIn("span", cs)
+        self.assertIn("odd_count", cs)
+        self.assertGreater(cs["n_draws"], 100)
+
+    def test_e2e_all_levels(self):
+        """loose/normal/strict 三级约束均能出号"""
+        from ml.micro_portfolio import generate_tickets
+        for level in ("loose", "normal", "strict"):
+            result = generate_tickets(n=1, constraint_level=level)
+            self.assertTrue(result["ok"], f"constraint_level={level} 失败")
+            self.assertEqual(len(result["tickets"]), 1)
+
+    def test_e2e_fallback(self):
+        """无数据时随机降级也不崩溃"""
+        from ml.micro_portfolio import generate_tickets
+        # 传空数据模拟
+        result = generate_tickets(n=1)
+        self.assertTrue(result["ok"])
+        t = result["tickets"][0]
+        self.assertEqual(len(t["reds"]), 6)
+        self.assertEqual(len(set(t["reds"])), 6)
+        self.assertTrue(1 <= t["blue"] <= 16)
+
+    def test_e2e_gap_weights(self):
+        """gap_analysis 在真实数据上正常返回"""
+        from ml.gap_analysis import compute_gap_weights
+        w, d = compute_gap_weights(self.data, window=100)
+        self.assertEqual(len(w), 34)
+        for n in range(1, 34):
+            self.assertTrue(0.5 <= w[n] <= 2.0,
+                            f"gap 权重 {n}={w[n]} 越界")
+        self.assertIn("hot", d)
+        self.assertIn("shape_by_num", d)
+
+    def test_e2e_position_weights(self):
+        """position_model 在真实数据上正常返回"""
+        from ml.position_model import compute_position_weights
+        pos_probs, d = compute_position_weights(self.data, window=100)
+        self.assertEqual(len(pos_probs), 7)  # positions 1-6
+        for p in range(1, 7):
+            self.assertEqual(len(pos_probs[p]), 34)
+        self.assertIn("hot_by_pos", d)

@@ -21,6 +21,13 @@
   --radius-sm: 6px;
   --radius: 8px;
   --radius-lg: 12px;
+
+  /* signal panel font sizes */
+  --sig-label: 12px;
+  --sig-hint: 11px;
+  --sig-ball: 12px;
+  --sig-ball-diam: 30px;
+  --sig-card: 11px;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
