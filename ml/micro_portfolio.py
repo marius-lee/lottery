@@ -259,7 +259,7 @@ def _random_tickets(n, max_overlap=None, constraint_level='normal'):
 # ═══ 主入口 ═══
 
 def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constraint_level='normal', **kwargs):
-    """生成号码 — 多算法信号融合 + 全局约束过滤.
+    """生成号码 — gap+position 信号融合 + 全局约束过滤.
 
     Args:
         n: 注数 (1-3)
@@ -287,8 +287,8 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
         tickets = _random_tickets(n, max_overlap, constraint_level=constraint_level)
         return _response(tickets, n, "Fallback-Random", soft, False)
 
-    # 蓝球 — 多算法融合权重
-    blue_method = "多算法融合"
+    # 蓝球 — 频率加权
+    blue_method = "频率加权"
     try:
         from ml.signal_aggregator import collect_blue_signals
         blue_fused, blue_diag = collect_blue_signals(load_draws())
@@ -297,7 +297,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
 
     if blue_fused is None:
         blue_weights = _blue_freq_weights()
-        blue_method = "频率蓝球(降级)"
+        blue_method = "均匀蓝球(降级)"
     elif use_freq_blue:
         # 缩小池模式: 取融合权重 top-6 蓝球, 用融合权重做加权
         ranked = sorted([(b, blue_fused[b]) for b in range(1, 17)], key=lambda x: -x[1])
@@ -308,7 +308,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
         total = sum(blue_weights)
         if total > 0:
             blue_weights = [w / total for w in blue_weights]
-        blue_method = "多算法Top-6"
+        blue_method = "频率Top-6"
     else:
         # 全池模式: 直接使用融合权重
         blue_weights = [0.0] * 16
@@ -317,9 +317,9 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
         total = sum(blue_weights)
         if total > 0:
             blue_weights = [w / total for w in blue_weights]
-        blue_method = "多算法融合"
+        blue_method = "频率加权"
 
-    # 多算法融合权重 (5个方向)
+    # 红球信号融合 (gap_analysis + position_model)
     red_w = [1.0] * 34
     try:
         from ml.signal_aggregator import collect_all_signals
@@ -327,13 +327,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
         for num in range(1, 34):
             red_w[num] = fused_w[num]
     except Exception:
-        try:
-            from ml.recent_bias import compute_recent_bias_weights
-            rb_w, _ = compute_recent_bias_weights(load_draws(), window=100)
-            for num in range(1, 34):
-                red_w[num] = rb_w[num]
-        except Exception:
-            pass
+        pass  # 降级为均匀权重
 
     # best-of-20 加权采样
     def _pick(n_combos=n_combos):
@@ -368,7 +362,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constr
                     used_blues.add(blue)
                 tickets.append({"reds": [1, 2, 3, 4, 5, 6], "blue": blue})
 
-    return _response(tickets, n, "Pool-Sampling+RecentBias", soft,
+    return _response(tickets, n, "Pool-Sampling+Gap+Position", soft,
                      soft_excluded=len(exclude), pool_valid=sum(1 for c in _state.valid_reds) // 6 - len(exclude),
                      blue_method=blue_method, rule_status=_state.rule_status)
 

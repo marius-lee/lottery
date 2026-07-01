@@ -133,31 +133,3 @@ class TestBlueWeights(unittest.TestCase):
         self.assertEqual(len(c), 6)
         for b in c:
             self.assertTrue(1 <= b <= 16)
-
-
-class TestRecentBias(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        sys.path.insert(0, PROJECT_ROOT)
-
-    def test_weights_shape(self):
-        from ml.recent_bias import compute_recent_bias_weights
-        from server.db import load_draws
-        data = load_draws()
-        if len(data) >= 50:
-            w, diag = compute_recent_bias_weights(data, window=50)
-            self.assertEqual(len(w), 34)
-
-    def test_bias_summary(self):
-        from ml.recent_bias import bias_summary
-        from server.db import load_draws
-        data = load_draws()
-        if len(data) >= 10:
-            s = bias_summary(data, window=50)
-            self.assertTrue(s["ok"])
-            self.assertIn("hot_reds", s)
-
-
-if __name__ == "__main__":
-    unittest.main()

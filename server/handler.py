@@ -58,8 +58,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/user-picks":   lambda: self._json({"ok": True, "picks": db.load_user_picks()}),
             "/api/stats":        self._api_stats,
             "/api/rules/status": self._api_rules_status,
-            "/api/recent-bias":  lambda: self._api_recent_bias(q),
-            "/api/signals":      self._api_signals,
+                        "/api/signals":      self._api_signals,
             "/api/constraint":   self._api_constraint,
             "/api/backtest":     self._api_backtest,
         }
@@ -127,12 +126,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         from ml.micro_portfolio import rule_status
         return self._json({"ok": True, **rule_status()})
 
-    # ── API: 近期偏差 ──
-
-    def _api_recent_bias(self, q):
-        from ml.recent_bias import bias_summary
-        return self._json(bias_summary(db.load_draws(), window=qint(q, "window", 100)))
-
     # ── API: 对比(历史) ──
 
     def _api_compare_get(self):
@@ -184,7 +177,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── API: 多算法信号 ──
 
     def _api_signals(self):
-        """返回全部算法的信号摘要."""
+        """返回 gap + position 双算法信号摘要."""
         from ml.signal_aggregator import collect_all_signals
         data = db.load_draws()
         fused_w, diag = collect_all_signals(data)

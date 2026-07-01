@@ -70,11 +70,6 @@ class TestServer(unittest.TestCase):
         d = self._get("/api/rules/status")
         self.assertIn("h2_arithmetic", d)
 
-    def test_api_recent_bias(self):
-        d = self._get("/api/recent-bias")
-        self.assertTrue(d["ok"])
-        self.assertIn("hot_reds", d)
-
     def test_api_user_picks(self):
         d = self._get("/api/user-picks")
         self.assertTrue(d["ok"])

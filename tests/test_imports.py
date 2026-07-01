@@ -13,9 +13,9 @@ class TestImports(unittest.TestCase):
         sys.path.insert(0, PROJECT_ROOT)
 
     def test_ml_modules(self):
-        from ml import micro_portfolio, recent_bias
+        from ml import micro_portfolio, gap_analysis
         self.assertIsNotNone(micro_portfolio)
-        self.assertIsNotNone(recent_bias)
+        self.assertIsNotNone(gap_analysis)
 
     def test_server_modules(self):
         from server import db, fetcher, handler
