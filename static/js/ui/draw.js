@@ -1,5 +1,5 @@
 /** 出号 UI — gap + position 信号融合出号 */
-import { store, subscribe } from '../store.js';
+import { store, subscribe, notify } from '../store.js';
 
 // 进度条
 var _progressTimer = null;
