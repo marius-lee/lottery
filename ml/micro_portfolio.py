@@ -218,12 +218,17 @@ def _pick_blue(weights, exclude=None):
 
 # ═══ 出号核心 ═══
 
-def _try_one_ticket(reds, used_reds, used_blues, tickets, blue_weights, max_overlap=None):
+def _try_one_ticket(reds, used_reds, used_blues, tickets, blue_weights, max_overlap=None, constraint_level='normal'):
     if reds in used_reds:
         return None
     if max_overlap is not None and tickets:
         if any(len(set(reds) & set(t["reds"])) > max_overlap for t in tickets):
             return None
+    # Stage 2: 全局结构约束过滤
+    from ml.global_constraint import validate_combo
+    ok, _ = validate_combo(reds, constraint_level=constraint_level)
+    if not ok:
+        return None
     blue_exclude = used_blues if max_overlap == 0 else None
     blue = _pick_blue(blue_weights, exclude=blue_exclude)
     used_reds.add(reds)
@@ -232,14 +237,14 @@ def _try_one_ticket(reds, used_reds, used_blues, tickets, blue_weights, max_over
     return {"reds": list(reds), "blue": blue}
 
 
-def _random_tickets(n, max_overlap=None):
+def _random_tickets(n, max_overlap=None, constraint_level='normal'):
     """纯随机 fallback."""
     blue_weights = _blue_freq_weights()
     tickets, used_reds, used_blues = [], set(), set()
     for _ in range(n):
-        for _ in range(500):
+        for _ in range(800):
             c = tuple(sorted(random.sample(range(1, 34), 6)))
-            t = _try_one_ticket(c, used_reds, used_blues, tickets, blue_weights, max_overlap)
+            t = _try_one_ticket(c, used_reds, used_blues, tickets, blue_weights, max_overlap, constraint_level=constraint_level)
             if t:
                 tickets.append(t); break
         else:
@@ -253,14 +258,15 @@ def _random_tickets(n, max_overlap=None):
 
 # ═══ 主入口 ═══
 
-def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, **kwargs):
-    """生成号码 — 近期偏差加权池采样.
+def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, constraint_level='normal', **kwargs):
+    """生成号码 — 多算法信号融合 + 全局约束过滤.
 
     Args:
         n: 注数 (1-3)
         soft: 启用软过滤
         max_overlap: 注间最大红球重叠 (0=不重叠, None=不限)
         use_freq_blue: 蓝球缩小池 (top-6)
+        constraint_level: 全局约束 'loose'|'normal'|'strict'
     """
     from server.db import load_draws
 
@@ -272,13 +278,13 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, **kwar
         _state.valid_reds = None
 
     if _state.valid_reds is None:
-        tickets = _random_tickets(n, max_overlap)
+        tickets = _random_tickets(n, max_overlap, constraint_level=constraint_level)
         return _response(tickets, n, "Fallback-Random", soft, False)
 
     exclude = _state.soft_excluded if soft else set()
     n_combos = len(_state.valid_reds) // 6
     if n_combos * 6 != len(_state.valid_reds) or n_combos == 0:
-        tickets = _random_tickets(n, max_overlap)
+        tickets = _random_tickets(n, max_overlap, constraint_level=constraint_level)
         return _response(tickets, n, "Fallback-Random", soft, False)
 
     # 蓝球 — 多算法融合权重
@@ -344,7 +350,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, **kwar
             reds = tuple(_state.valid_reds[idx*6:idx*6+6])
             if reds in exclude or reds in used_reds:
                 continue
-            t = _try_one_ticket(reds, used_reds, used_blues, tickets, blue_weights, max_overlap)
+            t = _try_one_ticket(reds, used_reds, used_blues, tickets, blue_weights, max_overlap, constraint_level=constraint_level)
             if t:
                 used_idx.add(idx); tickets.append(t); break
         else:
@@ -353,7 +359,7 @@ def generate_tickets(n=3, soft=False, max_overlap=0, use_freq_blue=False, **kwar
                 c = tuple(sorted(random.sample(range(1, 34), 6)))
                 if c in used_reds:
                     continue
-                t = _try_one_ticket(c, used_reds, used_blues, tickets, blue_weights, max_overlap)
+                t = _try_one_ticket(c, used_reds, used_blues, tickets, blue_weights, max_overlap, constraint_level=constraint_level)
                 if t:
                     tickets.append(t); break
             else:

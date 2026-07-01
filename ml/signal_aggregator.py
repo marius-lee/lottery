@@ -22,9 +22,9 @@ def collect_all_signals(data, window=200, active=None):
     active: 启用的算法列表. None/"all"=启用全部五个.
     """
     if active is None or active == 'all':
-        active = ['recent_bias', 'position', 'cooccurrence', 'rmt', 'transfer_entropy']
+        active = ['recent_bias', 'position', 'cooccurrence', 'rmt', 'transfer_entropy', 'gap', 'modular', 'markov']
     elif isinstance(active, str) and active == 'all':
-        active = ['recent_bias', 'position', 'cooccurrence', 'rmt', 'transfer_entropy']
+        active = ['recent_bias', 'position', 'cooccurrence', 'rmt', 'transfer_entropy', 'gap', 'modular', 'markov']
 
     diag = {}
     weights_pool = {}
@@ -136,6 +136,61 @@ def collect_all_signals(data, window=200, active=None):
     else:
         diag["transfer_entropy"] = {"inactive": True}
 
+
+    # ── F: gap_analysis ──
+    if 'gap' in active:
+        try:
+            from ml.gap_analysis import compute_gap_weights
+            gap_w, gap_d = compute_gap_weights(data, window=min(window, 200))
+            weights_pool["gap_analysis"] = gap_w
+            diag["gap_analysis"] = {
+                "hot": gap_d.get("hot", [])[:8],
+                "cold": gap_d.get("cold", [])[:8],
+                "n_hot": gap_d.get("n_hot", 0),
+                "n_cold": gap_d.get("n_cold", 0),
+            }
+        except Exception:
+            weights_pool["gap_analysis"] = [1.0] * 34
+            diag["gap_analysis"] = {"error": "failed"}
+    else:
+        diag["gap_analysis"] = {"inactive": True}
+
+    # ── G: modular_math ──
+    if 'modular' in active:
+        try:
+            from ml.modular_math import compute_modular_weights
+            mod_w, mod_d = compute_modular_weights(data, window=min(window, 200))
+            weights_pool["modular_math"] = mod_w
+            diag["modular_math"] = {
+                "modules": mod_d.get("modules", {}),
+                "hot": mod_d.get("hot", [])[:8],
+                "n_hot": mod_d.get("n_hot", 0),
+            }
+        except Exception:
+            weights_pool["modular_math"] = [1.0] * 34
+            diag["modular_math"] = {"error": "failed"}
+    else:
+        diag["modular_math"] = {"inactive": True}
+
+    # ── H: markov_state ──
+    if 'markov' in active:
+        try:
+            from ml.markov_state import compute_markov_weights
+            mkv_w, mkv_d = compute_markov_weights(data, window=min(window, 300))
+            weights_pool["markov_state"] = mkv_w
+            diag["markov_state"] = {
+                "current_state": mkv_d.get("current_state", []),
+                "predicted_state": mkv_d.get("predicted_state"),
+                "confidence": mkv_d.get("confidence", 0),
+                "n_states": mkv_d.get("n_states", 0),
+                "hot": mkv_d.get("hot", [])[:8],
+                "n_hot": mkv_d.get("n_hot", 0),
+            }
+        except Exception:
+            weights_pool["markov_state"] = [1.0] * 34
+            diag["markov_state"] = {"error": "failed"}
+    else:
+        diag["markov_state"] = {"inactive": True}
     # ── 归一化 → 等权融合 ──
     def _normalize(w):
         vals = [w[n] for n in range(1, 34)]

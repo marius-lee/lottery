@@ -66,10 +66,11 @@ function renderSignals(sigs, bt, el) {
   html += '</div>';
 
   // 各算法 lift
-  var algoOrder = ['recent_bias', 'position', 'cooccurrence', 'rmt', 'transfer_entropy'];
+  var algoOrder = ['recent_bias', 'position', 'cooccurrence', 'rmt', 'transfer_entropy', 'gap_analysis', 'modular_math', 'markov_state'];
   var algoNames = {
     recent_bias: '偏热权重', position: '位置概率',
     cooccurrence: '共现图', rmt: 'RMT谱', transfer_entropy: '转移熵',
+    gap_analysis: '间隔分析', modular_math: '模算术', markov_state: '马尔可夫',
   };
 
   html += '<div style="display:flex;gap:4px;flex-wrap:wrap;">';

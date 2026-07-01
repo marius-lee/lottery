@@ -102,10 +102,11 @@ async function drawTickets() {
     ? '&div=1' + (store.maxOverlap == null ? '&max_overlap=2' : overlapParam)
     : (store.useDiversity ? (store.maxOverlap != null ? overlapParam : '&max_overlap=2') : overlapParam);
   const freqBlue = store.useFreqBlue ? '&freq_blue=1' : '';
+  const constraintLevel = store.constraintLevel || 'normal';
 
   let data;
   try {
-    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + freqBlue);
+    const r = await fetch('/api/micro/tickets?n=' + store.drawCount + advFilter + diversity + freqBlue + '&constraint_level=' + constraintLevel);
     data = await r.json();
   } catch (e) {
     stageEl().innerHTML = '<div style="color:#cc3333;padding:20px;">生成失败，请重试</div>';

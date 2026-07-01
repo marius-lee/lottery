@@ -60,6 +60,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/rules/status": self._api_rules_status,
             "/api/recent-bias":  lambda: self._api_recent_bias(q),
             "/api/signals":      self._api_signals,
+            "/api/constraint":   self._api_constraint,
             "/api/backtest":     self._api_backtest,
         }
         if clean in exact:
@@ -112,9 +113,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         soft = qbool(q, "adv_filter") or qbool(q, "soft")
         mo = qint(q, "max_overlap", -1)
         max_overlap = None if mo < 0 else mo
+        cl = q.get("constraint_level")
+        constraint_level = cl if cl in ("loose", "normal", "strict") else "normal"
         return generate_tickets(
             n=n, soft=soft, max_overlap=max_overlap,
             use_freq_blue=qbool(q, 'freq_blue'),
+            constraint_level=constraint_level,
         )
 
     # ── API: 规则状态 ──
@@ -180,7 +184,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── API: 多算法信号 ──
 
     def _api_signals(self):
-        """返回四种算法的信号摘要."""
+        """返回全部算法的信号摘要."""
         from ml.signal_aggregator import collect_all_signals
         data = db.load_draws()
         fused_w, diag = collect_all_signals(data)
@@ -193,6 +197,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "weights": [round(fused_w[n], 3) for n in range(1, 34)],
             "algorithms": diag,
         })
+
+    # ── API: 全局约束诊断 ──
+
+    def _api_constraint(self):
+        """返回全局约束的历史分布摘要."""
+        from ml.global_constraint import constraint_summary
+        data = db.load_draws()
+        summary = constraint_summary(data)
+        return self._json({"ok": True, "constraints": summary})
 
     # ── API: 回测 ──
 
